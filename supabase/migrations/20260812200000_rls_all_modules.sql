@@ -157,7 +157,7 @@ BEGIN
       CREATE POLICY "invoices_select" ON public.invoices FOR SELECT USING (
         public.is_finance_role()
         OR (public.belongs_to_org(organization_id) AND public.user_role_in(ARRAY['org_admin', 'platform_admin']))
-        OR auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+        OR auth.uid() = user_id
       )
     $p$;
     EXECUTE $p$
