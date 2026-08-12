@@ -245,7 +245,6 @@ const ambassadorNav: NavItem[] = [
 
 const platformAdminNav: NavItem[] = [
   { key: 'nav-pa-super-admin', label: '⭐ Super Admin SHIFA', icon: 'ShieldCheckIcon', href: '/super-admin-shifa', group: 'principal' },
-  { key: 'nav-pa-live-modules', label: '🔴 Interactions Live', icon: 'BoltIcon', href: '/live-module-interactions', group: 'principal' },
   { key: 'nav-pa-dashboard', label: 'Tableau de bord global', icon: 'Squares2X2Icon', href: '/platform-admin', group: 'principal' },
   { key: 'nav-pa-orgs', label: 'Organisations', icon: 'BuildingOffice2Icon', href: '/platform-admin', group: 'gestion' },
   { key: 'nav-pa-users', label: 'Utilisateurs', icon: 'UsersIcon', href: '/platform-admin', group: 'gestion' },

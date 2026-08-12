@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { createClient } from '@/lib/supabase/client';
-import ProfessionalAvailabilityModal from './ProfessionalAvailabilityModal';
 
 // ============================================================
 // Types
@@ -124,7 +123,6 @@ export default function AppointmentBookingContent() {
   const [manageSuccess, setManageSuccess] = useState('');
   const [newApptDate, setNewApptDate] = useState('');
   const [newApptTime, setNewApptTime] = useState('');
-  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
 
   // Calendar state
   const now = new Date();
@@ -340,9 +338,6 @@ export default function AppointmentBookingContent() {
     setManageSuccess('');
     setNewApptDate('');
     setNewApptTime('');
-    if (action === 'modify') {
-      setShowAvailabilityModal(true);
-    }
   };
 
   const handleConfirmManage = () => {
@@ -352,7 +347,7 @@ export default function AppointmentBookingContent() {
       return;
     }
     if (manageAction === 'modify' && (!newApptDate || !newApptTime)) {
-      setManageReasonError('Veuillez sélectionner une nouvelle date et heure via le calendrier.');
+      setManageReasonError('Veuillez sélectionner une nouvelle date et heure.');
       return;
     }
     setManageReasonError('');
@@ -415,26 +410,6 @@ export default function AppointmentBookingContent() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-5xl mx-auto">
-      {/* Professional Availability Modal */}
-      {showAvailabilityModal && managingAppt && (
-        <ProfessionalAvailabilityModal
-          professionalId={managingAppt.id}
-          professionalName={managingAppt.proName}
-          specialty={managingAppt.specialty}
-          currentDate={managingAppt.date}
-          currentTime={managingAppt.time}
-          onConfirm={(date, time, slotId) => {
-            setNewApptDate(date);
-            setNewApptTime(time);
-            setShowAvailabilityModal(false);
-          }}
-          onClose={() => {
-            setShowAvailabilityModal(false);
-            setManagingAppt(null);
-            setManageAction(null);
-          }}
-        />
-      )}
       {/* Main view tabs */}
       <div className="flex gap-1 p-1 rounded-xl mb-6 w-fit" style={{ backgroundColor: 'var(--muted)' }}>
         {[
@@ -564,7 +539,7 @@ export default function AppointmentBookingContent() {
           </div>
 
           {/* Manage modal */}
-          {managingAppt && manageAction && !showAvailabilityModal && (
+          {managingAppt && manageAction && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
               <div className="w-full max-w-md rounded-2xl p-6 shadow-xl" style={{ backgroundColor: 'var(--card)' }}>
                 <div className="flex items-center justify-between mb-4">
@@ -597,36 +572,25 @@ export default function AppointmentBookingContent() {
                     </div>
 
                     {manageAction === 'modify' && (
-                      <div className="mb-4">
-                        {newApptDate && newApptTime ? (
-                          <div className="flex items-center justify-between p-3 rounded-xl" style={{ backgroundColor: 'rgba(0,102,255,0.06)', border: '1px solid rgba(0,102,255,0.2)' }}>
-                            <div className="flex items-center gap-2">
-                              <Icon name="CalendarDaysIcon" size={16} style={{ color: 'var(--shifa-blue)' } as any} className="" />
-                              <div>
-                                <p className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>Nouveau créneau sélectionné</p>
-                                <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-blue)' }}>
-                                  {new Date(newApptDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à {newApptTime}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setShowAvailabilityModal(true)}
-                              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all hover:opacity-80"
-                              style={{ color: 'var(--shifa-blue)', backgroundColor: 'rgba(0,102,255,0.1)' }}
-                            >
-                              Modifier
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setShowAvailabilityModal(true)}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-sm font-semibold transition-all hover:opacity-80"
-                            style={{ borderColor: 'var(--shifa-blue)', color: 'var(--shifa-blue)', backgroundColor: 'rgba(0,102,255,0.04)' }}
-                          >
-                            <Icon name="CalendarDaysIcon" size={16} />
-                            Voir les disponibilités et choisir un créneau
-                          </button>
-                        )}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Nouvelle date</label>
+                          <input
+                            type="date"
+                            className="input-field w-full text-sm"
+                            value={newApptDate}
+                            onChange={e => setNewApptDate(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Nouvelle heure</label>
+                          <input
+                            type="time"
+                            className="input-field w-full text-sm"
+                            value={newApptTime}
+                            onChange={e => setNewApptTime(e.target.value)}
+                          />
+                        </div>
                       </div>
                     )}
 
