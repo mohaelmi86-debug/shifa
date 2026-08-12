@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -16,12 +15,41 @@ interface LoginFormProps {
   onSwitchToRegister: (role: 'patient' | 'professional' | 'institution') => void;
 }
 
+function getRoleRedirect(role: string): string {
+  switch (role) {
+    case 'platform_admin':
+      return '/platform-admin';
+    case 'org_admin':
+      return '/administration-tablissement';
+    case 'professional':
+      return '/workspace-professionnel';
+    case 'ambassador':
+      return '/ambassador-workspace';
+    case 'ministry': case'public_health':
+      return '/espace-ministere';
+    case 'insurance':
+      return '/espace-assurance';
+    case 'university':
+      return '/espace-universite';
+    case 'ngo':
+      return '/espace-ong';
+    case 'researcher':
+      return '/research-workspace';
+    case 'developer':
+      return '/api-developer-dashboard';
+    case 'vendor':
+      return '/marketplace-vendor';
+    case 'patient':
+    default:
+      return '/patient-home';
+  }
+}
+
 export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
   const { signIn } = useAuth();
-  const router = useRouter();
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     defaultValues: { remember: false },
@@ -31,31 +59,29 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     setIsLoading(true);
     setLoginError('');
     try {
+      // Step 1: Sign in — this sets the session cookie
       await signIn(data.email, data.password);
-      // Fetch user profile to determine role-based redirection
+
+      // Step 2: Fetch profile using a fresh client call (session is now active)
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
+
+      let redirectPath = '/patient-home';
+
       if (user) {
         const { data: profile } = await supabase
           .from('user_profiles')
           .select('role')
           .eq('id', user.id)
           .single();
+
         const role = profile?.role || 'patient';
-        if (role === 'org_admin' || role === 'platform_admin') {
-          router.push('/administration-tablissement');
-        } else if (role === 'professional') {
-          router.push('/workspace-professionnel');
-        } else if (role === 'ministry' || role === 'insurance' || role === 'ngo' || role === 'university' || role === 'public_health') {
-          router.push('/espace-ministere');
-        } else if (role === 'ambassador') {
-          router.push('/ambassador-workspace');
-        } else {
-          router.push('/patient-home');
-        }
-      } else {
-        router.push('/patient-home');
+        redirectPath = getRoleRedirect(role);
       }
+
+      // Step 3: Hard navigation — forces full page reload so middleware
+      // reads the freshly-set session cookie correctly
+      window.location.href = redirectPath;
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
@@ -65,7 +91,6 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
       } else {
         setLoginError('Une erreur est survenue. Veuillez réessayer.');
       }
-    } finally {
       setIsLoading(false);
     }
   };
@@ -94,7 +119,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
             className="input-field"
             placeholder="votre@email.com ou +33 6 00 00 00 00"
             {...register('email', {
-              required: 'L\'adresse e-mail ou numéro de téléphone est requis',
+              required: "L'adresse e-mail ou numéro de téléphone est requis",
             })}
           />
           {errors.email && <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--shifa-red)' }}>{errors.email.message}</p>}
