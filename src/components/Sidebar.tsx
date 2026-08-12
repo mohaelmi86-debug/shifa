@@ -61,6 +61,7 @@ const patientNav: NavItem[] = [
 
 const professionalNav: NavItem[] = [
   { key: 'nav-pro-dashboard', label: 'Tableau de bord', icon: 'Squares2X2Icon', href: '/workspace-professionnel', group: 'principal' },
+  { key: 'nav-pro-workspace-engine', label: 'Workspace Métier', icon: 'AdjustmentsHorizontalIcon', href: '/workspace', group: 'principal' },
   { key: 'nav-pro-patients', label: 'Patients', icon: 'UsersIcon', href: '/pro-patients', badge: 5, group: 'principal' },
   { key: 'nav-pro-agenda', label: 'Agenda', icon: 'CalendarDaysIcon', href: '/pro-agenda', group: 'principal' },
   { key: 'nav-pro-consultations', label: 'Consultations', icon: 'ClipboardDocumentListIcon', href: '/consultation-workspace', group: 'principal' },
