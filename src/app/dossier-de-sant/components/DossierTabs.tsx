@@ -25,12 +25,14 @@ const antecedents = {
   traitements: ['Contraceptif oral (en cours)', 'Vitamine D3 (en cours)'],
 };
 
-const vaccinations = [
-  { id: 'vacc-001', name: 'COVID-19 (Rappel)', date: '12 sept. 2023', nextDue: null, status: 'done', lab: 'Pfizer BNT162b2' },
-  { id: 'vacc-002', name: 'Grippe saisonnière', date: '10 oct. 2025', nextDue: 'Oct. 2026', status: 'done', lab: 'Vaxigrip Tetra' },
-  { id: 'vacc-003', name: 'DTP (Rappel)', date: '20 sept. 2016', nextDue: '20 sept. 2026', status: 'due', lab: 'Revaxis' },
-  { id: 'vacc-004', name: 'Hépatite B', date: '15 mars 2010', nextDue: null, status: 'done', lab: 'Engerix-B' },
+const STATIC_VACCINATIONS = [
+  { id: 'vacc-001', name: 'COVID-19 (Rappel)', date: '12 sept. 2023', nextDue: null, status: 'done', lab: 'Pfizer BNT162b2', boosterDueDate: null as string | null, notes: null as string | null },
+  { id: 'vacc-002', name: 'Grippe saisonnière', date: '10 oct. 2025', nextDue: 'Oct. 2026', status: 'done', lab: 'Vaxigrip Tetra', boosterDueDate: null as string | null, notes: null as string | null },
+  { id: 'vacc-003', name: 'DTP (Rappel)', date: '20 sept. 2016', nextDue: '20 sept. 2026', status: 'due', lab: 'Revaxis', boosterDueDate: null as string | null, notes: null as string | null },
+  { id: 'vacc-004', name: 'Hépatite B', date: '15 mars 2010', nextDue: null, status: 'done', lab: 'Engerix-B', boosterDueDate: null as string | null, notes: null as string | null },
 ];
+
+const STORAGE_KEY = 'shifa_vaccinations';
 
 interface ConsultationRecord {
   id: string;
@@ -60,12 +62,24 @@ interface LabResult {
   alert: boolean;
 }
 
+interface DossierVaccination {
+  id: string;
+  name: string;
+  date: string;
+  nextDue: string | null;
+  status: string;
+  lab: string;
+  boosterDueDate: string | null;
+  notes: string | null;
+}
+
 export default function DossierTabs() {
   const [activeTab, setActiveTab] = useState('tab-resume');
   const [consultations, setConsultations] = useState<ConsultationRecord[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([]);
   const [labResults, setLabResults] = useState<LabResult[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
+  const [vaccinations, setVaccinations] = useState<DossierVaccination[]>(STATIC_VACCINATIONS);
 
   const supabase = createClient();
 
@@ -166,6 +180,29 @@ export default function DossierTabs() {
 
     fetchHealthRecords();
   }, []);
+
+  // Sync vaccinations from localStorage (added via /patient-vaccination)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const stored: Array<{ id: string; name: string; date: string; nextDose?: string; boosterDueDate?: string; lot: string; provider: string; status: string; doses: number; totalDoses: number; notes?: string }> = JSON.parse(raw);
+        const mapped: DossierVaccination[] = stored.map(v => ({
+          id: v.id,
+          name: v.name,
+          date: v.date,
+          nextDue: v.nextDose || null,
+          status: v.status === 'done' ? 'done' : 'due',
+          lab: v.lot !== '—' ? `Lot: ${v.lot}` : v.provider,
+          boosterDueDate: v.boosterDueDate || null,
+          notes: v.notes || null,
+        }));
+        setVaccinations([...mapped, ...STATIC_VACCINATIONS]);
+      }
+    } catch {
+      // keep static data
+    }
+  }, [activeTab]);
 
   return (
     <div>
@@ -458,18 +495,20 @@ export default function DossierTabs() {
         {activeTab === 'tab-vaccinations' && (
           <div className="flex flex-col gap-3">
             {vaccinations.map((v) => (
-              <div key={v.id} className="card-base flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: v.status === 'due' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)' }}>
+              <div key={v.id} className="card-base flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: v.status === 'due' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)' }}>
                     <Icon name="ShieldCheckIcon" size={18} style={{ color: v.status === 'due' ? 'var(--shifa-amber)' : 'var(--shifa-green)' } as any} className="" />
                   </div>
                   <div>
                     <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{v.name}</p>
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{v.lab} · {v.date}</p>
-                    {v.nextDue && <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-amber)' }}>Rappel: {v.nextDue}</p>}
+                    {v.nextDue && <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-amber)' }}>Prochaine dose : {v.nextDue}</p>}
+                    {v.boosterDueDate && <p className="text-xs mt-0.5" style={{ color: '#f59e0b' }}>Rappel booster : {v.boosterDueDate}</p>}
+                    {v.notes && <p className="text-xs mt-1 italic" style={{ color: 'var(--muted-foreground)' }}>Notes : {v.notes}</p>}
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0" style={{
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0 mt-0.5" style={{
                   backgroundColor: v.status === 'due' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
                   color: v.status === 'due' ? 'var(--shifa-amber)' : 'var(--shifa-green)',
                 }}>
