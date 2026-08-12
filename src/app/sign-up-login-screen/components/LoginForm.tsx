@@ -25,8 +25,10 @@ function getRoleRedirect(role: string): string {
       return '/workspace-professionnel';
     case 'ambassador':
       return '/ambassador-workspace';
-    case 'ministry': case'public_health':
+    case 'ministry':
       return '/espace-ministere';
+    case 'public_health':
+      return '/espace-sante-publique';
     case 'insurance':
       return '/espace-assurance';
     case 'university':

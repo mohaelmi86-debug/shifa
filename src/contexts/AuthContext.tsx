@@ -3,7 +3,21 @@
 import { createContext, useContext, useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '../lib/supabase/client';
 
-const AuthContext = createContext<any>({});
+interface AuthContextValue {
+  user: any;
+  session: any;
+  loading: boolean;
+  role: string | null;
+  signUp: (email: string, password: string, metadata?: Record<string, any>) => Promise<any>;
+  signIn: (email: string, password: string) => Promise<any>;
+  signOut: () => Promise<void>;
+  getCurrentUser: () => Promise<any>;
+  isEmailVerified: () => boolean;
+  getUserProfile: () => Promise<any>;
+  getRole: () => string | null;
+}
+
+const AuthContext = createContext<AuthContextValue>({} as AuthContextValue);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -17,8 +31,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
   const mountedRef = useRef(false);
   const supabase = useMemo(() => createClient(), []);
+
+  const fetchRole = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      if (mountedRef.current) {
+        setRole(data?.role ?? 'patient');
+      }
+    } catch {
+      if (mountedRef.current) setRole('patient');
+    }
+  };
 
   useEffect(() => {
     mountedRef.current = true;
@@ -28,7 +58,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!mountedRef.current) return;
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (session?.user) {
+        fetchRole(session.user.id).finally(() => {
+          if (mountedRef.current) setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
     });
 
     // Listen for auth changes
@@ -38,7 +74,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!mountedRef.current) return;
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (session?.user) {
+        fetchRole(session.user.id).finally(() => {
+          if (mountedRef.current) setLoading(false);
+        });
+      } else {
+        setRole(null);
+        setLoading(false);
+      }
     });
 
     return () => {
@@ -48,14 +91,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [supabase]);
 
   // Email/Password Sign Up
-  const signUp = async (email: string, password: string, metadata = {}) => {
+  const signUp = async (email: string, password: string, metadata: Record<string, any> = {}) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: (metadata as any)?.fullName || '',
-          avatar_url: (metadata as any)?.avatarUrl || ''
+          full_name: metadata?.fullName || '',
+          avatar_url: metadata?.avatarUrl || ''
         },
         emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`
       }
@@ -78,6 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    setRole(null);
   };
 
   // Get Current User
@@ -104,16 +148,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return data;
   };
 
-  const value = {
+  // Get current role (synchronous helper)
+  const getRole = () => role;
+
+  const value: AuthContextValue = {
     user,
     session,
     loading,
+    role,
     signUp,
     signIn,
     signOut,
     getCurrentUser,
     isEmailVerified,
-    getUserProfile
+    getUserProfile,
+    getRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

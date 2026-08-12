@@ -2,19 +2,21 @@ import React from 'react';
 import Sidebar from './Sidebar';
 import SHIFAFooter, { type FooterContext } from './SHIFAFooter';
 
+type AppRole = 'patient' | 'professional' | 'admin' | 'org_admin' | 'institution' | 'ambassador' | 'platform_admin' | 'ministry' | 'public_health' | 'insurance' | 'university' | 'ngo' | 'researcher' | 'developer' | 'vendor';
+
 interface AppLayoutProps {
   children: React.ReactNode;
-  role?: 'patient' | 'professional' | 'admin' | 'institution' | 'ambassador' | 'platform_admin';
+  role?: AppRole;
   activeRoute?: string;
 }
 
 // Map AppLayout role to FooterContext
-function roleToFooterContext(role: AppLayoutProps['role']): FooterContext {
+function roleToFooterContext(role: AppRole | undefined): FooterContext {
   switch (role) {
     case 'patient': return 'patient';
     case 'professional': return 'professional';
-    case 'admin': return 'organization';
-    case 'institution': return 'institution';
+    case 'admin': case'org_admin': return 'organization';
+    case 'institution': case'ministry': case'public_health': case'insurance': case'university': case'ngo': case'researcher': case'developer': case'vendor': return 'institution';
     case 'ambassador': return 'ambassador';
     case 'platform_admin': return 'admin';
     default: return 'patient';

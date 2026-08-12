@@ -24,6 +24,7 @@ const PUBLIC_PATHS = [
   '/enterprise-contact',
   '/support-center',
   '/local-health-services',
+  '/forgot-password',
 ];
 
 // ─── Role-based route guards ──────────────────────────────────────────────────
@@ -213,6 +214,7 @@ const ROLE_GUARDS: Record<string, string[]> = {
   '/patient-precall-vitals': ['patient', 'platform_admin'],
   '/patient-postcall-survey': ['patient', 'platform_admin'],
   '/dossier-de-sant': ['patient', 'professional', 'org_admin', 'platform_admin'],
+  '/appointment-history': ['patient', 'platform_admin'],
 
   // Shared authenticated routes (any role)
   '/appointment-booking': [],
@@ -231,6 +233,11 @@ const ROLE_GUARDS: Record<string, string[]> = {
   '/module-catalog': [],
   '/patient-transfer': ['professional', 'org_admin', 'platform_admin'],
   '/offline-mode-config': ['org_admin', 'platform_admin'],
+  '/innovation-center': ['professional', 'org_admin', 'platform_admin'],
+  '/shifa-emploi-stage': ['professional', 'org_admin', 'platform_admin'],
+  '/lab-sample-transfer': ['professional', 'org_admin', 'platform_admin'],
+  '/lab-international-transfer': ['professional', 'org_admin', 'platform_admin'],
+  '/lab-lis-connector': ['professional', 'org_admin', 'platform_admin'],
 
   // Institutional spaces
   '/espace-ministere': ['ministry', 'platform_admin'],
@@ -344,6 +351,24 @@ export async function middleware(request: NextRequest) {
         url.pathname = '/administration-tablissement';
       } else if (userRole === 'platform_admin') {
         url.pathname = '/platform-admin';
+      } else if (userRole === 'ambassador') {
+        url.pathname = '/ambassador-workspace';
+      } else if (userRole === 'ministry') {
+        url.pathname = '/espace-ministere';
+      } else if (userRole === 'public_health') {
+        url.pathname = '/espace-sante-publique';
+      } else if (userRole === 'insurance') {
+        url.pathname = '/espace-assurance';
+      } else if (userRole === 'university') {
+        url.pathname = '/espace-universite';
+      } else if (userRole === 'ngo') {
+        url.pathname = '/espace-ong';
+      } else if (userRole === 'researcher') {
+        url.pathname = '/research-workspace';
+      } else if (userRole === 'developer') {
+        url.pathname = '/api-developer-dashboard';
+      } else if (userRole === 'vendor') {
+        url.pathname = '/marketplace-vendor';
       } else {
         url.pathname = '/patient-home';
       }

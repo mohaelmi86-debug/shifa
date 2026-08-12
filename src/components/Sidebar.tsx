@@ -293,7 +293,23 @@ const platformAdminNav: NavItem[] = [
   { key: 'nav-pa-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'systeme' },
 ];
 
-const navByRole = { patient: patientNav, professional: professionalNav, admin: adminNav, institution: institutionNav, ambassador: ambassadorNav, platform_admin: platformAdminNav };
+const navByRole = {
+  patient: patientNav,
+  professional: professionalNav,
+  admin: adminNav,
+  org_admin: adminNav,
+  institution: institutionNav,
+  ministry: institutionNav,
+  public_health: institutionNav,
+  insurance: institutionNav,
+  university: institutionNav,
+  ngo: institutionNav,
+  researcher: institutionNav,
+  developer: platformAdminNav,
+  vendor: institutionNav,
+  ambassador: ambassadorNav,
+  platform_admin: platformAdminNav,
+};
 
 const groupLabels: Record<string, string> = {
   principal: 'Principal',
@@ -314,11 +330,20 @@ const groupLabels: Record<string, string> = {
   commercial: 'Commercial & Tarification',
 };
 
-const userInfoByRole = {
+const userInfoByRole: Record<string, { name: string; sub: string; avatar: string }> = {
   patient: { name: 'Aïcha Diallo', sub: 'SH-2-SN-2025-7K4D', avatar: 'AD' },
   professional: { name: 'Dr. Mohamed Sy', sub: 'Médecin généraliste', avatar: 'MS' },
   admin: { name: 'Admin — CHU Saint-Louis', sub: 'Administrateur', avatar: 'AS' },
+  org_admin: { name: 'Admin — CHU Saint-Louis', sub: 'Administrateur', avatar: 'AS' },
   institution: { name: 'Espace Institutionnel', sub: 'Accès multi-organisations', avatar: 'EI' },
+  ministry: { name: 'Ministère de la Santé', sub: 'Espace Ministère', avatar: 'MS' },
+  public_health: { name: 'Santé Publique', sub: 'Espace Santé Publique', avatar: 'SP' },
+  insurance: { name: 'Assurance / Mutuelle', sub: 'Espace Assurance', avatar: 'AS' },
+  university: { name: 'Université / École', sub: 'Espace Université', avatar: 'UE' },
+  ngo: { name: 'ONG / Humanitaire', sub: 'Espace ONG', avatar: 'OG' },
+  researcher: { name: 'Chercheur', sub: 'Espace Recherche', avatar: 'CR' },
+  developer: { name: 'Développeur', sub: 'Portail Développeur', avatar: 'DV' },
+  vendor: { name: 'Vendeur', sub: 'Espace Vendeur', avatar: 'VD' },
   ambassador: { name: 'Karim Diallo', sub: 'Ambassadeur SHIFA — Niveau Or', avatar: 'KD' },
   platform_admin: { name: 'Super Admin SHIFA', sub: 'Administration Plateforme', avatar: 'SA' },
 };
@@ -400,7 +425,7 @@ function ModuleCatalogSection({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?: 'patient' | 'professional' | 'admin' | 'institution' | 'ambassador' | 'platform_admin'; activeRoute?: string }) {
+export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?: 'patient' | 'professional' | 'admin' | 'org_admin' | 'institution' | 'ambassador' | 'platform_admin' | 'ministry' | 'public_health' | 'insurance' | 'university' | 'ngo' | 'researcher' | 'developer' | 'vendor'; activeRoute?: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -512,7 +537,7 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
           );
         })}
         {/* Module Catalog — admin only */}
-        {role === 'admin' && <ModuleCatalogSection collapsed={collapsed} />}
+        {(role === 'admin' || role === 'org_admin') && <ModuleCatalogSection collapsed={collapsed} />}
       </nav>
 
       {/* User footer */}
