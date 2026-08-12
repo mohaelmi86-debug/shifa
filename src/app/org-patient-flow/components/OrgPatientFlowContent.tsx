@@ -1,15 +1,16 @@
 'use client';
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
-type TabKey = 'realtime' | 'beds' | 'transfers' | 'discharges' | 'stats';
+type TabKey = 'realtime' | 'beds' | 'transfers' | 'discharges' | 'alerts' | 'stats';
 
 const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: 'realtime', label: 'Flux temps réel', icon: 'BoltIcon' },
   { key: 'beds', label: 'Gestion des lits', icon: 'HomeIcon' },
   { key: 'transfers', label: 'Transferts', icon: 'ArrowsRightLeftIcon' },
   { key: 'discharges', label: 'Sorties planifiées', icon: 'ArrowRightCircleIcon' },
+  { key: 'alerts', label: 'Alertes & Escalades', icon: 'BellAlertIcon' },
   { key: 'stats', label: 'Statistiques', icon: 'ChartBarIcon' },
 ];
 
@@ -53,8 +54,28 @@ const discharges = [
   { id: 'DIS-004', patient: 'Oumar Diallo', dept: 'Réanimation', bed: 'REA-03', plannedDate: '12 août 2026', physician: 'Dr. Ba', status: 'pending', insurance: 'IPRES', checklist: 0 },
 ];
 
+const alerts = [
+  { id: 'ALT-001', type: 'critical', dept: 'Réanimation', message: 'Taux d\'occupation à 92% — 1 lit disponible', action: 'Préparer transfert ou sortie', time: 'Il y a 5 min', icon: 'ExclamationTriangleIcon', color: '#dc2626', bg: '#fee2e2' },
+  { id: 'ALT-002', type: 'warning', dept: 'Urgences', message: 'Taux d\'occupation à 87% — Afflux important', action: 'Activer protocole de délestage', time: 'Il y a 12 min', icon: 'BellAlertIcon', color: '#d97706', bg: '#fef3c7' },
+  { id: 'ALT-003', type: 'warning', dept: 'Médecine interne', message: 'Transfert TRF-001 en attente depuis 45 min', action: 'Confirmer disponibilité lit Neurologie', time: 'Il y a 45 min', icon: 'ClockIcon', color: '#d97706', bg: '#fef3c7' },
+  { id: 'ALT-004', type: 'info', dept: 'Chirurgie', message: 'Sortie DIS-001 planifiée dans 2h', action: 'Préparer checklist de sortie', time: 'Il y a 1h', icon: 'InformationCircleIcon', color: '#2563eb', bg: '#dbeafe' },
+  { id: 'ALT-005', type: 'critical', dept: 'Réanimation', message: 'Patient REA-03 — Transfert inter-établissement requis', action: 'Contacter CHU Dakar pour disponibilité', time: 'Il y a 2h', icon: 'ArrowsRightLeftIcon', color: '#dc2626', bg: '#fee2e2' },
+  { id: 'ALT-006', type: 'info', dept: 'Maternité', message: '3 accouchements prévus dans les 24h', action: 'Vérifier disponibilité salle de naissance', time: 'Il y a 3h', icon: 'HeartIcon', color: '#ec4899', bg: '#fce7f3' },
+];
+
 const occupancyData = [
   { day: 'Lun', rate: 78 }, { day: 'Mar', rate: 82 }, { day: 'Mer', rate: 85 }, { day: 'Jeu', rate: 88 }, { day: 'Ven', rate: 91 }, { day: 'Sam', rate: 87 }, { day: 'Dim', rate: 76 },
+];
+
+const admissionsData = [
+  { hour: '06h', admissions: 2, discharges: 0 },
+  { hour: '08h', admissions: 5, discharges: 1 },
+  { hour: '10h', admissions: 8, discharges: 3 },
+  { hour: '12h', admissions: 4, discharges: 5 },
+  { hour: '14h', admissions: 6, discharges: 4 },
+  { hour: '16h', admissions: 3, discharges: 6 },
+  { hour: '18h', admissions: 7, discharges: 2 },
+  { hour: '20h', admissions: 2, discharges: 1 },
 ];
 
 const bedStatusConfig: Record<string, { label: string; bg: string; color: string; dot: string }> = {
@@ -67,17 +88,32 @@ const bedStatusConfig: Record<string, { label: string; bg: string; color: string
 export default function OrgPatientFlowContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('realtime');
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
+  const [alertFilter, setAlertFilter] = useState<string>('all');
 
   const totalBeds = departments.reduce((s, d) => s + d.total, 0);
   const occupiedBeds = departments.reduce((s, d) => s + d.occupied, 0);
   const availableBeds = departments.reduce((s, d) => s + d.available, 0);
   const globalOccupancy = Math.round((occupiedBeds / totalBeds) * 100);
 
+  const filteredAlerts = alertFilter === 'all' ? alerts : alerts.filter(a => a.type === alertFilter);
+
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--foreground)', marginBottom: '4px' }}>Flux Patients & Gestion des Lits</h1>
-        <p style={{ fontSize: '14px', color: 'var(--muted-foreground)' }}>Tableau de bord temps réel — CHU Saint-Louis · Mis à jour il y a 2 min</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--foreground)', marginBottom: '4px' }}>Flux Patients & Gestion des Lits</h1>
+          <p style={{ fontSize: '14px', color: 'var(--muted-foreground)' }}>Tableau de bord temps réel — CHU Saint-Louis</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: '#dcfce7', border: '1px solid #16a34a' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a', animation: 'pulse 2s infinite' }} />
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#15803d' }}>Mis à jour il y a 2 min</span>
+          </div>
+          <a href="/patient-transfer" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: 'var(--shifa-blue)', color: '#fff', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+            <Icon name="ArrowsRightLeftIcon" size={13} />
+            Transferts
+          </a>
+        </div>
       </div>
 
       {/* KPI Strip */}
@@ -86,7 +122,7 @@ export default function OrgPatientFlowContent() {
           { label: 'Taux d\'occupation global', value: `${globalOccupancy}%`, sub: `${occupiedBeds}/${totalBeds} lits`, icon: 'HomeIcon', color: globalOccupancy > 85 ? '#dc2626' : 'var(--shifa-blue)', bg: globalOccupancy > 85 ? 'rgba(220,38,38,0.08)' : 'rgba(0,102,255,0.08)' },
           { label: 'Lits disponibles', value: String(availableBeds), sub: 'Toutes unités', icon: 'CheckCircleIcon', color: 'var(--shifa-green)', bg: 'rgba(16,185,129,0.08)' },
           { label: 'Transferts en cours', value: '3', sub: '1 inter-établissement', icon: 'ArrowsRightLeftIcon', color: 'var(--shifa-amber)', bg: 'rgba(245,158,11,0.08)' },
-          { label: 'Sorties planifiées', value: '4', sub: 'Dont 1 aujourd\'hui', icon: 'ArrowRightCircleIcon', color: 'var(--shifa-purple)', bg: 'rgba(139,92,246,0.08)' },
+          { label: 'Alertes actives', value: String(alerts.filter(a => a.type !== 'info').length), sub: `${alerts.filter(a => a.type === 'critical').length} critiques`, icon: 'BellAlertIcon', color: '#dc2626', bg: 'rgba(220,38,38,0.08)' },
         ].map(kpi => (
           <div key={kpi.label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -102,7 +138,7 @@ export default function OrgPatientFlowContent() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
         {tabs.map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', borderRadius: '8px 8px 0 0', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: activeTab === tab.key ? 700 : 500, background: activeTab === tab.key ? 'var(--shifa-blue)' : 'transparent', color: activeTab === tab.key ? '#fff' : 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>
             <Icon name={tab.icon} size={14} />{tab.label}
@@ -175,9 +211,9 @@ export default function OrgPatientFlowContent() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Transferts en cours & planifiés</h3>
-            <button style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--shifa-blue)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
-              <Icon name="PlusIcon" size={14} /> Nouveau transfert
-            </button>
+            <a href="/patient-transfer" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--shifa-blue)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+              <Icon name="ArrowTopRightOnSquareIcon" size={14} /> Module Transferts complet
+            </a>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {transfers.map(trf => (
@@ -242,6 +278,67 @@ export default function OrgPatientFlowContent() {
         </div>
       )}
 
+      {/* Alerts Tab */}
+      {activeTab === 'alerts' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--foreground)' }}>Alertes & Escalades</h3>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {['all', 'critical', 'warning', 'info'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setAlertFilter(f)}
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer', fontSize: '12px', fontWeight: 600, background: alertFilter === f ? 'var(--shifa-blue)' : 'var(--card)', color: alertFilter === f ? '#fff' : 'var(--muted-foreground)' }}
+                >
+                  {f === 'all' ? 'Toutes' : f === 'critical' ? 'Critiques' : f === 'warning' ? 'Avertissements' : 'Infos'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredAlerts.map(alert => (
+            <div key={alert.id} style={{ background: alert.bg, border: `1px solid ${alert.color}40`, borderRadius: '12px', padding: '16px', borderLeft: `4px solid ${alert.color}` }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: alert.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name={alert.icon as any} size={18} color={alert.color} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: alert.color }}>{alert.dept}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>{alert.time}</span>
+                    </div>
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>{alert.message}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>Action recommandée : {alert.action}</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <button style={{ padding: '6px 14px', background: alert.color, color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>Traiter</button>
+                  <button style={{ padding: '6px 14px', background: 'var(--muted)', color: 'var(--muted-foreground)', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Ignorer</button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Escalation protocol */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px', color: 'var(--foreground)' }}>Protocole d'escalade automatique</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              {[
+                { threshold: '> 85%', action: 'Alerte chef de service', color: '#d97706', bg: '#fef3c7' },
+                { threshold: '> 90%', action: 'Alerte direction médicale + activation plan de délestage', color: '#dc2626', bg: '#fee2e2' },
+                { threshold: '> 95%', action: 'Activation plan blanc — transferts inter-établissements', color: '#7c3aed', bg: '#ede9fe' },
+              ].map(rule => (
+                <div key={rule.threshold} style={{ background: rule.bg, borderRadius: '8px', padding: '12px', border: `1px solid ${rule.color}40` }}>
+                  <p style={{ fontSize: '16px', fontWeight: 700, color: rule.color, marginBottom: '4px' }}>Occupation {rule.threshold}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--foreground)' }}>{rule.action}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Tab */}
       {activeTab === 'stats' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -250,25 +347,40 @@ export default function OrgPatientFlowContent() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={occupancyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => [`${v}%`, 'Taux']} />
-                <Bar dataKey="rate" fill="var(--shifa-blue)" radius={[4, 4, 0, 0]} />
+                <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} domain={[60, 100]} />
+                <Tooltip />
+                <Bar dataKey="rate" fill="var(--shifa-blue)" radius={[4, 4, 0, 0]} name="Taux %" />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>Admissions & Sorties — Aujourd'hui</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={admissionsData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="hour" tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+                <Tooltip />
+                <Line type="monotone" dataKey="admissions" stroke="var(--shifa-blue)" strokeWidth={2} name="Admissions" dot={false} />
+                <Line type="monotone" dataKey="discharges" stroke="#16a34a" strokeWidth={2} name="Sorties" dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', gridColumn: 'span 2' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>Occupation par service</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
               {departments.map(dept => (
-                <div key={dept.name}>
+                <div key={dept.name} style={{ background: 'var(--muted)', borderRadius: '8px', padding: '12px' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '8px' }}>{dept.name}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--foreground)', fontWeight: 500 }}>{dept.name}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: dept.occupancy > 85 ? '#dc2626' : dept.occupancy > 70 ? '#ca8a04' : '#16a34a' }}>{dept.occupancy}%</span>
+                    <span style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>Occupation</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: dept.occupancy > 85 ? '#dc2626' : dept.occupancy > 70 ? '#ca8a04' : '#16a34a' }}>{dept.occupancy}%</span>
                   </div>
-                  <div style={{ height: '6px', background: 'var(--muted)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${dept.occupancy}%`, background: dept.occupancy > 85 ? '#dc2626' : dept.occupancy > 70 ? '#ca8a04' : '#16a34a', borderRadius: '3px' }} />
+                  <div style={{ height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${dept.occupancy}%`, background: dept.occupancy > 85 ? '#dc2626' : dept.occupancy > 70 ? '#ca8a04' : '#16a34a', borderRadius: '2px' }} />
                   </div>
+                  <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', marginTop: '4px' }}>{dept.occupied}/{dept.total} lits</p>
                 </div>
               ))}
             </div>

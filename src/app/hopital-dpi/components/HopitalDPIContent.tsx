@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-type TabKey = 'overview' | 'admissions' | 'care' | 'vitals' | 'prescriptions' | 'medications' | 'acts' | 'discharge';
+type TabKey = 'overview' | 'admissions' | 'care' | 'vitals' | 'prescriptions' | 'medications' | 'acts' | 'access' | 'discharge';
 
 const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: 'overview', label: 'Vue d\'ensemble', icon: 'Squares2X2Icon' },
@@ -13,6 +13,7 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: 'prescriptions', label: 'Prescriptions', icon: 'DocumentCheckIcon' },
   { key: 'medications', label: 'Médicaments', icon: 'ArchiveBoxIcon' },
   { key: 'acts', label: 'Actes & Examens', icon: 'BeakerIcon' },
+  { key: 'access', label: 'Accès & NEED-TO-KNOW', icon: 'ShieldCheckIcon' },
   { key: 'discharge', label: 'Sortie', icon: 'ArrowRightCircleIcon' },
 ];
 
@@ -83,6 +84,27 @@ const acts = [
   { id: 'ACT-007', type: 'Imagerie', name: 'Échocardiographie', requestedBy: 'Dr. Ba', requestedAt: '18:30', result: '—', status: 'scheduled', urgent: false },
 ];
 
+const accessLog = [
+  { id: 'ACC-001', actor: 'Dr. Amadou Ba', role: 'Médecin référent', module: 'DPI complet', action: 'Consultation dossier', time: '10/08/2026 08:30', authorized: true, dataScope: 'Accès complet (médecin référent)' },
+  { id: 'ACC-002', actor: 'Inf. Fatou Sow', role: 'Infirmier', module: 'Constantes + Soins', action: 'Enregistrement constantes', time: '10/08/2026 09:15', authorized: true, dataScope: 'Constantes, soins, médicaments (scope infirmier)' },
+  { id: 'ACC-003', actor: 'Ph. Koné', role: 'Pharmacien', module: 'Prescriptions uniquement', action: 'Consultation ordonnance', time: '10/08/2026 09:30', authorized: true, dataScope: 'Prescriptions uniquement — pas d\'accès aux notes cliniques' },
+  { id: 'ACC-004', actor: 'Lab. Diallo', role: 'Laborantin', module: 'Demandes biologiques', action: 'Réception demande analyse', time: '10/08/2026 08:22', authorized: true, dataScope: 'Demande d\'analyse uniquement — pas d\'accès au diagnostic' },
+  { id: 'ACC-005', actor: 'Dr. Aminata Faye', role: 'Médecin de garde', module: 'DPI complet', action: 'Visite du soir', time: '10/08/2026 18:00', authorized: true, dataScope: 'Accès complet (médecin de garde autorisé)' },
+  { id: 'ACC-006', actor: 'Compt. Mbaye', role: 'Comptable', module: 'Facturation uniquement', action: 'Consultation actes facturables', time: '10/08/2026 14:00', authorized: true, dataScope: 'Actes et tarifs uniquement — pas d\'accès aux données cliniques' },
+  { id: 'ACC-007', actor: 'Admin. Seck', role: 'Administratif', module: 'Identité + Assurance', action: 'Vérification couverture', time: '10/08/2026 08:20', authorized: true, dataScope: 'Identité et assurance uniquement' },
+  { id: 'ACC-008', actor: 'Dr. Kofi Asante', role: 'Médecin externe', module: 'Résumé de transfert', action: 'Tentative accès DPI complet', time: '10/08/2026 15:00', authorized: false, dataScope: 'REFUSÉ — accès non autorisé au DPI complet' },
+];
+
+const moduleAccessMatrix = [
+  { module: 'Médecin référent', access: ['DPI complet', 'Constantes', 'Prescriptions', 'Notes cliniques', 'Résultats', 'Imagerie', 'Actes'], color: '#2563eb' },
+  { module: 'Infirmier', access: ['Constantes', 'Soins', 'Médicaments administrés', 'Notes infirmières'], color: '#059669' },
+  { module: 'Pharmacien', access: ['Prescriptions uniquement'], color: '#7c3aed' },
+  { module: 'Laborantin', access: ['Demandes d\'analyse', 'Résultats biologiques'], color: '#d97706' },
+  { module: 'Radiologue', access: ['Demandes d\'imagerie', 'Comptes rendus imagerie'], color: '#0891b2' },
+  { module: 'Comptable', access: ['Actes facturables', 'Tarifs', 'Assurance'], color: '#64748b' },
+  { module: 'Administratif', access: ['Identité', 'Assurance', 'Admission/Sortie'], color: '#64748b' },
+];
+
 export default function HopitalDPIContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [showNewNote, setShowNewNote] = useState(false);
@@ -105,6 +127,7 @@ export default function HopitalDPIContent() {
           <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#dcfce7', color: '#16a34a', fontSize: '12px', fontWeight: 600 }}>● {patient.status}</span>
           <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(0,102,255,0.1)', color: 'var(--shifa-blue)', fontSize: '12px', fontWeight: 600 }}>{patient.dept} — {patient.bed}</span>
           <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#fef9c3', color: '#ca8a04', fontSize: '12px', fontWeight: 600 }}>Allergie: {patient.allergies.join(', ')}</span>
+          <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#ede9fe', color: '#7c3aed', fontSize: '12px', fontWeight: 600 }}>NEED-TO-KNOW actif</span>
         </div>
       </div>
 
@@ -194,6 +217,30 @@ export default function HopitalDPIContent() {
               ))}
             </div>
           </div>
+          {/* Modules connectés (NEED-TO-KNOW) */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px', color: 'var(--foreground)' }}>Modules connectés (NEED-TO-KNOW)</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                { label: 'Laboratoire', href: '/lab-dashboard', icon: 'BeakerIcon', color: '#7c3aed', scope: 'Résultats biologiques' },
+                { label: 'Imagerie', href: '/imaging-dashboard', icon: 'PhotoIcon', color: '#0891b2', scope: 'Comptes rendus imagerie' },
+                { label: 'Pharmacie', href: '/pharmacy-dashboard', icon: 'ArchiveBoxIcon', color: '#059669', scope: 'Prescriptions uniquement' },
+                { label: 'Transfert patient', href: '/patient-transfer', icon: 'ArrowsRightLeftIcon', color: '#dc2626', scope: 'Données de transfert' },
+                { label: 'Coordination soins', href: '/pro-care-coordination', icon: 'UsersIcon', color: '#2563eb', scope: 'Plan de soins partagé' },
+              ].map(mod => (
+                <a key={mod.label} href={mod.href} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'var(--muted)', borderRadius: '8px', textDecoration: 'none' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: mod.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name={mod.icon as any} size={16} color={mod.color} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--foreground)', margin: 0 }}>{mod.label}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', margin: 0 }}>{mod.scope}</p>
+                  </div>
+                  <Icon name="ArrowTopRightOnSquareIcon" size={13} color={mod.color} />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -252,18 +299,16 @@ export default function HopitalDPIContent() {
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {careNotes.map(note => (
-              <div key={note.id} style={{ background: 'var(--card)', border: `1px solid ${note.priority === 'urgent' ? '#fca5a5' : 'var(--border)'}`, borderLeft: `4px solid ${note.priority === 'urgent' ? '#dc2626' : 'var(--shifa-blue)'}`, borderRadius: '10px', padding: '16px' }}>
+              <div key={note.id} style={{ background: 'var(--card)', border: `1px solid ${note.priority === 'urgent' ? '#dc2626' : 'var(--border)'}`, borderRadius: '12px', padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{ padding: '2px 8px', borderRadius: '10px', background: note.type === 'Médical' ? 'rgba(0,102,255,0.1)' : 'rgba(16,185,129,0.1)', color: note.type === 'Médical' ? 'var(--shifa-blue)' : 'var(--shifa-green)', fontSize: '11px', fontWeight: 600 }}>{note.type}</span>
-                    {note.priority === 'urgent' && <span style={{ padding: '2px 8px', borderRadius: '10px', background: '#fee2e2', color: '#dc2626', fontSize: '11px', fontWeight: 600 }}>URGENT</span>}
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: note.type === 'Médical' ? 'rgba(0,102,255,0.1)' : '#dcfce7', color: note.type === 'Médical' ? 'var(--shifa-blue)' : '#16a34a' }}>{note.type}</span>
+                    {note.priority === 'urgent' && <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: '#fee2e2', color: '#dc2626' }}>Urgent</span>}
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--foreground)' }}>{note.author}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>{note.datetime}</p>
-                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>{note.datetime}</span>
                 </div>
-                <p style={{ fontSize: '14px', color: 'var(--foreground)', lineHeight: '1.6' }}>{note.content}</p>
+                <p style={{ fontSize: '14px', color: 'var(--foreground)', lineHeight: 1.6, marginBottom: '8px' }}>{note.content}</p>
+                <p style={{ fontSize: '12px', color: 'var(--muted-foreground)', fontWeight: 600 }}>— {note.author}</p>
               </div>
             ))}
           </div>
@@ -272,89 +317,220 @@ export default function HopitalDPIContent() {
 
       {/* Vitals Tab */}
       {activeTab === 'vitals' && (
-        <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
-            {[
-              { label: 'Tension artérielle', value: '122/78', unit: 'mmHg', trend: '↓', color: 'var(--shifa-blue)' },
-              { label: 'Fréquence cardiaque', value: '80', unit: '/min', trend: '↓', color: '#dc2626' },
-              { label: 'SpO₂', value: '99%', unit: '', trend: '↑', color: 'var(--shifa-green)' },
-              { label: 'Température', value: '36.8', unit: '°C', trend: '→', color: 'var(--shifa-amber)' },
-              { label: 'Fréquence resp.', value: '16', unit: '/min', trend: '→', color: 'var(--shifa-purple)' },
-            ].map(v => (
-              <div key={v.label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
-                <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', marginBottom: '8px' }}>{v.label}</p>
-                <p style={{ fontSize: '28px', fontWeight: 700, color: v.color }}>{v.value}</p>
-                <p style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>{v.unit} <span style={{ color: v.trend === '↑' ? 'var(--shifa-green)' : v.trend === '↓' ? '#dc2626' : 'var(--muted-foreground)' }}>{v.trend}</span></p>
-              </div>
-            ))}
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>Évolution tension artérielle (mmHg)</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>Évolution TA & FC — Aujourd'hui</h3>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={vitalsData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                <YAxis domain={[60, 160]} tick={{ fontSize: 11 }} />
+                <XAxis dataKey="time" tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="systolic" stroke="var(--shifa-blue)" strokeWidth={2} dot={{ r: 4 }} name="Systolique" />
-                <Line type="monotone" dataKey="diastolic" stroke="var(--shifa-purple)" strokeWidth={2} dot={{ r: 4 }} name="Diastolique" />
+                <Line type="monotone" dataKey="systolic" stroke="var(--shifa-blue)" strokeWidth={2} name="TA Systolique" dot={false} />
+                <Line type="monotone" dataKey="diastolic" stroke="var(--shifa-cyan)" strokeWidth={2} name="TA Diastolique" dot={false} />
+                <Line type="monotone" dataKey="pulse" stroke="#dc2626" strokeWidth={2} name="FC" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ marginTop: '20px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--muted)' }}>
-                  {['Heure', 'TA (mmHg)', 'FC (/min)', 'SpO₂ (%)', 'Temp. (°C)'].map(h => (
-                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {vitalsData.map((row, i) => (
-                  <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
-                    <td style={{ padding: '10px 16px', fontSize: '13px', fontWeight: 600 }}>{row.time}</td>
-                    <td style={{ padding: '10px 16px', fontSize: '13px' }}>{row.systolic}/{row.diastolic}</td>
-                    <td style={{ padding: '10px 16px', fontSize: '13px' }}>{row.pulse}</td>
-                    <td style={{ padding: '10px 16px', fontSize: '13px' }}>{row.spo2}</td>
-                    <td style={{ padding: '10px 16px', fontSize: '13px' }}>{row.temp}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px' }}>
+            {[
+              { label: 'TA', value: '122/78', unit: 'mmHg', color: 'var(--shifa-blue)', trend: '↓ Amélioration' },
+              { label: 'FC', value: '80', unit: '/min', color: '#dc2626', trend: '↓ Stable' },
+              { label: 'SpO₂', value: '99', unit: '%', color: 'var(--shifa-green)', trend: '↑ Amélioration' },
+              { label: 'Temp.', value: '36.8', unit: '°C', color: 'var(--shifa-amber)', trend: '= Stable' },
+              { label: 'FR', value: '16', unit: '/min', color: 'var(--shifa-purple)', trend: '= Stable' },
+              { label: 'Glycémie', value: '7.2', unit: 'mmol/L', color: 'var(--shifa-cyan)', trend: '↓ Amélioration' },
+            ].map(v => (
+              <div key={v.label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px', textAlign: 'center' }}>
+                <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', marginBottom: '4px' }}>{v.label}</p>
+                <p style={{ fontSize: '22px', fontWeight: 700, color: v.color }}>{v.value}</p>
+                <p style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>{v.unit}</p>
+                <p style={{ fontSize: '10px', color: '#16a34a', marginTop: '4px' }}>{v.trend}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Prescriptions Tab */}
       {activeTab === 'prescriptions' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Prescriptions médicamenteuses</h3>
-            <button style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--shifa-blue)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Prescriptions</h3>
+            <button style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'var(--shifa-blue)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
               <Icon name="PlusIcon" size={14} /> Nouvelle prescription
             </button>
           </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--muted)' }}>
+                {['Médicament', 'Dose', 'Voie', 'Fréquence', 'Durée', 'Prescripteur', 'Début', 'Statut'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {prescriptions.map((rx, i) => (
+                <tr key={rx.id} style={{ borderTop: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--card)' : 'var(--background)' }}>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: 'var(--foreground)' }}>{rx.drug}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--foreground)' }}>{rx.dose}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{rx.route}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--foreground)' }}>{rx.frequency}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{rx.duration}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{rx.prescriber}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{rx.startDate}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: rx.status === 'active' ? '#dcfce7' : '#fee2e2', color: rx.status === 'active' ? '#16a34a' : '#dc2626' }}>
+                      {rx.status === 'active' ? 'Actif' : 'Arrêté'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Medications Tab */}
+      {activeTab === 'medications' && (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Administration des médicaments — Aujourd'hui</h3>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--muted)' }}>
+                {['Médicament', 'Heure', 'Dose', 'Voie', 'Infirmier', 'Statut', 'Note'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {medications.map((med, i) => (
+                <tr key={med.id} style={{ borderTop: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--card)' : 'var(--background)' }}>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: 'var(--foreground)' }}>{med.drug}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--foreground)' }}>{med.time}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{med.dose}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{med.route}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{med.nurse}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: med.status === 'given' ? '#dcfce7' : '#fef9c3', color: med.status === 'given' ? '#16a34a' : '#ca8a04' }}>
+                      {med.status === 'given' ? 'Administré' : 'En attente'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--muted-foreground)', fontStyle: med.note ? 'normal' : 'italic' }}>{med.note || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Acts Tab */}
+      {activeTab === 'acts' && (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Actes & Examens</h3>
+            <button style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'var(--shifa-blue)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+              <Icon name="PlusIcon" size={14} /> Nouvelle demande
+            </button>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--muted)' }}>
+                {['Type', 'Examen', 'Demandé par', 'Heure', 'Résultat', 'Statut'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {acts.map((act, i) => (
+                <tr key={act.id} style={{ borderTop: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--card)' : 'var(--background)' }}>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: act.type === 'Biologie' ? '#ede9fe' : act.type === 'Imagerie' ? '#cffafe' : '#dcfce7', color: act.type === 'Biologie' ? '#7c3aed' : act.type === 'Imagerie' ? '#0891b2' : '#16a34a' }}>{act.type}</span>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: 'var(--foreground)' }}>
+                    {act.urgent && <span style={{ color: '#dc2626', marginRight: '4px' }}>⚡</span>}
+                    {act.name}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{act.requestedBy}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{act.requestedAt}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--foreground)' }}>{act.result}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: act.status === 'completed' ? '#dcfce7' : act.status === 'pending' ? '#fef9c3' : '#dbeafe', color: act.status === 'completed' ? '#16a34a' : act.status === 'pending' ? '#ca8a04' : 'var(--shifa-blue)' }}>
+                      {act.status === 'completed' ? 'Terminé' : act.status === 'pending' ? 'En attente' : 'Planifié'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Access & NEED-TO-KNOW Tab */}
+      {activeTab === 'access' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* NEED-TO-KNOW principle */}
+          <div style={{ background: '#dbeafe', border: '1px solid #2563eb', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <Icon name="ShieldCheckIcon" size={20} color="#1d4ed8" />
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1e3a8a', margin: 0 }}>Principe NEED-TO-KNOW — DPI Hôpital</h3>
+            </div>
+            <p style={{ fontSize: '13px', color: '#1e3a8a', lineHeight: 1.6 }}>
+              Le DPI hospitalier est le point de convergence des informations médicales autorisées. Chaque module ne reçoit que les données strictement nécessaires à son fonctionnement. Aucun accès global n'est accordé automatiquement. Chaque consultation est journalisée et auditable.
+            </p>
+          </div>
+
+          {/* Access matrix */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px', color: 'var(--foreground)' }}>Matrice d'accès par rôle</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {moduleAccessMatrix.map(role => (
+                <div key={role.module} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', background: 'var(--muted)', borderRadius: '8px' }}>
+                  <div style={{ width: '160px', flexShrink: 0 }}>
+                    <p style={{ fontSize: '13px', fontWeight: 700, color: role.color, margin: 0 }}>{role.module}</p>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {role.access.map(item => (
+                      <span key={item} style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: role.color + '20', color: role.color }}>{item}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Access log */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--foreground)' }}>Journal d'accès au DPI</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '6px', background: '#dcfce7' }}>
+                <Icon name="ShieldCheckIcon" size={13} color="#16a34a" />
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a' }}>Audit complet activé</span>
+              </div>
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--muted)' }}>
-                  {['Médicament', 'Dose', 'Voie', 'Fréquence', 'Durée', 'Prescripteur', 'Statut'].map(h => (
-                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)' }}>{h}</th>
+                  {['Acteur', 'Rôle', 'Module accédé', 'Action', 'Horodatage', 'Périmètre des données', 'Statut'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {prescriptions.map(rx => (
-                  <tr key={rx.id} style={{ borderTop: '1px solid var(--border)', opacity: rx.status === 'stopped' ? 0.5 : 1 }}>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600 }}>{rx.drug}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px' }}>{rx.dose}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px' }}><span style={{ padding: '2px 8px', borderRadius: '6px', background: 'var(--muted)', fontSize: '12px' }}>{rx.route}</span></td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px' }}>{rx.frequency}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px' }}>{rx.duration}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--muted-foreground)' }}>{rx.prescriber}</td>
+                {accessLog.map((log, i) => (
+                  <tr key={log.id} style={{ borderTop: '1px solid var(--border)', background: !log.authorized ? '#fff1f2' : i % 2 === 0 ? 'var(--card)' : 'var(--background)' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, color: 'var(--foreground)' }}>{log.actor}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--muted-foreground)' }}>{log.role}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--shifa-blue)', fontWeight: 600 }}>{log.module}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--foreground)' }}>{log.action}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '11px', fontFamily: 'monospace', color: 'var(--muted-foreground)' }}>{log.time}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '11px', color: log.authorized ? 'var(--muted-foreground)' : '#dc2626', fontStyle: 'italic' }}>{log.dataScope}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, background: rx.status === 'active' ? '#dcfce7' : '#f3f4f6', color: rx.status === 'active' ? '#16a34a' : '#6b7280' }}>{rx.status === 'active' ? 'Actif' : 'Arrêté'}</span>
+                      <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: log.authorized ? '#dcfce7' : '#fee2e2', color: log.authorized ? '#16a34a' : '#dc2626' }}>
+                        {log.authorized ? '✓ Autorisé' : '✗ Refusé'}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -364,117 +540,55 @@ export default function HopitalDPIContent() {
         </div>
       )}
 
-      {/* Medications Tab */}
-      {activeTab === 'medications' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Administration des médicaments — {patient.admissionDate}</h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#dcfce7', color: '#16a34a', fontSize: '12px', fontWeight: 600 }}>4 administrés</span>
-              <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#fef9c3', color: '#ca8a04', fontSize: '12px', fontWeight: 600 }}>2 en attente</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {medications.map(med => (
-              <div key={med.id} style={{ background: 'var(--card)', border: `1px solid ${med.status === 'pending' ? '#fde68a' : 'var(--border)'}`, borderRadius: '10px', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: med.status === 'given' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name="ArchiveBoxIcon" size={20} color={med.status === 'given' ? 'var(--shifa-green)' : 'var(--shifa-amber)'} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)' }}>{med.drug}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>{med.dose} · {med.route} · {med.time}</p>
-                    {med.note && <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', fontStyle: 'italic' }}>{med.note}</p>}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  {med.nurse !== '—' && <p style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>{med.nurse}</p>}
-                  <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: med.status === 'given' ? '#dcfce7' : '#fef9c3', color: med.status === 'given' ? '#16a34a' : '#ca8a04' }}>{med.status === 'given' ? '✓ Administré' : '⏳ En attente'}</span>
-                  {med.status === 'pending' && <button style={{ padding: '6px 12px', background: 'var(--shifa-green)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>Valider</button>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Acts Tab */}
-      {activeTab === 'acts' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Actes & Examens complémentaires</h3>
-            <button style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--shifa-blue)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
-              <Icon name="PlusIcon" size={14} /> Prescrire un acte
-            </button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {acts.map(act => (
-              <div key={act.id} style={{ background: 'var(--card)', border: `1px solid ${act.urgent ? '#fca5a5' : 'var(--border)'}`, borderRadius: '10px', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <span style={{ padding: '4px 10px', borderRadius: '8px', background: act.type === 'Biologie' ? 'rgba(0,102,255,0.1)' : act.type === 'Imagerie' ? 'rgba(139,92,246,0.1)' : 'rgba(245,158,11,0.1)', color: act.type === 'Biologie' ? 'var(--shifa-blue)' : act.type === 'Imagerie' ? 'var(--shifa-purple)' : 'var(--shifa-amber)', fontSize: '11px', fontWeight: 600 }}>{act.type}</span>
-                  <div>
-                    <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {act.name}
-                      {act.urgent && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '6px', background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>URGENT</span>}
-                    </p>
-                    <p style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>{act.requestedBy} · {act.requestedAt}</p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <p style={{ fontSize: '13px', color: 'var(--foreground)', fontWeight: act.result !== 'En attente' && act.result !== '—' ? 600 : 400 }}>{act.result}</p>
-                  <span style={{ padding: '4px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, background: act.status === 'completed' ? '#dcfce7' : act.status === 'pending' ? '#fef9c3' : '#dbeafe', color: act.status === 'completed' ? '#16a34a' : act.status === 'pending' ? '#ca8a04' : '#1d4ed8' }}>{act.status === 'completed' ? 'Résultat disponible' : act.status === 'pending' ? 'En attente' : 'Planifié'}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Discharge Tab */}
       {activeTab === 'discharge' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>Planification de la sortie</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { label: 'Date de sortie prévue', value: '12 août 2026', editable: true },
-                { label: 'Mode de sortie', value: 'Retour à domicile', editable: true },
-                { label: 'Service de destination', value: 'Cardiologie ambulatoire', editable: true },
-                { label: 'Médecin de suivi', value: 'Dr. Amadou Ba', editable: false },
-              ].map(f => (
-                <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--muted)', borderRadius: '8px' }}>
-                  <p style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>{f.label}</p>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--foreground)' }}>{f.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>Checklist de sortie</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                { item: 'Ordonnance de sortie rédigée', done: true },
-                { item: 'Lettre de sortie médicale', done: true },
-                { item: 'Résultats biologiques disponibles', done: true },
-                { item: 'Éducation thérapeutique réalisée', done: false },
-                { item: 'RDV de suivi planifié', done: false },
-                { item: 'Facture éditée & assurance notifiée', done: false },
-              ].map(c => (
-                <div key={c.item} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '8px 12px', background: c.done ? 'rgba(16,185,129,0.05)' : 'var(--muted)', borderRadius: '8px', border: `1px solid ${c.done ? 'rgba(16,185,129,0.2)' : 'var(--border)'}` }}>
-                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: c.done ? 'var(--shifa-green)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {c.done && <Icon name="CheckIcon" size={12} color="#fff" />}
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '20px' }}>Préparation de la sortie</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px', color: 'var(--foreground)' }}>Checklist de sortie</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  { label: 'Compte-rendu d\'hospitalisation rédigé', done: false },
+                  { label: 'Ordonnance de sortie établie', done: false },
+                  { label: 'Rendez-vous de suivi planifié', done: false },
+                  { label: 'Éducation patient réalisée', done: false },
+                  { label: 'Dossier de sortie transmis au médecin traitant', done: false },
+                  { label: 'Facturation finalisée', done: false },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: 'var(--muted)', borderRadius: '8px' }}>
+                    <div style={{ width: '18px', height: '18px', borderRadius: '4px', border: `2px solid ${item.done ? '#16a34a' : 'var(--border)'}`, background: item.done ? '#16a34a' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {item.done && <Icon name="CheckIcon" size={12} color="#fff" />}
+                    </div>
+                    <span style={{ fontSize: '13px', color: item.done ? 'var(--muted-foreground)' : 'var(--foreground)', textDecoration: item.done ? 'line-through' : 'none' }}>{item.label}</span>
                   </div>
-                  <p style={{ fontSize: '13px', color: c.done ? 'var(--foreground)' : 'var(--muted-foreground)', textDecoration: c.done ? 'none' : 'none' }}>{c.item}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-          <div style={{ gridColumn: 'span 2', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Résumé de sortie</h3>
-            <textarea placeholder="Saisir le résumé médical de sortie (diagnostic final, traitement instauré, recommandations, suivi)..." style={{ width: '100%', minHeight: '120px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)', fontSize: '13px', resize: 'vertical', boxSizing: 'border-box' }} defaultValue="Patient admis pour STEMI antérieur. Thrombolyse réalisée avec succès. Évolution favorable. Traitement anticoagulant et antiagrégant instauré. Transfert en cardiologie ambulatoire pour suivi et coronarographie programmée." />
-            <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-              <button style={{ padding: '10px 20px', background: 'var(--shifa-blue)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>Valider la sortie</button>
-              <button style={{ padding: '10px 20px', background: 'var(--muted)', color: 'var(--foreground)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}>Imprimer lettre de sortie</button>
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px', color: 'var(--foreground)' }}>Informations de sortie</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--muted-foreground)', display: 'block', marginBottom: '4px' }}>Date de sortie prévue</label>
+                  <input type="datetime-local" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)', fontSize: '13px', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--muted-foreground)', display: 'block', marginBottom: '4px' }}>Mode de sortie</label>
+                  <select style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)', fontSize: '13px' }}>
+                    <option>Retour à domicile</option>
+                    <option>Transfert en SSR</option>
+                    <option>Transfert inter-établissement</option>
+                    <option>Décès</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--muted-foreground)', display: 'block', marginBottom: '4px' }}>Instructions de sortie</label>
+                  <textarea rows={4} placeholder="Instructions pour le patient..." style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)', fontSize: '13px', resize: 'vertical', boxSizing: 'border-box' }} />
+                </div>
+                <button style={{ padding: '10px', background: 'var(--shifa-blue)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+                  Valider la sortie
+                </button>
+              </div>
             </div>
           </div>
         </div>

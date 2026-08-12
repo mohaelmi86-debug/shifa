@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-type Tab = 'new' | 'active' | 'history' | 'protocol';
+type Tab = 'new' | 'active' | 'history' | 'protocol' | 'audit';
 
 interface Transfer {
   id: string;
@@ -17,6 +17,19 @@ interface Transfer {
   requestedAt: string;
   authorizedBy?: string;
   documents: string[];
+}
+
+interface AuditEvent {
+  id: string;
+  transferId: string;
+  action: string;
+  actor: string;
+  role: string;
+  timestamp: string;
+  module: string;
+  data: string;
+  ip: string;
+  result: 'success' | 'warning' | 'error';
 }
 
 const mockTransfers: Transfer[] = [
@@ -77,6 +90,18 @@ const mockTransfers: Transfer[] = [
   },
 ];
 
+const auditEvents: AuditEvent[] = [
+  { id: 'AUD-001', transferId: 'TRF-2025-002', action: 'Transfert créé', actor: 'Dr. Fatou Traoré', role: 'Médecin', timestamp: '2025-08-12 07:30:14', module: 'Patient Transfer', data: 'Mamadou Koné → CHU Cocody', ip: '192.168.1.45', result: 'success' },
+  { id: 'AUD-002', transferId: 'TRF-2025-002', action: 'Données sélectionnées', actor: 'Dr. Fatou Traoré', role: 'Médecin', timestamp: '2025-08-12 07:31:02', module: 'Patient Transfer', data: '4 catégories de données sélectionnées (minimisation)', ip: '192.168.1.45', result: 'success' },
+  { id: 'AUD-003', transferId: 'TRF-2025-002', action: 'Consentement patient recueilli', actor: 'Inf. Aminata Sow', role: 'Infirmier', timestamp: '2025-08-12 07:35:20', module: 'Patient Transfer', data: 'Consentement signé — Mamadou Koné', ip: '192.168.1.52', result: 'success' },
+  { id: 'AUD-004', transferId: 'TRF-2025-002', action: 'Autorisation médicale accordée', actor: 'Dr. Moussa Diop', role: 'Chef de service', timestamp: '2025-08-12 07:42:08', module: 'Patient Transfer', data: 'Validation chef de service Urgences', ip: '192.168.1.12', result: 'success' },
+  { id: 'AUD-005', transferId: 'TRF-2025-002', action: 'Dossier chiffré et transmis', actor: 'Système SHIFA', role: 'Automatique', timestamp: '2025-08-12 07:43:00', module: 'Integration Layer', data: 'Chiffrement AES-256 — Transmission sécurisée SHIFA', ip: 'SYSTEM', result: 'success' },
+  { id: 'AUD-006', transferId: 'TRF-2025-002', action: 'Réception confirmée par CHU Cocody', actor: 'Dr. Kofi Asante', role: 'Médecin destinataire', timestamp: '2025-08-12 08:15:33', module: 'Patient Transfer', data: 'Accusé de réception — CHU de Cocody', ip: '10.0.2.88', result: 'success' },
+  { id: 'AUD-007', transferId: 'TRF-2025-001', action: 'Transfert créé', actor: 'Dr. Mohamed Sy', role: 'Médecin', timestamp: '2025-08-12 09:14:00', module: 'Patient Transfer', data: 'Aïcha Diallo → Radiologie', ip: '192.168.1.30', result: 'success' },
+  { id: 'AUD-008', transferId: 'TRF-2025-003', action: 'Tentative de transfert sans consentement', actor: 'Admin. Système', role: 'Administrateur', timestamp: '2025-08-11 16:50:00', module: 'Patient Transfer', data: 'Consentement manquant — transfert bloqué', ip: '192.168.1.99', result: 'warning' },
+  { id: 'AUD-009', transferId: 'TRF-2025-003', action: 'Consentement ajouté', actor: 'Dr. Hamid Abdou', role: 'Médecin', timestamp: '2025-08-11 17:05:00', module: 'Patient Transfer', data: 'Consentement recueilli — Zara Abdou', ip: '192.168.1.30', result: 'success' },
+];
+
 const typeConfig: Record<Transfer['type'], { label: string; color: string; bg: string }> = {
   'inter-service': { label: 'Inter-service', color: '#2563eb', bg: '#dbeafe' },
   'inter-facility': { label: 'Inter-établissement', color: '#7c3aed', bg: '#ede9fe' },
@@ -109,6 +134,12 @@ const dataCategories = [
   { id: 'transport', label: 'Informations de transport', icon: 'TruckIcon', required: false },
 ];
 
+const auditResultConfig = {
+  success: { color: '#16a34a', bg: '#dcfce7', icon: 'CheckCircleIcon', label: 'Succès' },
+  warning: { color: '#d97706', bg: '#fef3c7', icon: 'ExclamationTriangleIcon', label: 'Avertissement' },
+  error: { color: '#dc2626', bg: '#fee2e2', icon: 'XCircleIcon', label: 'Erreur' },
+};
+
 export default function PatientTransferContent() {
   const [activeTab, setActiveTab] = useState<Tab>('new');
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
@@ -116,6 +147,7 @@ export default function PatientTransferContent() {
   const [transferType, setTransferType] = useState<Transfer['type']>('inter-service');
   const [urgency, setUrgency] = useState<Transfer['urgency']>('routine');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [auditFilter, setAuditFilter] = useState<string>('all');
 
   const toggleCategory = (id: string) => {
     const cat = dataCategories.find(c => c.id === id);
@@ -129,11 +161,16 @@ export default function PatientTransferContent() {
     ? mockTransfers
     : mockTransfers.filter(t => t.status === filterStatus);
 
+  const filteredAudit = auditFilter === 'all'
+    ? auditEvents
+    : auditEvents.filter(e => e.result === auditFilter);
+
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'new', label: 'Nouveau transfert', icon: 'PlusCircleIcon' },
     { id: 'active', label: 'Transferts actifs', icon: 'ArrowsRightLeftIcon' },
     { id: 'history', label: 'Historique', icon: 'ClockIcon' },
     { id: 'protocol', label: 'Protocoles', icon: 'ShieldCheckIcon' },
+    { id: 'audit', label: 'Audit & Traçabilité', icon: 'ClipboardDocumentListIcon' },
   ];
 
   return (
@@ -177,12 +214,12 @@ export default function PatientTransferContent() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl border" style={{ backgroundColor: 'var(--muted)', borderColor: 'var(--border)' }}>
+      <div className="flex gap-1 p-1 rounded-xl border overflow-x-auto" style={{ backgroundColor: 'var(--muted)', borderColor: 'var(--border)' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all flex-1 justify-center ${activeTab === tab.id ? 'shadow-sm' : ''}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'shadow-sm' : ''}`}
             style={{
               backgroundColor: activeTab === tab.id ? 'var(--card)' : 'transparent',
               color: activeTab === tab.id ? 'var(--shifa-blue)' : 'var(--muted-foreground)',
@@ -341,7 +378,6 @@ export default function PatientTransferContent() {
                         borderColor: selected ? '#2563eb' : 'var(--border)',
                         color: selected ? '#1d4ed8' : 'var(--muted-foreground)',
                         cursor: cat.required ? 'default' : 'pointer',
-                        opacity: cat.required ? 1 : 1,
                       }}
                     >
                       <Icon name={cat.icon as any} size={16} />
@@ -353,6 +389,30 @@ export default function PatientTransferContent() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Traceability confirmation */}
+            <div className="rounded-xl border p-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Icon name="ClipboardDocumentListIcon" size={16} style={{ color: 'var(--shifa-blue)' }} />
+                <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Traçabilité automatique</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Horodatage SHIFA', icon: 'ClockIcon', active: true },
+                  { label: 'Identifiant unique', icon: 'FingerPrintIcon', active: true },
+                  { label: 'Chiffrement AES-256', icon: 'LockClosedIcon', active: true },
+                  { label: 'Journal d\'audit', icon: 'DocumentTextIcon', active: true },
+                  { label: 'Notification patient', icon: 'BellIcon', active: true },
+                  { label: 'Accusé de réception', icon: 'CheckBadgeIcon', active: false },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2 text-xs py-1">
+                    <Icon name={item.icon as any} size={13} style={{ color: item.active ? '#16a34a' : '#d97706' }} />
+                    <span style={{ color: item.active ? 'var(--foreground)' : 'var(--muted-foreground)' }}>{item.label}</span>
+                    <span className="ml-auto text-xs font-medium" style={{ color: item.active ? '#16a34a' : '#d97706' }}>{item.active ? '✓' : '—'}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -404,6 +464,25 @@ export default function PatientTransferContent() {
                 <p>• Toutes les actions sont journalisées</p>
                 <p>• Le destinataire ne reçoit que les données sélectionnées</p>
                 <p>• Le patient est notifié si applicable</p>
+              </div>
+            </div>
+
+            {/* Inter-module links */}
+            <div className="rounded-xl border p-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--foreground)' }}>Modules connectés</h3>
+              <div className="space-y-2">
+                {[
+                  { label: 'DPI Hôpital', href: '/hopital-dpi', icon: 'FolderOpenIcon' },
+                  { label: 'Flux patients', href: '/org-patient-flow', icon: 'ArrowsRightLeftIcon' },
+                  { label: 'Coordination soins', href: '/pro-care-coordination', icon: 'UsersIcon' },
+                  { label: 'Adressages', href: '/referrals-interface', icon: 'ArrowUpRightIcon' },
+                ].map(link => (
+                  <a key={link.label} href={link.href} className="flex items-center gap-2 text-xs py-1.5 px-2 rounded-lg hover:bg-muted transition-colors" style={{ color: 'var(--shifa-blue)' }}>
+                    <Icon name={link.icon as any} size={13} />
+                    {link.label}
+                    <Icon name="ArrowTopRightOnSquareIcon" size={11} className="ml-auto" />
+                  </a>
+                ))}
               </div>
             </div>
           </div>
@@ -504,6 +583,126 @@ export default function PatientTransferContent() {
         </div>
       )}
 
+      {/* Tab: Audit & Traceability */}
+      {activeTab === 'audit' && (
+        <div className="space-y-5">
+          {/* Audit KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Événements total', value: String(auditEvents.length), icon: 'ClipboardDocumentListIcon', color: '#2563eb', bg: '#dbeafe' },
+              { label: 'Succès', value: String(auditEvents.filter(e => e.result === 'success').length), icon: 'CheckCircleIcon', color: '#16a34a', bg: '#dcfce7' },
+              { label: 'Avertissements', value: String(auditEvents.filter(e => e.result === 'warning').length), icon: 'ExclamationTriangleIcon', color: '#d97706', bg: '#fef3c7' },
+              { label: 'Erreurs', value: String(auditEvents.filter(e => e.result === 'error').length), icon: 'XCircleIcon', color: '#dc2626', bg: '#fee2e2' },
+            ].map(kpi => (
+              <div key={kpi.label} className="rounded-xl p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: kpi.bg }}>
+                    <Icon name={kpi.icon as any} size={20} style={{ color: kpi.color }} />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{kpi.value}</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.label}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Security rule */}
+          <div className="rounded-xl border p-4" style={{ backgroundColor: '#dbeafe', borderColor: '#2563eb' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <Icon name="ShieldCheckIcon" size={16} style={{ color: '#1d4ed8' }} />
+              <h3 className="font-semibold text-sm" style={{ color: '#1e3a8a' }}>Règle de traçabilité SHIFA</h3>
+            </div>
+            <p className="text-xs" style={{ color: '#1e3a8a' }}>
+              Chaque transfert est horodaté, signé numériquement, et journalisé de manière immuable. Aucune donnée médicale ne peut être transmise sans autorisation explicite, consentement patient, et traçabilité complète. Toutes les actions sont auditables par les responsables autorisés.
+            </p>
+          </div>
+
+          {/* Filter */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Filtrer :</span>
+            {['all', 'success', 'warning', 'error'].map(f => (
+              <button
+                key={f}
+                onClick={() => setAuditFilter(f)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                style={{
+                  backgroundColor: auditFilter === f ? 'var(--shifa-blue)' : 'var(--card)',
+                  borderColor: auditFilter === f ? 'var(--shifa-blue)' : 'var(--border)',
+                  color: auditFilter === f ? 'white' : 'var(--muted-foreground)',
+                }}
+              >
+                {f === 'all' ? 'Tous' : f === 'success' ? 'Succès' : f === 'warning' ? 'Avertissements' : 'Erreurs'}
+              </button>
+            ))}
+            <button className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}>
+              <Icon name="ArrowDownTrayIcon" size={13} />
+              Exporter journal
+            </button>
+          </div>
+
+          {/* Audit timeline */}
+          <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+            <div className="px-4 py-3 border-b" style={{ backgroundColor: 'var(--muted)', borderColor: 'var(--border)' }}>
+              <div className="grid grid-cols-8 gap-2">
+                {['ID', 'Transfert', 'Action', 'Acteur', 'Rôle', 'Horodatage', 'Module', 'Résultat'].map(h => (
+                  <span key={h} className="text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</span>
+                ))}
+              </div>
+            </div>
+            <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              {filteredAudit.map((event, i) => {
+                const rc = auditResultConfig[event.result];
+                return (
+                  <div key={event.id} className="px-4 py-3 grid grid-cols-8 gap-2 items-center" style={{ backgroundColor: i % 2 === 0 ? 'var(--card)' : 'var(--background)' }}>
+                    <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{event.id}</span>
+                    <span className="text-xs font-mono" style={{ color: 'var(--shifa-blue)' }}>{event.transferId}</span>
+                    <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{event.action}</span>
+                    <span className="text-xs" style={{ color: 'var(--foreground)' }}>{event.actor}</span>
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{event.role}</span>
+                    <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{event.timestamp}</span>
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{event.module}</span>
+                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium w-fit" style={{ backgroundColor: rc.bg, color: rc.color }}>
+                      <Icon name={rc.icon as any} size={11} />
+                      {rc.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Traceability chain for a specific transfer */}
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h3 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Chaîne de traçabilité — TRF-2025-002 (Mamadou Koné)</h3>
+            <div className="relative">
+              <div className="absolute left-5 top-0 bottom-0 w-0.5" style={{ backgroundColor: 'var(--border)' }} />
+              <div className="space-y-4">
+                {auditEvents.filter(e => e.transferId === 'TRF-2025-002').map((event, i) => {
+                  const rc = auditResultConfig[event.result];
+                  return (
+                    <div key={event.id} className="flex items-start gap-4 pl-12 relative">
+                      <div className="absolute left-3 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center" style={{ backgroundColor: rc.color }}>
+                        <Icon name={rc.icon as any} size={8} style={{ color: 'white' }} />
+                      </div>
+                      <div className="flex-1 rounded-lg border p-3" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{event.action}</span>
+                          <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{event.timestamp}</span>
+                        </div>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{event.actor} · {event.role} · {event.module}</p>
+                        <p className="text-xs mt-1 italic" style={{ color: 'var(--foreground)' }}>{event.data}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Transfer detail panel */}
       {selectedTransfer && (
         <div className="fixed inset-y-0 right-0 w-full sm:w-96 border-l shadow-xl z-40 overflow-y-auto" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
@@ -563,6 +762,15 @@ export default function PatientTransferContent() {
                 Confirmer réception
               </button>
             )}
+
+            <button
+              onClick={() => setActiveTab('audit')}
+              className="w-full py-2 rounded-xl text-sm font-medium border flex items-center justify-center gap-2"
+              style={{ borderColor: 'var(--border)', color: 'var(--shifa-blue)' }}
+            >
+              <Icon name="ClipboardDocumentListIcon" size={14} />
+              Voir journal d'audit
+            </button>
           </div>
         </div>
       )}

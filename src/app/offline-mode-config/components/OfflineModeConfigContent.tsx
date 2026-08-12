@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-type Tab = 'status' | 'queue' | 'cache' | 'sync' | 'settings';
+type Tab = 'status' | 'queue' | 'cache' | 'sync' | 'devices' | 'settings';
 type NetworkMode = 'online' | 'low-bandwidth' | 'offline';
 
 interface SyncItem {
@@ -15,6 +15,20 @@ interface SyncItem {
   priority: 'critical' | 'high' | 'normal';
 }
 
+interface Device {
+  id: string;
+  name: string;
+  type: 'tablet' | 'phone' | 'desktop' | 'kiosk';
+  user: string;
+  role: string;
+  lastSeen: string;
+  offlineEnabled: boolean;
+  cacheSize: string;
+  pendingSync: number;
+  encryptionStatus: 'active' | 'inactive' | 'expired';
+  os: string;
+}
+
 const mockSyncQueue: SyncItem[] = [
   { id: 'SQ-001', type: 'Consultation', description: 'Consultation Dr. Sy — Aïcha Diallo', timestamp: '2025-08-12 09:14', status: 'pending', size: '12 KB', priority: 'critical' },
   { id: 'SQ-002', type: 'Constantes', description: 'Constantes vitales — Ibrahim Tall', timestamp: '2025-08-12 09:10', status: 'pending', size: '2 KB', priority: 'high' },
@@ -22,6 +36,14 @@ const mockSyncQueue: SyncItem[] = [
   { id: 'SQ-004', type: 'Résultat', description: 'Résultat labo — Zara Abdou', timestamp: '2025-08-12 08:55', status: 'synced', size: '8 KB', priority: 'normal' },
   { id: 'SQ-005', type: 'Transfert', description: 'Demande transfert — Fatou Ndiaye', timestamp: '2025-08-12 08:40', status: 'conflict', size: '6 KB', priority: 'critical' },
   { id: 'SQ-006', type: 'Acte', description: 'Acte chirurgical — Oumar Ba', timestamp: '2025-08-12 08:30', status: 'error', size: '3 KB', priority: 'high' },
+];
+
+const mockDevices: Device[] = [
+  { id: 'DEV-001', name: 'Tablette Urgences 1', type: 'tablet', user: 'Dr. Mohamed Sy', role: 'Médecin', lastSeen: 'Il y a 2 min', offlineEnabled: true, cacheSize: '45 MB', pendingSync: 3, encryptionStatus: 'active', os: 'Android 13' },
+  { id: 'DEV-002', name: 'Mobile Infirmier 3', type: 'phone', user: 'Inf. Fatou Sow', role: 'Infirmier', lastSeen: 'Il y a 8 min', offlineEnabled: true, cacheSize: '22 MB', pendingSync: 0, encryptionStatus: 'active', os: 'iOS 17' },
+  { id: 'DEV-003', name: 'Poste Pharmacie', type: 'desktop', user: 'Ph. Moussa Diop', role: 'Pharmacien', lastSeen: 'Il y a 1 min', offlineEnabled: false, cacheSize: '0 MB', pendingSync: 0, encryptionStatus: 'inactive', os: 'Windows 11' },
+  { id: 'DEV-004', name: 'Kiosque Accueil', type: 'kiosk', user: 'Système', role: 'Kiosque', lastSeen: 'Il y a 30 sec', offlineEnabled: true, cacheSize: '8 MB', pendingSync: 1, encryptionStatus: 'active', os: 'Android 12' },
+  { id: 'DEV-005', name: 'Tablette Labo', type: 'tablet', user: 'Tech. Aminata Ba', role: 'Laborantin', lastSeen: 'Il y a 45 min', offlineEnabled: true, cacheSize: '18 MB', pendingSync: 2, encryptionStatus: 'expired', os: 'Android 11' },
 ];
 
 const statusConfig: Record<SyncItem['status'], { label: string; color: string; bg: string; icon: string }> = {
@@ -36,6 +58,19 @@ const priorityConfig: Record<SyncItem['priority'], { label: string; color: strin
   critical: { label: 'Critique', color: '#dc2626' },
   high: { label: 'Haute', color: '#d97706' },
   normal: { label: 'Normale', color: '#64748b' },
+};
+
+const encryptionConfig = {
+  active: { label: 'Actif', color: '#16a34a', bg: '#dcfce7', icon: 'LockClosedIcon' },
+  inactive: { label: 'Inactif', color: '#64748b', bg: '#f1f5f9', icon: 'LockOpenIcon' },
+  expired: { label: 'Expiré', color: '#dc2626', bg: '#fee2e2', icon: 'ExclamationTriangleIcon' },
+};
+
+const deviceTypeIcon: Record<Device['type'], string> = {
+  tablet: 'DeviceTabletIcon',
+  phone: 'DevicePhoneMobileIcon',
+  desktop: 'ComputerDesktopIcon',
+  kiosk: 'Squares2X2Icon',
 };
 
 const cacheModules = [
@@ -61,6 +96,7 @@ export default function OfflineModeConfigContent() {
     { id: 'queue', label: 'File de sync', icon: 'QueueListIcon' },
     { id: 'cache', label: 'Cache local', icon: 'CircleStackIcon' },
     { id: 'sync', label: 'Synchronisation', icon: 'ArrowPathIcon' },
+    { id: 'devices', label: 'Appareils', icon: 'DeviceTabletIcon' },
     { id: 'settings', label: 'Configuration', icon: 'Cog6ToothIcon' },
   ];
 
@@ -158,6 +194,51 @@ export default function OfflineModeConfigContent() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Bandwidth monitor */}
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Moniteur de bande passante</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { label: 'Débit entrant', value: '1.2 Mbps', icon: 'ArrowDownIcon', color: '#16a34a', bar: 60 },
+                { label: 'Débit sortant', value: '0.4 Mbps', icon: 'ArrowUpIcon', color: '#2563eb', bar: 20 },
+                { label: 'Latence', value: '48 ms', icon: 'BoltIcon', color: '#d97706', bar: 35 },
+              ].map(metric => (
+                <div key={metric.label} className="rounded-lg border p-4" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name={metric.icon as any} size={16} style={{ color: metric.color }} />
+                    <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{metric.label}</span>
+                  </div>
+                  <p className="text-2xl font-bold mb-2" style={{ color: metric.color }}>{metric.value}</p>
+                  <div className="w-full h-2 rounded-full" style={{ backgroundColor: 'var(--muted)' }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${metric.bar}%`, backgroundColor: metric.color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Encryption status */}
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>État du chiffrement</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { label: 'Cache local', status: 'AES-256 actif', icon: 'LockClosedIcon', ok: true },
+                { label: 'Transmission réseau', status: 'TLS 1.3 actif', icon: 'ShieldCheckIcon', ok: true },
+                { label: 'File de synchronisation', status: 'Chiffrement bout-en-bout', icon: 'ArrowPathIcon', ok: true },
+                { label: 'Expiration des clés', status: 'Renouvellement dans 14 jours', icon: 'ClockIcon', ok: true },
+              ].map(item => (
+                <div key={item.label} className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: item.ok ? '#dcfce7' : '#fee2e2' }}>
+                  <Icon name={item.icon as any} size={18} style={{ color: item.ok ? '#16a34a' : '#dc2626' }} />
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: item.ok ? '#15803d' : '#dc2626' }}>{item.label}</p>
+                    <p className="text-xs" style={{ color: item.ok ? '#166534' : '#991b1b' }}>{item.status}</p>
+                  </div>
+                  <Icon name="CheckCircleIcon" size={16} className="ml-auto" style={{ color: '#16a34a' }} />
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
@@ -259,7 +340,6 @@ export default function OfflineModeConfigContent() {
             </button>
           </div>
 
-          {/* Storage bar */}
           <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Espace utilisé</span>
@@ -299,12 +379,12 @@ export default function OfflineModeConfigContent() {
       {activeTab === 'sync' && (
         <div className="space-y-5">
           <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Architecture de synchronisation</h2>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Architecture de synchronisation SHIFA</h2>
             <div className="flex items-center justify-center gap-4 flex-wrap">
               {['Cloud SHIFA', 'API Gateway', 'Edge / Local', 'Appareils'].map((node, i, arr) => (
                 <React.Fragment key={node}>
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-xs text-center" style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}>
+                    <div className="w-20 h-16 rounded-xl flex items-center justify-center text-white font-bold text-xs text-center px-2" style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}>
                       {node}
                     </div>
                   </div>
@@ -316,6 +396,9 @@ export default function OfflineModeConfigContent() {
                   )}
                 </React.Fragment>
               ))}
+            </div>
+            <div className="mt-4 p-3 rounded-lg text-xs text-center" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
+              Une coupure Internet ne doit pas arrêter les services de santé critiques. La reprise est contrôlée à la reconnexion.
             </div>
           </div>
 
@@ -341,6 +424,86 @@ export default function OfflineModeConfigContent() {
                 </ul>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Devices */}
+      {activeTab === 'devices' && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold" style={{ color: 'var(--foreground)' }}>Appareils enregistrés</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#dcfce7', color: '#16a34a' }}>
+                {mockDevices.filter(d => d.offlineEnabled).length} offline activé
+              </span>
+              <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+                {mockDevices.filter(d => d.encryptionStatus === 'expired').length} chiffrement expiré
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {mockDevices.map(device => {
+              const enc = encryptionConfig[device.encryptionStatus];
+              return (
+                <div key={device.id} className="rounded-xl border p-4" style={{ backgroundColor: 'var(--card)', borderColor: device.encryptionStatus === 'expired' ? '#dc2626' : 'var(--border)' }}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--muted)' }}>
+                        <Icon name={deviceTypeIcon[device.type] as any} size={20} style={{ color: 'var(--shifa-blue)' }} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{device.name}</p>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{device.os} · {device.id}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: enc.bg, color: enc.color }}>
+                      <Icon name={enc.icon as any} size={11} />
+                      {enc.label}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="rounded-lg p-2" style={{ backgroundColor: 'var(--background)' }}>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Utilisateur</p>
+                      <p className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{device.user}</p>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{device.role}</p>
+                    </div>
+                    <div className="rounded-lg p-2" style={{ backgroundColor: 'var(--background)' }}>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cache / Sync</p>
+                      <p className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{device.cacheSize}</p>
+                      <p className="text-xs" style={{ color: device.pendingSync > 0 ? '#d97706' : '#16a34a' }}>{device.pendingSync} en attente</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#16a34a' }} />
+                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{device.lastSeen}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs" style={{ color: device.offlineEnabled ? '#16a34a' : 'var(--muted-foreground)' }}>
+                        {device.offlineEnabled ? '✓ Offline activé' : '✗ Offline désactivé'}
+                      </span>
+                      {device.encryptionStatus === 'expired' && (
+                        <button className="text-xs px-2 py-1 rounded border" style={{ borderColor: '#dc2626', color: '#dc2626' }}>Renouveler</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-xl border p-4" style={{ backgroundColor: '#fef3c7', borderColor: '#fbbf24' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Icon name="ExclamationTriangleIcon" size={16} style={{ color: '#d97706' }} />
+              <h3 className="font-semibold text-sm" style={{ color: '#92400e' }}>Appareil avec chiffrement expiré détecté</h3>
+            </div>
+            <p className="text-xs" style={{ color: '#92400e' }}>
+              La tablette Labo (DEV-005) a un certificat de chiffrement expiré. Le mode offline est désactivé automatiquement jusqu'au renouvellement. Contactez l'administrateur système.
+            </p>
           </div>
         </div>
       )}
