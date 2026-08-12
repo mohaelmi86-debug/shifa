@@ -1,24 +1,27 @@
 -- ============================================================
 -- SHIFA HEALTH OS — Critical Fixes Migration
--- Fixes all 20 critical issues from the full audit:
--- 1. Create missing DB tables with RLS
--- 2. Resolve conflicting RLS policies
--- 3. Unify is_org_admin() function
--- 4. Fix professional_organizations self-invitation vulnerability
--- 5. Handle guest role
--- Migration: 20260812230000_critical_fixes.sql
+-- Version: 20260812230000 (IDEMPOTENT)
+--
+-- STRATEGY FOR is_org_admin(UUID) DEPENDENCY CONFLICT:
+-- The foundation migration defined is_org_admin(p_org_id UUID).
+-- Five policies depend on it:
+--   departments_admin_write, pro_orgs_admin_write,
+--   org_modules_admin_write, org_roles_admin_write, audit_logs_admin_read
+-- The rls_security migration defined is_org_admin() (no param).
+-- We CANNOT DROP is_org_admin(UUID) while those policies exist.
+-- SOLUTION (no CASCADE):
+--   Step 1 — Ensure is_org_admin() (no-param canonical) exists first.
+--   Step 2 — Recreate all 5 dependent policies using is_org_admin() instead.
+--   Step 3 — Now is_org_admin(UUID) has zero dependents → drop it safely.
+--   Step 4 — Proceed with all other fixes.
 -- ============================================================
 
 -- ============================================================
--- SECTION 1: UNIFY is_org_admin() FUNCTION
--- The foundation migration defined is_org_admin(org_id UUID)
--- The rls_security migration defined is_org_admin() with no params
--- We unify to the no-param version (checks current user's role)
--- and drop the old parameterized version if it exists.
+-- STEP 1: ENSURE CANONICAL FUNCTIONS EXIST
+-- These are idempotent (CREATE OR REPLACE).
 -- ============================================================
 
-DROP FUNCTION IF EXISTS public.is_org_admin(UUID) CASCADE;
-
+-- Canonical is_org_admin() — no parameter, checks current user
 CREATE OR REPLACE FUNCTION public.is_org_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -31,7 +34,65 @@ AS $$
   );
 $$;
 
--- Also ensure is_org_admin_user() alias is consistent
+-- Ensure is_platform_admin() is consistent
+CREATE OR REPLACE FUNCTION public.is_platform_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_profiles
+    WHERE id = auth.uid() AND role = 'platform_admin'
+  );
+$$;
+
+-- Ensure user_role() exists
+CREATE OR REPLACE FUNCTION public.user_role()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT role::TEXT
+  FROM public.user_profiles
+  WHERE id = auth.uid()
+  LIMIT 1;
+$$;
+
+-- Ensure user_org_id() exists
+CREATE OR REPLACE FUNCTION public.user_org_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT po.organization_id
+  FROM public.professionals p
+  JOIN public.professional_organizations po ON po.professional_id = p.id
+  WHERE p.user_id = auth.uid()
+    AND po.is_primary = true
+  LIMIT 1;
+$$;
+
+-- Ensure belongs_to_org() exists
+CREATE OR REPLACE FUNCTION public.belongs_to_org(target_org_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.professionals p
+    JOIN public.professional_organizations po ON po.professional_id = p.id
+    WHERE p.user_id = auth.uid()
+      AND po.organization_id = target_org_id
+      AND po.invitation_status = 'accepted'
+  );
+$$;
+
+-- Alias for financial domain compatibility
 CREATE OR REPLACE FUNCTION public.is_org_admin_user()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -41,14 +102,93 @@ AS $$
   SELECT public.is_org_admin();
 $$;
 
+-- Alias for financial domain compatibility
+CREATE OR REPLACE FUNCTION public.is_platform_admin_user()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT public.is_platform_admin();
+$$;
+
+-- Guest helper
+CREATE OR REPLACE FUNCTION public.is_guest()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_profiles
+    WHERE id = auth.uid() AND role = 'guest'
+  );
+$$;
+
 -- ============================================================
--- SECTION 2: RESOLVE CONFLICTING RLS POLICIES
--- The foundation.sql and rls_security.sql both define policies
--- on health_records, appointments, patients.
--- We drop ALL old policies and recreate clean unified versions.
+-- STEP 2: MIGRATE ALL POLICIES THAT DEPEND ON is_org_admin(UUID)
+-- We drop and recreate them using is_org_admin() (no-param).
+-- After this step, is_org_admin(UUID) has ZERO dependents.
 -- ============================================================
 
--- health_records: drop all conflicting policies
+-- 2a. departments_admin_write
+-- Foundation: USING (public.is_org_admin(organization_id))
+DROP POLICY IF EXISTS "departments_admin_write" ON public.departments;
+CREATE POLICY "departments_admin_write" ON public.departments
+  FOR ALL TO authenticated
+  USING (public.is_org_admin())
+  WITH CHECK (public.is_org_admin());
+
+-- 2b. pro_orgs_admin_write
+-- Foundation: USING (invited_by = auth.uid() OR public.is_org_admin(organization_id))
+DROP POLICY IF EXISTS "pro_orgs_admin_write" ON public.professional_organizations;
+CREATE POLICY "pro_orgs_admin_write" ON public.professional_organizations
+  FOR ALL TO authenticated
+  USING (invited_by = auth.uid() OR public.is_org_admin())
+  WITH CHECK (invited_by = auth.uid() OR public.is_org_admin());
+
+-- 2c. org_modules_admin_write
+-- Foundation: USING (public.is_org_admin(organization_id))
+DROP POLICY IF EXISTS "org_modules_admin_write" ON public.organization_modules;
+CREATE POLICY "org_modules_admin_write" ON public.organization_modules
+  FOR ALL TO authenticated
+  USING (public.is_org_admin())
+  WITH CHECK (public.is_org_admin());
+
+-- 2d. org_roles_admin_write
+-- Foundation: USING (public.is_org_admin(organization_id))
+DROP POLICY IF EXISTS "org_roles_admin_write" ON public.org_roles;
+CREATE POLICY "org_roles_admin_write" ON public.org_roles
+  FOR ALL TO authenticated
+  USING (public.is_org_admin())
+  WITH CHECK (public.is_org_admin());
+
+-- 2e. audit_logs_admin_read
+-- Foundation: USING (user_id = auth.uid() OR public.is_platform_admin() OR public.is_org_admin(organization_id))
+DROP POLICY IF EXISTS "audit_logs_admin_read" ON public.audit_logs;
+CREATE POLICY "audit_logs_admin_read" ON public.audit_logs
+  FOR SELECT TO authenticated
+  USING (
+    user_id = auth.uid()
+    OR public.is_platform_admin()
+    OR public.is_org_admin()
+  );
+
+-- ============================================================
+-- STEP 3: NOW SAFELY DROP is_org_admin(UUID)
+-- No objects depend on it anymore → no CASCADE needed.
+-- ============================================================
+
+DROP FUNCTION IF EXISTS public.is_org_admin(UUID);
+
+-- ============================================================
+-- STEP 4: RESOLVE CONFLICTING RLS POLICIES
+-- foundation.sql and rls_security.sql both define policies on
+-- health_records, appointments, patients.
+-- Drop ALL variants and recreate clean unified versions.
+-- ============================================================
+
+-- ---- health_records ----
 DROP POLICY IF EXISTS "health_records_patient_select" ON public.health_records;
 DROP POLICY IF EXISTS "health_records_professional_select" ON public.health_records;
 DROP POLICY IF EXISTS "health_records_org_select" ON public.health_records;
@@ -62,6 +202,7 @@ DROP POLICY IF EXISTS "health_records_select" ON public.health_records;
 DROP POLICY IF EXISTS "health_records_insert" ON public.health_records;
 DROP POLICY IF EXISTS "health_records_update" ON public.health_records;
 DROP POLICY IF EXISTS "health_records_delete" ON public.health_records;
+DROP POLICY IF EXISTS "health_records_access" ON public.health_records;
 
 ALTER TABLE public.health_records ENABLE ROW LEVEL SECURITY;
 
@@ -88,7 +229,7 @@ CREATE POLICY "health_records_update" ON public.health_records
 CREATE POLICY "health_records_delete" ON public.health_records
   FOR DELETE USING (public.is_platform_admin());
 
--- appointments: drop all conflicting policies
+-- ---- appointments ----
 DROP POLICY IF EXISTS "appointments_patient_select" ON public.appointments;
 DROP POLICY IF EXISTS "appointments_professional_select" ON public.appointments;
 DROP POLICY IF EXISTS "appointments_org_select" ON public.appointments;
@@ -104,6 +245,7 @@ DROP POLICY IF EXISTS "appointments_select" ON public.appointments;
 DROP POLICY IF EXISTS "appointments_insert" ON public.appointments;
 DROP POLICY IF EXISTS "appointments_update" ON public.appointments;
 DROP POLICY IF EXISTS "appointments_delete" ON public.appointments;
+DROP POLICY IF EXISTS "appointments_involved_parties" ON public.appointments;
 
 ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
 
@@ -136,7 +278,7 @@ CREATE POLICY "appointments_delete" ON public.appointments
     OR public.is_platform_admin()
   );
 
--- patients: drop all conflicting policies
+-- ---- patients ----
 DROP POLICY IF EXISTS "patients_own_select" ON public.patients;
 DROP POLICY IF EXISTS "patients_professional_select" ON public.patients;
 DROP POLICY IF EXISTS "patients_admin_select" ON public.patients;
@@ -147,6 +289,8 @@ DROP POLICY IF EXISTS "patients_professional_update" ON public.patients;
 DROP POLICY IF EXISTS "patients_select" ON public.patients;
 DROP POLICY IF EXISTS "patients_insert" ON public.patients;
 DROP POLICY IF EXISTS "patients_update" ON public.patients;
+DROP POLICY IF EXISTS "patients_own_record" ON public.patients;
+DROP POLICY IF EXISTS "patients_platform_admin" ON public.patients;
 
 ALTER TABLE public.patients ENABLE ROW LEVEL SECURITY;
 
@@ -168,12 +312,24 @@ CREATE POLICY "patients_update" ON public.patients
     OR public.user_role() IN ('professional', 'org_admin', 'platform_admin')
   );
 
--- ============================================================
--- SECTION 3: FIX professional_organizations SELF-INVITATION
--- A professional must NOT be able to self-invite into an org.
--- INSERT must require that invited_by is an org_admin of that org.
--- ============================================================
+-- ---- professionals ----
+-- Keep foundation policies but ensure no duplicates
+DROP POLICY IF EXISTS "professionals_public_read" ON public.professionals;
+DROP POLICY IF EXISTS "professionals_own_write" ON public.professionals;
 
+ALTER TABLE public.professionals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "professionals_public_read" ON public.professionals
+  FOR SELECT TO authenticated
+  USING (status = 'active');
+
+CREATE POLICY "professionals_own_write" ON public.professionals
+  FOR ALL TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+-- ---- professional_organizations: fix self-invitation vulnerability ----
+DROP POLICY IF EXISTS "pro_orgs_read" ON public.professional_organizations;
 DROP POLICY IF EXISTS "professional_organizations_select" ON public.professional_organizations;
 DROP POLICY IF EXISTS "professional_organizations_insert" ON public.professional_organizations;
 DROP POLICY IF EXISTS "professional_organizations_update" ON public.professional_organizations;
@@ -189,19 +345,14 @@ CREATE POLICY "professional_organizations_select" ON public.professional_organiz
     OR public.is_platform_admin()
   );
 
--- INSERT: only org_admin of the target organization can invite professionals
--- This prevents self-invitation: the inserting user must be an org_admin
--- of the organization being joined.
+-- INSERT: only org_admin can invite — prevents self-invitation
 CREATE POLICY "professional_organizations_insert" ON public.professional_organizations
   FOR INSERT WITH CHECK (
-    (
-      public.belongs_to_org(organization_id)
-      AND public.is_org_admin()
-    )
+    (public.belongs_to_org(organization_id) AND public.is_org_admin())
     OR public.is_platform_admin()
   );
 
--- UPDATE: org_admin of that org OR the professional accepting their own invitation
+-- UPDATE: the professional accepting their own invite OR org_admin OR platform_admin
 CREATE POLICY "professional_organizations_update" ON public.professional_organizations
   FOR UPDATE USING (
     auth.uid() = (SELECT user_id FROM public.professionals WHERE id = professional_id LIMIT 1)
@@ -209,36 +360,51 @@ CREATE POLICY "professional_organizations_update" ON public.professional_organiz
     OR public.is_platform_admin()
   );
 
--- DELETE: org_admin only
+-- DELETE: org_admin or platform_admin only
 CREATE POLICY "professional_organizations_delete" ON public.professional_organizations
   FOR DELETE USING (
     (public.belongs_to_org(organization_id) AND public.is_org_admin())
     OR public.is_platform_admin()
   );
 
--- ============================================================
--- SECTION 4: HANDLE GUEST ROLE
--- guest role is declared in the enum but not handled anywhere.
--- We ensure guests are redirected to sign-up (handled in middleware).
--- At DB level: guests have no access to any protected tables.
--- We add a helper function for middleware use.
--- ============================================================
+-- ---- departments: ensure clean policies (already migrated in step 2) ----
+DROP POLICY IF EXISTS "departments_org_read" ON public.departments;
 
-CREATE OR REPLACE FUNCTION public.is_guest()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.user_profiles
-    WHERE id = auth.uid() AND role = 'guest'
-  );
-$$;
+ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "departments_org_read" ON public.departments
+  FOR SELECT TO authenticated
+  USING (true);
+
+-- ---- organization_modules: ensure clean policies (already migrated in step 2) ----
+DROP POLICY IF EXISTS "org_modules_read" ON public.organization_modules;
+
+ALTER TABLE public.organization_modules ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_modules_read" ON public.organization_modules
+  FOR SELECT TO authenticated
+  USING (true);
+
+-- ---- org_roles: ensure clean policies (already migrated in step 2) ----
+DROP POLICY IF EXISTS "org_roles_read" ON public.org_roles;
+
+ALTER TABLE public.org_roles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "org_roles_read" ON public.org_roles
+  FOR SELECT TO authenticated
+  USING (true);
+
+-- ---- audit_logs: ensure insert policy exists (already migrated in step 2) ----
+DROP POLICY IF EXISTS "audit_logs_insert" ON public.audit_logs;
+
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "audit_logs_insert" ON public.audit_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (user_id = auth.uid());
 
 -- ============================================================
--- SECTION 5: CREATE MISSING TABLES
--- Tables referenced in code but absent from DB
+-- STEP 5: CREATE MISSING TABLES (idempotent via CREATE TABLE IF NOT EXISTS)
 -- ============================================================
 
 -- 5.1 CONSULTATIONS
@@ -786,42 +952,69 @@ CREATE POLICY "lab_samples_update" ON public.lab_samples
 CREATE POLICY "lab_samples_delete" ON public.lab_samples
   FOR DELETE USING (public.is_platform_admin());
 
--- ============================================================
--- SECTION 6: ENSURE patient_transfers HAS PROPER RLS
--- Table already exists but may lack complete policies
--- ============================================================
+-- 5.10 PATIENT TRANSFERS
+-- Create table if it does not exist yet
+CREATE TABLE IF NOT EXISTS public.patient_transfers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
+  from_organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
+  to_organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
+  organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
+  requested_by UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
+  accepted_by UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
+  transfer_reason TEXT,
+  clinical_summary TEXT,
+  status TEXT NOT NULL DEFAULT 'requested'
+    CHECK (status IN ('requested', 'accepted', 'rejected', 'in_transit', 'completed', 'cancelled')),
+  priority TEXT DEFAULT 'normal'
+    CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+  requested_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  accepted_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  notes TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_transfers_patient_id ON public.patient_transfers(patient_id);
+CREATE INDEX IF NOT EXISTS idx_patient_transfers_from_org ON public.patient_transfers(from_organization_id);
+CREATE INDEX IF NOT EXISTS idx_patient_transfers_to_org ON public.patient_transfers(to_organization_id);
+CREATE INDEX IF NOT EXISTS idx_patient_transfers_status ON public.patient_transfers(status);
+
+ALTER TABLE public.patient_transfers ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "patient_transfers_select" ON public.patient_transfers;
 DROP POLICY IF EXISTS "patient_transfers_insert" ON public.patient_transfers;
 DROP POLICY IF EXISTS "patient_transfers_update" ON public.patient_transfers;
 DROP POLICY IF EXISTS "patient_transfers_delete" ON public.patient_transfers;
 
-ALTER TABLE public.patient_transfers ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "patient_transfers_select" ON public.patient_transfers
   FOR SELECT USING (
     auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
-    OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
+    OR (public.belongs_to_org(from_organization_id) AND public.user_role() IN ('professional', 'org_admin'))
+    OR (public.belongs_to_org(to_organization_id) AND public.user_role() IN ('professional', 'org_admin'))
     OR public.is_platform_admin()
   );
 
 CREATE POLICY "patient_transfers_insert" ON public.patient_transfers
   FOR INSERT WITH CHECK (
-    public.belongs_to_org(organization_id)
-    AND public.user_role() IN ('professional', 'org_admin', 'platform_admin')
+    (public.belongs_to_org(from_organization_id) AND public.user_role() IN ('professional', 'org_admin'))
+    OR public.is_platform_admin()
   );
 
 CREATE POLICY "patient_transfers_update" ON public.patient_transfers
   FOR UPDATE USING (
-    public.belongs_to_org(organization_id)
-    AND public.user_role() IN ('professional', 'org_admin', 'platform_admin')
+    (public.belongs_to_org(from_organization_id) AND public.user_role() IN ('professional', 'org_admin'))
+    OR (public.belongs_to_org(to_organization_id) AND public.user_role() IN ('professional', 'org_admin'))
+    OR public.is_platform_admin()
   );
 
 CREATE POLICY "patient_transfers_delete" ON public.patient_transfers
   FOR DELETE USING (public.is_platform_admin());
 
 -- ============================================================
--- SECTION 7: ADD updated_at TRIGGERS FOR NEW TABLES
+-- STEP 6: ADD updated_at TRIGGERS FOR NEW TABLES
 -- ============================================================
 
 DROP TRIGGER IF EXISTS set_updated_at_consultations ON public.consultations;
@@ -864,74 +1057,113 @@ CREATE TRIGGER set_updated_at_lab_samples
   BEFORE UPDATE ON public.lab_samples
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS set_updated_at_patient_transfers ON public.patient_transfers;
+CREATE TRIGGER set_updated_at_patient_transfers
+  BEFORE UPDATE ON public.patient_transfers
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
 -- ============================================================
--- SECTION 8: STORAGE BUCKETS
--- Create storage buckets for file uploads
--- Note: Supabase Storage buckets are created via the Supabase
--- dashboard or API. The SQL below creates the bucket metadata
--- in the storage schema if available.
+-- STEP 7: GENERATE PRESCRIPTION NUMBERS TRIGGER
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.generate_prescription_number()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.prescription_number IS NULL THEN
+    NEW.prescription_number := 'RX-' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT, 1, 8));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_prescription_number ON public.prescriptions;
+CREATE TRIGGER set_prescription_number
+  BEFORE INSERT ON public.prescriptions
+  FOR EACH ROW EXECUTE FUNCTION public.generate_prescription_number();
+
+-- ============================================================
+-- STEP 8: GENERATE LAB RESULT NUMBERS TRIGGER
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.generate_result_number()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.result_number IS NULL THEN
+    NEW.result_number := 'LAB-' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT, 1, 8));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_result_number ON public.lab_results;
+CREATE TRIGGER set_result_number
+  BEFORE INSERT ON public.lab_results
+  FOR EACH ROW EXECUTE FUNCTION public.generate_result_number();
+
+-- ============================================================
+-- STEP 9: GENERATE SAMPLE NUMBERS TRIGGER
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.generate_sample_number()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.sample_number IS NULL THEN
+    NEW.sample_number := 'SAMP-' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT, 1, 8));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_sample_number ON public.lab_samples;
+CREATE TRIGGER set_sample_number
+  BEFORE INSERT ON public.lab_samples
+  FOR EACH ROW EXECUTE FUNCTION public.generate_sample_number();
+
+-- ============================================================
+-- STEP 10: STORAGE BUCKETS
 -- ============================================================
 
 DO $$
 BEGIN
-  -- Create documents bucket
   INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
   VALUES (
-    'documents',
-    'documents',
-    false,
-    52428800,
-    ARRAY['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-  )
-  ON CONFLICT (id) DO NOTHING;
+    'documents', 'documents', false, 52428800,
+    ARRAY['application/pdf', 'image/jpeg', 'image/png', 'image/webp',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+  ) ON CONFLICT (id) DO NOTHING;
 
-  -- Create avatars bucket
   INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
   VALUES (
-    'avatars',
-    'avatars',
-    true,
-    5242880,
+    'avatars', 'avatars', true, 5242880,
     ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-  )
-  ON CONFLICT (id) DO NOTHING;
+  ) ON CONFLICT (id) DO NOTHING;
 
-  -- Create medical-images bucket
   INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
   VALUES (
-    'medical-images',
-    'medical-images',
-    false,
-    104857600,
+    'medical-images', 'medical-images', false, 104857600,
     ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/dicom', 'image/dicom']
-  )
-  ON CONFLICT (id) DO NOTHING;
+  ) ON CONFLICT (id) DO NOTHING;
 
-  -- Create lab-reports bucket
   INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
   VALUES (
-    'lab-reports',
-    'lab-reports',
-    false,
-    52428800,
-    ARRAY['application/pdf', 'image/jpeg', 'image/png', 'text/csv', 'application/vnd.ms-excel']
-  )
-  ON CONFLICT (id) DO NOTHING;
+    'lab-reports', 'lab-reports', false, 52428800,
+    ARRAY['application/pdf', 'image/jpeg', 'image/png', 'text/csv',
+          'application/vnd.ms-excel']
+  ) ON CONFLICT (id) DO NOTHING;
 
 EXCEPTION
   WHEN OTHERS THEN
-    RAISE NOTICE 'Storage bucket creation skipped (may need to be created via Supabase dashboard): %', SQLERRM;
+    RAISE NOTICE 'Storage bucket creation skipped (may need Supabase dashboard): %', SQLERRM;
 END $$;
 
--- Storage RLS Policies for documents bucket
-DROP POLICY IF EXISTS "documents_select_own" ON storage.objects;
-DROP POLICY IF EXISTS "documents_insert_own" ON storage.objects;
-DROP POLICY IF EXISTS "documents_update_own" ON storage.objects;
-DROP POLICY IF EXISTS "documents_delete_own" ON storage.objects;
-DROP POLICY IF EXISTS "avatars_public_select" ON storage.objects;
-DROP POLICY IF EXISTS "avatars_insert_own" ON storage.objects;
-DROP POLICY IF EXISTS "avatars_update_own" ON storage.objects;
-
+-- Storage RLS Policies
 DO $$
 BEGIN
   -- Documents: private, owner access only
@@ -1030,69 +1262,6 @@ EXCEPTION
   WHEN OTHERS THEN
     RAISE NOTICE 'Storage RLS policies skipped: %', SQLERRM;
 END $$;
-
--- ============================================================
--- SECTION 9: GENERATE PRESCRIPTION NUMBERS TRIGGER
--- ============================================================
-
-CREATE OR REPLACE FUNCTION public.generate_prescription_number()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  IF NEW.prescription_number IS NULL THEN
-    NEW.prescription_number := 'RX-' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT, 1, 8));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS set_prescription_number ON public.prescriptions;
-CREATE TRIGGER set_prescription_number
-  BEFORE INSERT ON public.prescriptions
-  FOR EACH ROW EXECUTE FUNCTION public.generate_prescription_number();
-
--- ============================================================
--- SECTION 10: GENERATE LAB RESULT NUMBERS TRIGGER
--- ============================================================
-
-CREATE OR REPLACE FUNCTION public.generate_result_number()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  IF NEW.result_number IS NULL THEN
-    NEW.result_number := 'LAB-' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT, 1, 8));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS set_result_number ON public.lab_results;
-CREATE TRIGGER set_result_number
-  BEFORE INSERT ON public.lab_results
-  FOR EACH ROW EXECUTE FUNCTION public.generate_result_number();
-
--- ============================================================
--- SECTION 11: GENERATE SAMPLE NUMBERS TRIGGER
--- ============================================================
-
-CREATE OR REPLACE FUNCTION public.generate_sample_number()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  IF NEW.sample_number IS NULL THEN
-    NEW.sample_number := 'SAMP-' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT, 1, 8));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS set_sample_number ON public.lab_samples;
-CREATE TRIGGER set_sample_number
-  BEFORE INSERT ON public.lab_samples
-  FOR EACH ROW EXECUTE FUNCTION public.generate_sample_number();
 
 -- ============================================================
 -- END OF MIGRATION
