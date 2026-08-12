@@ -271,6 +271,7 @@ const platformAdminNav: NavItem[] = [
   { key: 'nav-pa-phase2-roadmap', label: 'Roadmap Phase 2', icon: 'MapIcon', href: '/phase2-roadmap', group: 'systeme' },
   { key: 'nav-pa-shifa-desktop', label: 'SHIFA Desktop', icon: 'ComputerDesktopIcon', href: '/shifa-desktop', group: 'systeme' },
   { key: 'nav-pa-phase1-audit', label: 'Audit Phase 1', icon: 'ClipboardDocumentCheckIcon', href: '/phase1-completion-audit', group: 'systeme' },
+  { key: 'nav-pa-phase2-audit', label: 'Audit Phase 2 — Système', icon: 'ShieldExclamationIcon', href: '/phase2-system-audit', group: 'systeme' },
   { key: 'nav-pa-security', label: 'Sécurité & Audit', icon: 'ShieldCheckIcon', href: '/platform-admin', group: 'systeme' },
   { key: 'nav-pa-ai', label: 'SHIFA AI', icon: 'CpuChipIcon', href: '/shifa-ai-workspace', group: 'systeme' },
   { key: 'nav-pa-interop', label: 'Interopérabilité', icon: 'ArrowsRightLeftIcon', href: '/interoperability-hub', group: 'systeme' },
