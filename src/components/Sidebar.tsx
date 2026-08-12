@@ -245,6 +245,38 @@ const ambassadorNav: NavItem[] = [
   { key: 'nav-amb-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
 ];
 
+const developerNav: NavItem[] = [
+  { key: 'nav-dev-dashboard', label: 'Portail Développeur', icon: 'CodeBracketIcon', href: '/api-developer-dashboard', group: 'principal' },
+  { key: 'nav-dev-api-monetization', label: 'API & Monétisation', icon: 'ArrowsRightLeftIcon', href: '/api-monetization', group: 'principal' },
+  { key: 'nav-dev-integration-layer', label: 'Integration Layer', icon: 'PuzzlePieceIcon', href: '/integration-layer', group: 'principal' },
+  { key: 'nav-dev-external-connectors', label: 'Connecteurs externes', icon: 'ArrowsRightLeftIcon', href: '/external-connectors', group: 'principal' },
+  { key: 'nav-dev-interop', label: 'Interopérabilité', icon: 'ArrowsRightLeftIcon', href: '/interoperability-hub', group: 'principal' },
+  { key: 'nav-dev-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'ressources' },
+  { key: 'nav-dev-academy', label: 'Académie', icon: 'AcademicCapIcon', href: '/shifa-academy', group: 'ressources' },
+  { key: 'nav-dev-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
+  { key: 'nav-dev-marketplace', label: 'Marketplace', icon: 'ShoppingBagIcon', href: '/health-marketplace', group: 'ressources' },
+];
+
+const vendorNav: NavItem[] = [
+  { key: 'nav-vnd-marketplace', label: 'Espace Vendeur', icon: 'BuildingStorefrontIcon', href: '/marketplace-vendor', group: 'principal' },
+  { key: 'nav-vnd-marketplace-buyer', label: 'Marketplace Acheteur', icon: 'ShoppingBagIcon', href: '/marketplace-buyer', group: 'principal' },
+  { key: 'nav-vnd-health-marketplace', label: 'Marketplace Santé', icon: 'HeartIcon', href: '/health-marketplace', group: 'principal' },
+  { key: 'nav-vnd-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'ressources' },
+  { key: 'nav-vnd-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
+  { key: 'nav-vnd-academy', label: 'Académie', icon: 'AcademicCapIcon', href: '/shifa-academy', group: 'ressources' },
+];
+
+const researcherNav: NavItem[] = [
+  { key: 'nav-res-workspace', label: 'Espace Recherche', icon: 'BeakerIcon', href: '/research-workspace', group: 'principal' },
+  { key: 'nav-res-datasets', label: 'Jeux de données', icon: 'CircleStackIcon', href: '/research-datasets', group: 'principal' },
+  { key: 'nav-res-ethics-board', label: 'Comité d\'éthique', icon: 'ClipboardDocumentCheckIcon', href: '/research-ethics-board', group: 'principal' },
+  { key: 'nav-res-shifa-ai-research', label: 'SHIFA AI Recherche', icon: 'CpuChipIcon', href: '/shifa-ai-research', group: 'principal' },
+  { key: 'nav-res-epidemio', label: 'Surveillance Épidémio.', icon: 'EyeIcon', href: '/epidemio-surveillance', group: 'analyse' },
+  { key: 'nav-res-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'ressources' },
+  { key: 'nav-res-academy', label: 'Académie', icon: 'AcademicCapIcon', href: '/shifa-academy', group: 'ressources' },
+  { key: 'nav-res-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
+];
+
 const platformAdminNav: NavItem[] = [
   { key: 'nav-pa-super-admin', label: '⭐ Super Admin SHIFA', icon: 'ShieldCheckIcon', href: '/super-admin-shifa', group: 'principal' },
   { key: 'nav-pa-dashboard', label: 'Tableau de bord global', icon: 'Squares2X2Icon', href: '/platform-admin', group: 'principal' },
@@ -304,9 +336,9 @@ const navByRole = {
   insurance: institutionNav,
   university: institutionNav,
   ngo: institutionNav,
-  researcher: institutionNav,
-  developer: platformAdminNav,
-  vendor: institutionNav,
+  researcher: researcherNav,
+  developer: developerNav,
+  vendor: vendorNav,
   ambassador: ambassadorNav,
   platform_admin: platformAdminNav,
 };

@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .from('user_profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       if (mountedRef.current) {
         setRole(data?.role ?? 'patient');
       }
@@ -144,7 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .from('user_profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
   };
