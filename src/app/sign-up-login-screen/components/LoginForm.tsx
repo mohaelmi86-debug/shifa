@@ -42,10 +42,14 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           .eq('id', user.id)
           .single();
         const role = profile?.role || 'patient';
-        if (role === 'admin') {
+        if (role === 'org_admin' || role === 'platform_admin') {
           router.push('/administration-tablissement');
         } else if (role === 'professional') {
           router.push('/workspace-professionnel');
+        } else if (role === 'ministry' || role === 'insurance' || role === 'ngo' || role === 'university' || role === 'public_health') {
+          router.push('/espace-ministere');
+        } else if (role === 'ambassador') {
+          router.push('/ambassador-workspace');
         } else {
           router.push('/patient-home');
         }
@@ -99,7 +103,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Mot de passe</label>
-            <a href="#" className="text-xs font-medium transition-colors hover:underline" style={{ color: 'var(--shifa-blue)' }}>
+            <a href="/forgot-password" className="text-xs font-medium transition-colors hover:underline" style={{ color: 'var(--shifa-blue)' }}>
               Mot de passe oublié ?
             </a>
           </div>

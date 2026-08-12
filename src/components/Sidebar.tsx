@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ShifaBrand from '@/components/ui/ShifaBrand';
@@ -7,6 +7,7 @@ import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import LanguageSelector from '@/components/ui/LanguageSelector';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { createClient } from '@/lib/supabase/client';
 
 interface NavItem {
   key: string;
@@ -234,12 +235,12 @@ const institutionNav: NavItem[] = [
 
 const ambassadorNav: NavItem[] = [
   { key: 'nav-amb-dashboard', label: 'Tableau de bord', icon: 'Squares2X2Icon', href: '/ambassador-workspace', group: 'principal' },
-  { key: 'nav-amb-network', label: 'Mon Réseau', icon: 'UsersIcon', href: '/ambassador-workspace', group: 'principal' },
+  { key: 'nav-amb-network', label: 'Mon Réseau', icon: 'UsersIcon', href: '/ambassador-network', group: 'principal' },
   { key: 'nav-amb-commercial', label: 'Commercial & Revenus', icon: 'BanknotesIcon', href: '/ambassador-commercial', group: 'activite' },
-  { key: 'nav-amb-invitations', label: 'Invitations', icon: 'EnvelopeIcon', href: '/ambassador-workspace', group: 'activite' },
-  { key: 'nav-amb-rewards', label: 'Récompenses', icon: 'TrophyIcon', href: '/ambassador-workspace', group: 'activite' },
-  { key: 'nav-amb-training', label: 'Formation', icon: 'AcademicCapIcon', href: '/ambassador-workspace', group: 'ressources' },
-  { key: 'nav-amb-resources', label: 'Kit Marketing', icon: 'SparklesIcon', href: '/ambassador-workspace', group: 'ressources' },
+  { key: 'nav-amb-invitations', label: 'Invitations', icon: 'EnvelopeIcon', href: '/ambassador-invitations', group: 'activite' },
+  { key: 'nav-amb-rewards', label: 'Récompenses', icon: 'TrophyIcon', href: '/ambassador-rewards', group: 'activite' },
+  { key: 'nav-amb-training', label: 'Formation', icon: 'AcademicCapIcon', href: '/ambassador-training', group: 'ressources' },
+  { key: 'nav-amb-resources', label: 'Kit Marketing', icon: 'SparklesIcon', href: '/ambassador-resources', group: 'ressources' },
   { key: 'nav-amb-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
 ];
 
@@ -402,12 +403,37 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const { signOut } = useAuth();
+  const [realUserInfo, setRealUserInfo] = useState<{ name: string; sub: string; avatar: string } | null>(null);
+  const { signOut, user } = useAuth();
   const router = useRouter();
   const { dir } = useLanguage();
   const navItems = navByRole[role];
   const groups = [...new Set(navItems.map(i => i.group || 'principal'))];
-  const userInfo = userInfoByRole[role];
+  const fallbackInfo = userInfoByRole[role];
+
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from('user_profiles')
+      .select('full_name, shifa_id, role')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        const name = data.full_name || user.email || fallbackInfo.name;
+        const sub = data.shifa_id || user.email || fallbackInfo.sub;
+        const initials = name
+          .split(' ')
+          .map((n: string) => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+        setRealUserInfo({ name, sub, avatar: initials });
+      });
+  }, [user]);
+
+  const userInfo = realUserInfo || fallbackInfo;
 
   const handleSignOut = async () => {
     if (signingOut) return;

@@ -26,12 +26,30 @@ export async function GET(request: NextRequest) {
         const role = profile?.role;
         let redirectPath = next;
 
-        if (role === 'org_admin' || role === 'platform_admin') {
+        if (role === 'platform_admin') {
+          redirectPath = '/platform-admin';
+        } else if (role === 'org_admin') {
           redirectPath = '/administration-tablissement';
         } else if (role === 'professional') {
           redirectPath = '/workspace-professionnel';
         } else if (role === 'patient') {
           redirectPath = '/patient-home';
+        } else if (role === 'ambassador') {
+          redirectPath = '/ambassador-workspace';
+        } else if (role === 'ministry' || role === 'public_health') {
+          redirectPath = '/espace-ministere';
+        } else if (role === 'insurance') {
+          redirectPath = '/espace-assurance';
+        } else if (role === 'university') {
+          redirectPath = '/espace-universite';
+        } else if (role === 'ngo') {
+          redirectPath = '/espace-ong';
+        } else if (role === 'researcher') {
+          redirectPath = '/research-workspace';
+        } else if (role === 'developer') {
+          redirectPath = '/api-developer-dashboard';
+        } else if (role === 'vendor') {
+          redirectPath = '/marketplace-vendor';
         }
 
         return NextResponse.redirect(`${origin}${redirectPath}`);

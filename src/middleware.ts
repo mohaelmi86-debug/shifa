@@ -231,8 +231,6 @@ const ROLE_GUARDS: Record<string, string[]> = {
   '/module-catalog': [],
   '/patient-transfer': ['professional', 'org_admin', 'platform_admin'],
   '/offline-mode-config': ['org_admin', 'platform_admin'],
-  '/org-patient-flow': ['org_admin', 'platform_admin'],
-  '/pro-care-coordination': ['professional', 'platform_admin'],
 
   // Institutional spaces
   '/espace-ministere': ['ministry', 'platform_admin'],
@@ -243,6 +241,11 @@ const ROLE_GUARDS: Record<string, string[]> = {
   '/assurance-workspace': ['insurance', 'platform_admin'],
   '/ambassador-workspace': ['ambassador', 'platform_admin'],
   '/ambassador-commercial': ['ambassador', 'platform_admin'],
+  '/ambassador-network': ['ambassador', 'platform_admin'],
+  '/ambassador-invitations': ['ambassador', 'platform_admin'],
+  '/ambassador-rewards': ['ambassador', 'platform_admin'],
+  '/ambassador-training': ['ambassador', 'platform_admin'],
+  '/ambassador-resources': ['ambassador', 'platform_admin'],
   '/insurance-commercial': ['insurance', 'platform_admin'],
   '/marketplace-vendor': ['vendor', 'platform_admin'],
   '/marketplace-buyer': [],
