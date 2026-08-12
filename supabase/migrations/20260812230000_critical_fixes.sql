@@ -977,6 +977,33 @@ CREATE TABLE IF NOT EXISTS public.patient_transfers (
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Idempotent column additions for pre-existing patient_transfers table
+-- (table may already exist from foundation migration without these columns)
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS from_organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS to_organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS requested_by UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS accepted_by UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS transfer_reason TEXT;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS clinical_summary TEXT;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'normal';
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.patient_transfers
+  ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
 CREATE INDEX IF NOT EXISTS idx_patient_transfers_patient_id ON public.patient_transfers(patient_id);
 CREATE INDEX IF NOT EXISTS idx_patient_transfers_from_org ON public.patient_transfers(from_organization_id);
 CREATE INDEX IF NOT EXISTS idx_patient_transfers_to_org ON public.patient_transfers(to_organization_id);
