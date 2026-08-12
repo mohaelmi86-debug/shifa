@@ -6,7 +6,7 @@
 
 export type ModuleId =
   | 'consultation' | 'prescription' | 'pharmacy' | 'dispensation' |'laboratory'| 'imaging' | 'billing' | 'payment' | 'accounting' |'hospitalization'| 'emergency' | 'maternity' | 'pediatrics' |'patient-record'| 'teleconsultation' | 'care-plans' |'workforce'| 'planning' | 'training' | 'habilitation' |'inventory'| 'procurement' | 'supply-chain' |'biomedical'| 'maintenance' | 'sterilization' |'finance'| 'insurance' | 'public-health' |'patient-transfer' | 'referrals' | 'shifa-share'
-  | 'shifa-academy' | 'analytics' | 'audit';
+  | 'shifa-academy'| 'analytics' | 'audit' |'innovation-center' | 'research' | 'marketplace' | 'ambassador' | 'offline-sync';
 
 export type DataScope =
   | 'identity'           // Name, DOB, ID — minimal
@@ -274,9 +274,20 @@ export const workforceFlows: ModuleFlow[] = [
     requiredPermissions: ['workforce.offboard', 'module.revoke-access'],
     example: 'Dr. Sy quitte le CHU → accès CHU révoqué, compte SHIFA conservé',
   },
+  {
+    id: 'flow-academy-workforce',
+    from: 'shifa-academy', to: 'workforce',
+    label: 'Academy → Mise à jour habilitation',
+    dataScope: 'hr',
+    direction: 'push', mode: 'async',
+    consentRequired: 'never', auditRequired: true,
+    description: 'La validation d\'une certification Academy met à jour les habilitations dans Workforce.',
+    requiredPermissions: ['academy.certify', 'workforce.habilitation.update'],
+    example: 'Certification ACLS validée → habilitation réanimation renouvelée → accès ICU maintenu',
+  },
 ];
 
-// ─── TRANSFER FLOWS ───────────────────────────────────────────────────────────
+// ─── TRANSFER FLOWS (COMPLETE) ────────────────────────────────────────────────
 
 export const transferFlows: ModuleFlow[] = [
   {
@@ -290,7 +301,162 @@ export const transferFlows: ModuleFlow[] = [
     requiredPermissions: ['patient-transfer.create', 'patient-record.share'],
     example: 'Transfert Urgences → Chirurgie : constantes + biologie + imagerie récente',
   },
+  {
+    id: 'flow-transfer-authorization',
+    from: 'patient-transfer', to: 'audit',
+    label: 'Transfert → Autorisation médicale',
+    dataScope: 'administrative',
+    direction: 'event', mode: 'realtime',
+    consentRequired: 'always', auditRequired: true,
+    description: 'Chaque transfert doit être autorisé par un médecin habilité avant exécution.',
+    requiredPermissions: ['patient-transfer.authorize', 'audit.write'],
+    example: 'Chef de service valide le transfert → événement d\'autorisation tracé',
+  },
+  {
+    id: 'flow-transfer-acceptance',
+    from: 'patient-transfer', to: 'hospitalization',
+    label: 'Transfert → Acceptation établissement destinataire',
+    dataScope: 'administrative',
+    direction: 'bidirectional', mode: 'async',
+    consentRequired: 'never', auditRequired: true,
+    description: 'L\'établissement destinataire doit confirmer sa capacité d\'accueil avant le transfert.',
+    requiredPermissions: ['patient-transfer.accept', 'hospitalization.create'],
+    example: 'CHU Cocody confirme disponibilité lit → transfert autorisé',
+  },
+  {
+    id: 'flow-transfer-billing',
+    from: 'patient-transfer', to: 'billing',
+    label: 'Transfert → Facturation transport',
+    dataScope: 'financial',
+    direction: 'push', mode: 'async',
+    consentRequired: 'never', auditRequired: true,
+    description: 'Les frais de transport et de transfert sont transmis au module facturation.',
+    requiredPermissions: ['patient-transfer.complete', 'billing.create'],
+  },
+  {
+    id: 'flow-transfer-insurance',
+    from: 'patient-transfer', to: 'insurance',
+    label: 'Transfert → Prise en charge assurance',
+    dataScope: 'administrative',
+    direction: 'push', mode: 'on-demand',
+    consentRequired: 'first-time', auditRequired: true,
+    description: 'Vérification de la couverture assurance pour le transfert et le transport.',
+    requiredPermissions: ['patient-transfer.create', 'insurance.eligibility.check'],
+  },
+  {
+    id: 'flow-transfer-emergency',
+    from: 'emergency', to: 'patient-transfer',
+    label: 'Urgences → Demande de transfert',
+    dataScope: 'clinical-summary',
+    direction: 'push', mode: 'realtime',
+    consentRequired: 'always', auditRequired: true,
+    description: 'Les urgences peuvent initier un transfert vers un autre service ou établissement.',
+    requiredPermissions: ['emergency.transfer.request', 'patient-transfer.create'],
+    example: 'Patient AVC aux urgences → transfert vers neurologie CHU',
+  },
 ];
+
+// ─── INNOVATION / RESEARCH / ECOSYSTEM FLOWS ─────────────────────────────────
+
+export const ecosystemFlows: ModuleFlow[] = [
+  {
+    id: 'flow-innovation-research',
+    from: 'innovation-center', to: 'research',
+    label: 'Innovation → Recherche',
+    dataScope: 'public',
+    direction: 'bidirectional', mode: 'on-demand',
+    consentRequired: 'never', auditRequired: false,
+    description: 'Les projets d\'innovation peuvent être liés à des protocoles de recherche.',
+    requiredPermissions: ['innovation.manage', 'research.read'],
+  },
+  {
+    id: 'flow-research-academy',
+    from: 'research', to: 'shifa-academy',
+    label: 'Recherche → Academy (publications)',
+    dataScope: 'public',
+    direction: 'push', mode: 'async',
+    consentRequired: 'never', auditRequired: false,
+    description: 'Les résultats de recherche peuvent alimenter le catalogue Academy.',
+    requiredPermissions: ['research.publish', 'academy.content.create'],
+  },
+  {
+    id: 'flow-marketplace-supply',
+    from: 'marketplace', to: 'supply-chain',
+    label: 'Marketplace → Supply Chain',
+    dataScope: 'operational',
+    direction: 'push', mode: 'realtime',
+    consentRequired: 'never', auditRequired: true,
+    description: 'Une commande Marketplace déclenche le workflow Supply Chain.',
+    requiredPermissions: ['marketplace.order', 'supply-chain.create'],
+  },
+  {
+    id: 'flow-marketplace-finance',
+    from: 'marketplace', to: 'finance',
+    label: 'Marketplace → Finance',
+    dataScope: 'financial',
+    direction: 'push', mode: 'realtime',
+    consentRequired: 'never', auditRequired: true,
+    description: 'Les transactions Marketplace alimentent la comptabilité.',
+    requiredPermissions: ['marketplace.transact', 'finance.write'],
+  },
+];
+
+// ─── OFFLINE SYNC QUEUE TYPES ─────────────────────────────────────────────────
+
+export type SyncOperationType =
+  | 'consultation.create' | 'consultation.update' |'prescription.create' |'vitals.record' |'patient-transfer.create'| 'patient-transfer.update' |'lab-result.receive' |'billing.create' |'appointment.create'| 'appointment.update' |'document.upload';
+
+export type SyncStatus = 'pending' | 'syncing' | 'synced' | 'conflict' | 'error' | 'deferred';
+
+export interface SyncQueueItem {
+  id: string;                    // UUID unique — generated offline
+  operationType: SyncOperationType;
+  moduleId: ModuleId;
+  payload: Record<string, unknown>;
+  patientId?: string;
+  organizationId?: string;
+  createdAt: string;             // ISO timestamp (local device time)
+  attemptCount: number;
+  maxAttempts: number;
+  status: SyncStatus;
+  conflictResolution?: 'server-wins' | 'client-wins' | 'manual';
+  encryptedLocally: boolean;
+  priority: 'critical' | 'high' | 'normal';
+  errorMessage?: string;
+  syncedAt?: string;
+}
+
+export interface SyncConflict {
+  id: string;
+  queueItemId: string;
+  serverVersion: Record<string, unknown>;
+  clientVersion: Record<string, unknown>;
+  field: string;
+  detectedAt: string;
+  resolvedAt?: string;
+  resolution?: 'server-wins' | 'client-wins' | 'merged' | 'manual';
+  resolvedBy?: string;
+}
+
+// ─── REAL-TIME EVENT BUS ──────────────────────────────────────────────────────
+
+export type ShifaEventType =
+  | 'transfer.created' | 'transfer.authorized' | 'transfer.accepted' | 'transfer.in-transit' | 'transfer.received' | 'transfer.cancelled' |'lab-result.ready'| 'lab-result.validated' |'prescription.created'| 'prescription.dispensed' |'habilitation.expired'| 'habilitation.renewed' |'sync.conflict' | 'sync.completed' | 'sync.error'
+  | 'module.access-revoked'| 'module.access-granted' |'patient.admitted' | 'patient.discharged';
+
+export interface ShifaEvent {
+  id: string;
+  type: ShifaEventType;
+  sourceModule: ModuleId;
+  targetModules: ModuleId[];
+  payload: Record<string, unknown>;
+  timestamp: string;
+  organizationId: string;
+  userId: string;
+  patientId?: string;
+  requiresAck: boolean;
+  acknowledged?: boolean;
+}
 
 // ─── ALL FLOWS ────────────────────────────────────────────────────────────────
 
@@ -299,6 +465,7 @@ export const allFlows: ModuleFlow[] = [
   ...financialFlows,
   ...workforceFlows,
   ...transferFlows,
+  ...ecosystemFlows,
 ];
 
 // ─── CONNECTOR FRAMEWORK ─────────────────────────────────────────────────────
@@ -430,7 +597,6 @@ export const needToKnowMatrix: Record<string, Record<ModuleId, DataScope[]>> = {
     'patient-record': ['identity'],  // Name only, no clinical notes
     billing: ['financial'],
     pharmacy: ['operational', 'financial'],
-    // All other modules: no access
   } as Record<ModuleId, DataScope[]>,
   accountant: {
     billing: ['financial'],
@@ -452,4 +618,69 @@ export const needToKnowMatrix: Record<string, Record<ModuleId, DataScope[]>> = {
     consultation: ['clinical-summary'],
     laboratory: ['clinical-summary'],
   } as Record<ModuleId, DataScope[]>,
+  'lab-technician': {
+    laboratory: ['clinical-summary', 'operational'],
+    'patient-record': ['identity', 'clinical-summary'],  // Only what's needed for the analysis
+    consultation: [],  // No access to full clinical notes
+    billing: ['financial'],
+  } as Record<ModuleId, DataScope[]>,
+  ambassador: {
+    // Ambassadors have ZERO access to any medical data
+    'patient-record': [],
+    consultation: [],
+    prescription: [],
+    laboratory: [],
+    imaging: [],
+  } as Record<ModuleId, DataScope[]>,
 };
+
+// ─── TRANSFER WORKFLOW STATE MACHINE ─────────────────────────────────────────
+
+export type TransferState =
+  | 'draft' |'pending-consent' |'consent-given' |'pending-authorization' |'authorized' |'pending-acceptance' |'accepted' |'preparing' |'in-transit' |'received' |'completed' |'cancelled' |'rejected';
+
+export interface TransferStateTransition {
+  from: TransferState;
+  to: TransferState;
+  requiredRole: string;
+  requiredPermission: string;
+  auditAction: string;
+  notifyModules: ModuleId[];
+}
+
+export const transferStateMachine: TransferStateTransition[] = [
+  { from: 'draft', to: 'pending-consent', requiredRole: 'physician', requiredPermission: 'patient-transfer.create', auditAction: 'transfer.created', notifyModules: ['patient-record'] },
+  { from: 'pending-consent', to: 'consent-given', requiredRole: 'patient|nurse', requiredPermission: 'patient-transfer.consent', auditAction: 'transfer.consent-given', notifyModules: ['audit'] },
+  { from: 'consent-given', to: 'pending-authorization', requiredRole: 'physician', requiredPermission: 'patient-transfer.submit', auditAction: 'transfer.submitted', notifyModules: ['audit'] },
+  { from: 'pending-authorization', to: 'authorized', requiredRole: 'department-head|medical-director', requiredPermission: 'patient-transfer.authorize', auditAction: 'transfer.authorized', notifyModules: ['audit', 'patient-record'] },
+  { from: 'authorized', to: 'pending-acceptance', requiredRole: 'system', requiredPermission: 'patient-transfer.notify-destination', auditAction: 'transfer.destination-notified', notifyModules: ['hospitalization'] },
+  { from: 'pending-acceptance', to: 'accepted', requiredRole: 'destination-physician', requiredPermission: 'patient-transfer.accept', auditAction: 'transfer.accepted', notifyModules: ['audit', 'billing'] },
+  { from: 'accepted', to: 'preparing', requiredRole: 'nurse|coordinator', requiredPermission: 'patient-transfer.prepare', auditAction: 'transfer.preparing', notifyModules: [] },
+  { from: 'preparing', to: 'in-transit', requiredRole: 'nurse|coordinator', requiredPermission: 'patient-transfer.dispatch', auditAction: 'transfer.in-transit', notifyModules: ['audit'] },
+  { from: 'in-transit', to: 'received', requiredRole: 'destination-nurse|destination-physician', requiredPermission: 'patient-transfer.receive', auditAction: 'transfer.received', notifyModules: ['audit', 'hospitalization', 'billing'] },
+  { from: 'received', to: 'completed', requiredRole: 'system', requiredPermission: 'patient-transfer.complete', auditAction: 'transfer.completed', notifyModules: ['patient-record', 'billing', 'audit'] },
+  { from: 'pending-authorization', to: 'cancelled', requiredRole: 'physician|department-head', requiredPermission: 'patient-transfer.cancel', auditAction: 'transfer.cancelled', notifyModules: ['audit'] },
+  { from: 'pending-acceptance', to: 'rejected', requiredRole: 'destination-physician', requiredPermission: 'patient-transfer.reject', auditAction: 'transfer.rejected', notifyModules: ['audit', 'patient-record'] },
+];
+
+// ─── UTILITY FUNCTIONS ────────────────────────────────────────────────────────
+
+export const getFlowsForModule = (moduleId: ModuleId): ModuleFlow[] =>
+  allFlows.filter(f => f.from === moduleId || f.to === moduleId);
+
+export const getOutboundFlows = (moduleId: ModuleId): ModuleFlow[] =>
+  allFlows.filter(f => f.from === moduleId);
+
+export const getInboundFlows = (moduleId: ModuleId): ModuleFlow[] =>
+  allFlows.filter(f => f.to === moduleId);
+
+export const getConnectorsForModule = (moduleId: ModuleId): ConnectorConfig[] =>
+  connectorRegistry.filter(c => c.module === moduleId);
+
+export const getTransferTransitions = (currentState: TransferState): TransferStateTransition[] =>
+  transferStateMachine.filter(t => t.from === currentState);
+
+export const canRolePerformTransition = (
+  role: string,
+  transition: TransferStateTransition
+): boolean => transition.requiredRole.split('|').includes(role);
