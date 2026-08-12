@@ -16,7 +16,6 @@ const tabs = [
   { key: 'tab-vaccinations', label: 'Vaccinations', icon: 'ShieldCheckIcon' },
 ];
 
-// Static fallback data for sections not yet connected to Supabase
 const antecedents = {
   medicaux: ['Anémie ferriprive (2026)', 'Palpitations bénignes (2026)', 'Rhinopharyngites récurrentes'],
   chirurgicaux: ['Appendicectomie (2015)'],
@@ -50,6 +49,7 @@ interface PrescriptionRecord {
   doctor: string;
   medications: string[];
   status: string;
+  notes?: string;
 }
 
 interface LabResult {
@@ -60,6 +60,7 @@ interface LabResult {
   lab: string;
   status: string;
   alert: boolean;
+  values?: Array<{ name: string; value: string; unit: string; reference_range?: string; is_abnormal?: boolean }>;
 }
 
 interface DossierVaccination {
@@ -85,65 +86,140 @@ export default function DossierTabs() {
 
   const supabase = createClient();
 
-  const fetchHealthRecords = async (patientId: string) => {
+  // ── Fetch consultations from health_records ──
+  const fetchConsultations = async (patientId: string) => {
     try {
       const { data, error } = await supabase
         .from('health_records')
         .select(`
-          id,
-          record_type,
-          title,
-          content,
-          is_signed,
-          created_at,
-          professionals (
-            first_name,
-            last_name,
-            specialty,
-            profession
-          )
+          id, record_type, title, content, is_signed, created_at,
+          professionals ( first_name, last_name, specialty, profession )
+        `)
+        .eq('patient_id', patientId)
+        .eq('record_type', 'consultation')
+        .order('created_at', { ascending: false });
+
+      if (error) return;
+
+      const cons: ConsultationRecord[] = (data || []).map((r: any) => {
+        const dateStr = r.created_at
+          ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '—';
+        const pro = r.professionals;
+        return {
+          id: r.id,
+          date: dateStr,
+          doctor: pro ? `Dr. ${pro.first_name} ${pro.last_name}` : 'Médecin',
+          specialty: pro?.specialty || pro?.profession || 'Médecine générale',
+          motif: r.content?.motif || r.title || 'Consultation',
+          diagnostic: r.content?.diagnostic || r.content?.evaluation || '—',
+          status: r.is_signed ? 'signed' : 'draft',
+        };
+      });
+      setConsultations(cons);
+    } catch {
+      // keep empty state
+    }
+  };
+
+  // ── Fetch prescriptions from dedicated prescriptions table ──
+  const fetchPrescriptions = async (patientId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('prescriptions')
+        .select(`
+          id, created_at, status, notes, medications,
+          professionals ( first_name, last_name, specialty )
         `)
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.log('Health records fetch error:', (error as any).message);
+        // Fallback: try health_records for prescriptions
+        const { data: hrData } = await supabase
+          .from('health_records')
+          .select(`
+            id, title, content, created_at, is_signed,
+            professionals ( first_name, last_name, specialty, profession )
+          `)
+          .eq('patient_id', patientId)
+          .eq('record_type', 'prescription')
+          .order('created_at', { ascending: false });
+
+        const presc: PrescriptionRecord[] = (hrData || []).map((r: any) => {
+          const dateStr = r.created_at
+            ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '—';
+          const pro = r.professionals;
+          const meds = r.content?.medications || [];
+          return {
+            id: r.id,
+            date: dateStr,
+            doctor: pro ? `Dr. ${pro.first_name} ${pro.last_name}` : 'Médecin',
+            medications: Array.isArray(meds)
+              ? meds.map((m: any) => typeof m === 'string' ? m : `${m.drug || ''} — ${m.dosage || ''} ${m.frequency || ''}`.trim())
+              : [r.title],
+            status: r.is_signed ? 'active' : 'draft',
+            notes: r.content?.notes,
+          };
+        });
+        setPrescriptions(presc);
         return;
       }
 
-      const cons: ConsultationRecord[] = [];
-      const presc: PrescriptionRecord[] = [];
-      const labs: LabResult[] = [];
-
-      (data || []).forEach((r: any) => {
+      const presc: PrescriptionRecord[] = (data || []).map((r: any) => {
         const dateStr = r.created_at
           ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
           : '—';
         const pro = r.professionals;
-        const doctorName = pro ? `Dr. ${pro.first_name} ${pro.last_name}` : 'Médecin';
-        const specialty = pro?.specialty || pro?.profession || 'Médecine générale';
+        const meds = r.medications || [];
+        return {
+          id: r.id,
+          date: dateStr,
+          doctor: pro ? `Dr. ${pro.first_name} ${pro.last_name}` : 'Médecin',
+          medications: Array.isArray(meds)
+            ? meds.map((m: any) => typeof m === 'string' ? m : `${m.drug || m.name || ''} — ${m.dosage || ''} ${m.frequency || ''}`.trim())
+            : [],
+          status: r.status || 'active',
+          notes: r.notes,
+        };
+      });
+      setPrescriptions(presc);
+    } catch {
+      // keep empty state
+    }
+  };
 
-        if (r.record_type === 'consultation') {
-          cons.push({
-            id: r.id,
-            date: dateStr,
-            doctor: doctorName,
-            specialty,
-            motif: r.content?.motif || r.title || 'Consultation',
-            diagnostic: r.content?.diagnostic || r.content?.evaluation || '—',
-            status: r.is_signed ? 'signed' : 'draft',
-          });
-        } else if (r.record_type === 'prescription') {
-          const meds = r.content?.medications || [];
-          presc.push({
-            id: r.id,
-            date: dateStr,
-            doctor: doctorName,
-            medications: Array.isArray(meds) ? meds.map((m: any) => typeof m === 'string' ? m : `${m.drug || ''} — ${m.dosage || ''} ${m.frequency || ''}`.trim()) : [r.title],
-            status: 'active',
-          });
-        } else if (r.record_type === 'lab_result') {
-          labs.push({
+  // ── Fetch lab results from dedicated lab_results table ──
+  const fetchLabResults = async (patientId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('lab_results')
+        .select(`
+          id, created_at, status, result_values, is_abnormal, notes,
+          lab_samples ( sample_type, collected_at ),
+          professionals ( first_name, last_name )
+        `)
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        // Fallback: try health_records for lab results
+        const { data: hrData } = await supabase
+          .from('health_records')
+          .select(`
+            id, title, content, created_at,
+            professionals ( first_name, last_name )
+          `)
+          .eq('patient_id', patientId)
+          .eq('record_type', 'lab_result')
+          .order('created_at', { ascending: false });
+
+        const labs: LabResult[] = (hrData || []).map((r: any) => {
+          const dateStr = r.created_at
+            ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '—';
+          return {
             id: r.id,
             date: dateStr,
             type: 'Biologie',
@@ -151,21 +227,39 @@ export default function DossierTabs() {
             lab: r.content?.lab || 'Laboratoire',
             status: 'available',
             alert: r.content?.alert || false,
-          });
-        }
-      });
+          };
+        });
+        setLabResults(labs);
+        return;
+      }
 
-      setConsultations(cons);
-      setPrescriptions(presc);
+      const labs: LabResult[] = (data || []).map((r: any) => {
+        const dateStr = r.created_at
+          ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '—';
+        const pro = r.professionals;
+        const values = r.result_values || [];
+        return {
+          id: r.id,
+          date: dateStr,
+          type: r.lab_samples?.sample_type || 'Biologie',
+          label: Array.isArray(values) && values.length > 0
+            ? values.map((v: any) => v.name || v.test_name || '').filter(Boolean).join(', ') || 'Résultat de laboratoire'
+            : 'Résultat de laboratoire',
+          lab: pro ? `Dr. ${pro.first_name} ${pro.last_name}` : 'Laboratoire',
+          status: r.status || 'available',
+          alert: r.is_abnormal || false,
+          values: Array.isArray(values) ? values : [],
+        };
+      });
       setLabResults(labs);
     } catch {
-      // Keep empty state
+      // keep empty state
     }
   };
 
   const fetchVaccinations = async (patientId: string) => {
     try {
-      // Try to get vaccinations from Supabase health_records (vaccination type)
       const { data } = await supabase
         .from('health_records')
         .select('id, title, content, created_at')
@@ -191,7 +285,6 @@ export default function DossierTabs() {
       // fall through to localStorage
     }
 
-    // Fallback: localStorage
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -231,13 +324,14 @@ export default function DossierTabs() {
         if (!patient) return;
         patientId = patient.id;
 
-        // Initial fetch
         await Promise.all([
-          fetchHealthRecords(patientId),
+          fetchConsultations(patientId),
+          fetchPrescriptions(patientId),
+          fetchLabResults(patientId),
           fetchVaccinations(patientId),
         ]);
 
-        // ── Realtime: health_records ──
+        // Realtime: health_records
         const hrChannel = supabase
           .channel(`dossier-health-records-${patientId}`)
           .on('postgres_changes', {
@@ -246,7 +340,7 @@ export default function DossierTabs() {
             table: 'health_records',
             filter: `patient_id=eq.${patientId}`,
           }, () => {
-            fetchHealthRecords(patientId!);
+            fetchConsultations(patientId!);
             fetchVaccinations(patientId!);
           })
           .subscribe((status) => {
@@ -254,20 +348,33 @@ export default function DossierTabs() {
             else if (status === 'CHANNEL_ERROR') setRealtimeStatus('error');
           });
 
-        // ── Realtime: appointments ──
-        const apptChannel = supabase
-          .channel(`dossier-appointments-${patientId}`)
+        // Realtime: prescriptions
+        const prescChannel = supabase
+          .channel(`dossier-prescriptions-${patientId}`)
           .on('postgres_changes', {
             event: '*',
             schema: 'public',
-            table: 'appointments',
+            table: 'prescriptions',
             filter: `patient_id=eq.${patientId}`,
           }, () => {
-            fetchHealthRecords(patientId!);
+            fetchPrescriptions(patientId!);
           })
           .subscribe();
 
-        channelsRef.current = [hrChannel, apptChannel];
+        // Realtime: lab_results
+        const labChannel = supabase
+          .channel(`dossier-lab-results-${patientId}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'lab_results',
+            filter: `patient_id=eq.${patientId}`,
+          }, () => {
+            fetchLabResults(patientId!);
+          })
+          .subscribe();
+
+        channelsRef.current = [hrChannel, prescChannel, labChannel];
         setRealtimeStatus('live');
       } catch {
         setRealtimeStatus('error');
@@ -284,7 +391,6 @@ export default function DossierTabs() {
     };
   }, []);
 
-  // Sync vaccinations from localStorage when tab changes (legacy support)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -352,7 +458,6 @@ export default function DossierTabs() {
         {activeTab === 'tab-resume' && (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-2 flex flex-col gap-5">
-              {/* Vitals chart */}
               <div className="card-base">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Évolution des constantes — 6 derniers mois</h3>
@@ -372,7 +477,6 @@ export default function DossierTabs() {
                 </div>
               </div>
 
-              {/* Recent consultations */}
               <div className="card-base">
                 <h3 className="text-sm font-bold mb-4" style={{ color: 'var(--shifa-dark)' }}>Consultations récentes</h3>
                 {loadingRecords ? (
@@ -402,24 +506,59 @@ export default function DossierTabs() {
                   </div>
                 )}
               </div>
+
+              {/* Recent lab results summary */}
+              <div className="card-base">
+                <h3 className="text-sm font-bold mb-4" style={{ color: 'var(--shifa-dark)' }}>Derniers résultats de laboratoire</h3>
+                {loadingRecords ? (
+                  <div className="flex items-center gap-2 py-4">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Chargement...</span>
+                  </div>
+                ) : labResults.length === 0 ? (
+                  <p className="text-sm py-4" style={{ color: 'var(--muted-foreground)' }}>Aucun résultat disponible.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {labResults.slice(0, 3).map((r) => (
+                      <div key={r.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: r.alert ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0, 102, 255, 0.08)' }}>
+                            <Icon name="BeakerIcon" size={14} style={{ color: r.alert ? 'var(--shifa-red)' : 'var(--shifa-blue)' } as any} className="" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{r.label}</p>
+                            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.lab} · {r.date}</p>
+                          </div>
+                        </div>
+                        {r.alert && <Icon name="ExclamationTriangleIcon" size={14} style={{ color: 'var(--shifa-red)' } as any} className="shrink-0" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Right panel */}
             <div className="flex flex-col gap-5">
-              {/* Current treatments */}
               <div className="card-base">
                 <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--shifa-dark)' }}>Traitements en cours</h3>
                 <div className="flex flex-col gap-2">
-                  {antecedents.traitements.map((t) => (
-                    <div key={`treat-${t}`} className="flex items-center gap-2.5 p-2.5 rounded-xl border" style={{ backgroundColor: 'rgba(0, 102, 255, 0.04)', borderColor: 'rgba(0, 102, 255, 0.15)' }}>
-                      <Icon name="BeakerIcon" size={14} style={{ color: 'var(--shifa-blue)' } as any} className="shrink-0" />
-                      <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{t}</span>
-                    </div>
-                  ))}
+                  {prescriptions.length > 0
+                    ? prescriptions.filter(p => p.status === 'active').slice(0, 3).flatMap(p => p.medications.slice(0, 2)).map((med, i) => (
+                      <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-xl border" style={{ backgroundColor: 'rgba(0, 102, 255, 0.04)', borderColor: 'rgba(0, 102, 255, 0.15)' }}>
+                        <Icon name="BeakerIcon" size={14} style={{ color: 'var(--shifa-blue)' } as any} className="shrink-0" />
+                        <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{med}</span>
+                      </div>
+                    ))
+                    : antecedents.traitements.map((t) => (
+                      <div key={`treat-${t}`} className="flex items-center gap-2.5 p-2.5 rounded-xl border" style={{ backgroundColor: 'rgba(0, 102, 255, 0.04)', borderColor: 'rgba(0, 102, 255, 0.15)' }}>
+                        <Icon name="BeakerIcon" size={14} style={{ color: 'var(--shifa-blue)' } as any} className="shrink-0" />
+                        <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{t}</span>
+                      </div>
+                    ))
+                  }
                 </div>
               </div>
 
-              {/* Allergies */}
               <div className="card-base">
                 <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--shifa-dark)' }}>Allergies</h3>
                 <div className="flex flex-col gap-2">
@@ -432,7 +571,6 @@ export default function DossierTabs() {
                 </div>
               </div>
 
-              {/* Vaccinations alert */}
               <div className="card-base">
                 <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--shifa-dark)' }}>Vaccinations à venir</h3>
                 {vaccinations.filter(v => v.status === 'due').map((v) => (
@@ -524,7 +662,7 @@ export default function DossierTabs() {
           </div>
         )}
 
-        {/* PRESCRIPTIONS */}
+        {/* PRESCRIPTIONS — live from prescriptions table */}
         {activeTab === 'tab-prescriptions' && (
           <div className="flex flex-col gap-3">
             {loadingRecords ? (
@@ -550,7 +688,7 @@ export default function DossierTabs() {
                       backgroundColor: p.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
                       color: p.status === 'active' ? 'var(--shifa-green)' : 'var(--muted-foreground)',
                     }}>
-                      {p.status === 'active' ? 'En cours' : 'Terminée'}
+                      {p.status === 'active' ? 'En cours' : p.status === 'draft' ? 'Brouillon' : 'Terminée'}
                     </span>
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -561,13 +699,16 @@ export default function DossierTabs() {
                       </div>
                     ))}
                   </div>
+                  {p.notes && (
+                    <p className="text-xs mt-2 italic" style={{ color: 'var(--muted-foreground)' }}>Note : {p.notes}</p>
+                  )}
                 </div>
               ))
             )}
           </div>
         )}
 
-        {/* RÉSULTATS */}
+        {/* RÉSULTATS — live from lab_results table */}
         {activeTab === 'tab-resultats' && (
           <div className="flex flex-col gap-3">
             {loadingRecords ? (
@@ -583,20 +724,53 @@ export default function DossierTabs() {
               </div>
             ) : (
               labResults.map((r) => (
-                <div key={r.id} className="card-base flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: r.alert ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0, 102, 255, 0.08)' }}>
-                      <Icon name="BeakerIcon" size={18} style={{ color: r.alert ? 'var(--shifa-red)' : 'var(--shifa-blue)' } as any} className="" />
+                <div key={r.id} className="card-base">
+                  <div className="flex items-center justify-between gap-4 mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: r.alert ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0, 102, 255, 0.08)' }}>
+                        <Icon name="BeakerIcon" size={18} style={{ color: r.alert ? 'var(--shifa-red)' : 'var(--shifa-blue)' } as any} className="" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{r.label}</p>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.lab} · {r.date}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{r.label}</p>
-                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.lab} · {r.date}</p>
+                    <div className="flex items-center gap-2">
+                      {r.alert && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--shifa-red)' }}>
+                          <Icon name="ExclamationTriangleIcon" size={12} />
+                          Anomalie
+                        </span>
+                      )}
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--shifa-green)' }}>
+                        {r.status === 'available' ? 'Disponible' : r.status}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {r.alert && <Icon name="ExclamationTriangleIcon" size={16} style={{ color: 'var(--shifa-red)' } as any} className="" />}
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--shifa-green)' }}>Disponible</span>
-                  </div>
+                  {r.values && r.values.length > 0 && (
+                    <div className="mt-2 border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr style={{ backgroundColor: 'var(--muted)' }}>
+                            <th className="text-left px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Paramètre</th>
+                            <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Valeur</th>
+                            <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Référence</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {r.values.map((v, i) => (
+                            <tr key={i} className="border-t" style={{ borderColor: 'var(--border)' }}>
+                              <td className="px-3 py-2" style={{ color: 'var(--foreground)' }}>{v.name}</td>
+                              <td className={`px-3 py-2 text-right font-medium ${v.is_abnormal ? 'text-red-600' : ''}`} style={{ color: v.is_abnormal ? 'var(--shifa-red)' : 'var(--foreground)' }}>
+                                {v.value} {v.unit}
+                              </td>
+                              <td className="px-3 py-2 text-right" style={{ color: 'var(--muted-foreground)' }}>{v.reference_range || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               ))
             )}

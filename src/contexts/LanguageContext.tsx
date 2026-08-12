@@ -30,6 +30,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLanguageState(lang);
     if (typeof window !== 'undefined') {
       localStorage.setItem('shifa_language', lang);
+      // Update html dir attribute for RTL support
+      document.documentElement.dir = isRTL(lang) ? 'rtl' : 'ltr';
+      document.documentElement.lang = lang;
     }
   }, []);
 
@@ -38,7 +41,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, rtl, dir }}>
-      <div dir={dir} lang={language} style={{ fontFamily: language === 'ar' ? "'Noto Sans Arabic', sans-serif" : language === 'zh' ? "'Noto Sans SC', sans-serif" : undefined }}>
+      <div
+        dir={dir}
+        lang={language}
+        style={{
+          fontFamily: language === 'ar' ? "'Noto Sans Arabic', 'Cairo', 'Amiri', Arial, sans-serif"
+            : language === 'zh' ? "'Noto Sans SC', sans-serif"
+            : undefined,
+        }}
+      >
         {children}
       </div>
     </LanguageContext.Provider>

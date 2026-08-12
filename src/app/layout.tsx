@@ -30,7 +30,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" className={`${inter.variable}`}>
+    <html lang="fr" dir="ltr" className={`${inter.variable}`}>
       <body className={inter.className}>
         <AuthProvider>
           <LanguageProvider>
