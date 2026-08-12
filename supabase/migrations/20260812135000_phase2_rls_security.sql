@@ -14,9 +14,11 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 AS $$
-  SELECT organization_id
-  FROM public.user_profiles
-  WHERE id = auth.uid()
+  SELECT po.organization_id
+  FROM public.professionals p
+  JOIN public.professional_organizations po ON po.professional_id = p.id
+  WHERE p.user_id = auth.uid()
+    AND po.is_primary = true
   LIMIT 1;
 $$;
 
@@ -26,7 +28,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 AS $$
-  SELECT role
+  SELECT role::TEXT
   FROM public.user_profiles
   WHERE id = auth.uid()
   LIMIT 1;
@@ -63,8 +65,12 @@ STABLE
 SECURITY DEFINER
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.user_profiles
-    WHERE id = auth.uid() AND organization_id = target_org_id
+    SELECT 1
+    FROM public.professionals p
+    JOIN public.professional_organizations po ON po.professional_id = p.id
+    WHERE p.user_id = auth.uid()
+      AND po.organization_id = target_org_id
+      AND po.invitation_status = 'accepted'
   );
 $$;
 
@@ -81,7 +87,7 @@ DROP POLICY IF EXISTS "health_records_delete" ON public.health_records;
 
 CREATE POLICY "health_records_select" ON public.health_records
   FOR SELECT USING (
-    auth.uid() = patient_id
+    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
     OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
     OR public.is_platform_admin()
   );
@@ -110,29 +116,29 @@ DROP POLICY IF EXISTS "appointments_delete" ON public.appointments;
 
 CREATE POLICY "appointments_select" ON public.appointments
   FOR SELECT USING (
-    auth.uid() = patient_id
-    OR auth.uid() = professional_id
+    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+    OR auth.uid() = (SELECT user_id FROM public.professionals WHERE id = professional_id LIMIT 1)
     OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
     OR public.is_platform_admin()
   );
 
 CREATE POLICY "appointments_insert" ON public.appointments
   FOR INSERT WITH CHECK (
-    auth.uid() = patient_id
+    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
     OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin', 'platform_admin'))
   );
 
 CREATE POLICY "appointments_update" ON public.appointments
   FOR UPDATE USING (
-    auth.uid() = patient_id
-    OR auth.uid() = professional_id
+    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+    OR auth.uid() = (SELECT user_id FROM public.professionals WHERE id = professional_id LIMIT 1)
     OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
     OR public.is_platform_admin()
   );
 
 CREATE POLICY "appointments_delete" ON public.appointments
   FOR DELETE USING (
-    auth.uid() = patient_id
+    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
     OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
     OR public.is_platform_admin()
   );
@@ -145,22 +151,22 @@ DROP POLICY IF EXISTS "prescriptions_update" ON public.prescriptions;
 
 CREATE POLICY "prescriptions_select" ON public.prescriptions
   FOR SELECT USING (
-    auth.uid() = patient_id
-    OR auth.uid() = prescriber_id
+    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+    OR auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
     OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
     OR public.is_platform_admin()
   );
 
 CREATE POLICY "prescriptions_insert" ON public.prescriptions
   FOR INSERT WITH CHECK (
-    auth.uid() = prescriber_id
+    auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
     AND public.belongs_to_org(organization_id)
     AND public.user_role() IN ('professional', 'platform_admin')
   );
 
 CREATE POLICY "prescriptions_update" ON public.prescriptions
   FOR UPDATE USING (
-    auth.uid() = prescriber_id
+    auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
     OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
     OR public.is_platform_admin()
   );
@@ -173,7 +179,7 @@ DROP POLICY IF EXISTS "lab_results_update" ON public.lab_results;
 
 CREATE POLICY "lab_results_select" ON public.lab_results
   FOR SELECT USING (
-    auth.uid() = patient_id
+    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
     OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
     OR public.is_platform_admin()
   );
@@ -201,8 +207,8 @@ BEGIN
     EXECUTE $policy$
       CREATE POLICY "consultations_select" ON public.consultations
         FOR SELECT USING (
-          auth.uid() = patient_id
-          OR auth.uid() = professional_id
+          auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+          OR auth.uid() = (SELECT user_id FROM public.professionals WHERE id = professional_id LIMIT 1)
           OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
           OR public.is_platform_admin()
         )
@@ -210,7 +216,7 @@ BEGIN
     EXECUTE $policy$
       CREATE POLICY "consultations_insert" ON public.consultations
         FOR INSERT WITH CHECK (
-          auth.uid() = professional_id
+          auth.uid() = (SELECT user_id FROM public.professionals WHERE id = professional_id LIMIT 1)
           AND public.belongs_to_org(organization_id)
           AND public.user_role() IN ('professional', 'platform_admin')
         )
@@ -218,7 +224,7 @@ BEGIN
     EXECUTE $policy$
       CREATE POLICY "consultations_update" ON public.consultations
         FOR UPDATE USING (
-          auth.uid() = professional_id
+          auth.uid() = (SELECT user_id FROM public.professionals WHERE id = professional_id LIMIT 1)
           OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
           OR public.is_platform_admin()
         )
@@ -237,7 +243,7 @@ BEGIN
     EXECUTE $policy$
       CREATE POLICY "dossier_patient_select" ON public.dossier_patient
         FOR SELECT USING (
-          auth.uid() = patient_id
+          auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
           OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
           OR public.is_platform_admin()
         )
@@ -269,7 +275,7 @@ BEGIN
     EXECUTE $policy$
       CREATE POLICY "transfers_select" ON public.transfers
         FOR SELECT USING (
-          auth.uid() = patient_id
+          auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
           OR public.belongs_to_org(from_organization_id)
           OR public.belongs_to_org(to_organization_id)
           OR public.is_platform_admin()
@@ -411,7 +417,7 @@ BEGIN
     EXECUTE $policy$
       CREATE POLICY "billing_select" ON public.billing
         FOR SELECT USING (
-          auth.uid() = patient_id
+          auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
           OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
           OR public.is_platform_admin()
         )
@@ -438,7 +444,7 @@ CREATE POLICY "user_profiles_select_own" ON public.user_profiles
   FOR SELECT USING (
     auth.uid() = id
     OR public.is_platform_admin()
-    OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
+    OR public.is_org_admin()
   );
 
 CREATE POLICY "user_profiles_update_own" ON public.user_profiles
@@ -476,7 +482,7 @@ DROP POLICY IF EXISTS "professionals_update_own" ON public.professionals;
 CREATE POLICY "professionals_select" ON public.professionals
   FOR SELECT USING (
     auth.uid() = user_id
-    OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
+    OR public.is_org_admin()
     OR public.is_platform_admin()
     -- Allow patients to see basic professional info for booking
     OR public.user_role() = 'patient'
@@ -485,6 +491,5 @@ CREATE POLICY "professionals_select" ON public.professionals
 CREATE POLICY "professionals_update_own" ON public.professionals
   FOR UPDATE USING (
     auth.uid() = user_id
-    OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
     OR public.is_platform_admin()
   );

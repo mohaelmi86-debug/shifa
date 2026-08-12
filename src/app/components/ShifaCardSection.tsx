@@ -101,7 +101,7 @@ export default function ShifaCardSection() {
                 </div>
                 <div className="w-16 h-16 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.95)' }}>
                   <div className="grid grid-cols-4 gap-0.5 p-1">
-                    {Array.from({ length: 16 }).map((_, i) => (
+                    {Array.from({ length: 16 })?.map((_, i) => (
                       <div
                         key={i}
                         className="w-2 h-2 rounded-sm"
