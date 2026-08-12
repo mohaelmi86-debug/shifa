@@ -671,6 +671,6 @@ CREATE POLICY "transfer_notif_update" ON public.transfer_notifications
   FOR UPDATE USING (auth.uid() = recipient_user_id OR public.is_platform_admin());
 
 -- Enable realtime for live module interactions screen
-ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS public.platform_events;
-ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS public.patient_transfers;
-ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS public.transfer_notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.platform_events;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.patient_transfers;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.transfer_notifications;
