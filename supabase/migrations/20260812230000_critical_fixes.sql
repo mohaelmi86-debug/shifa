@@ -17,7 +17,7 @@
 -- and drop the old parameterized version if it exists.
 -- ============================================================
 
-DROP FUNCTION IF EXISTS public.is_org_admin(UUID);
+DROP FUNCTION IF EXISTS public.is_org_admin(UUID) CASCADE;
 
 CREATE OR REPLACE FUNCTION public.is_org_admin()
 RETURNS BOOLEAN
