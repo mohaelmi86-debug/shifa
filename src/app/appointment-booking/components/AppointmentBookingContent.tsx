@@ -40,6 +40,7 @@ interface ExistingAppointment {
   type: 'in_person' | 'teleconsultation';
   status: 'scheduled' | 'cancelled' | 'completed' | 'rescheduled';
   scheduledAt: Date;
+  proId?: string;
 }
 
 // Calendar availability per date
@@ -61,8 +62,16 @@ interface CalendarSlot {
   fee: string;
 }
 
+// Reschedule slot (simple)
+interface RescheduleSlot {
+  id: string;
+  time: string;
+  type: 'in_person' | 'teleconsultation';
+}
+
 type BookingStep = 'search' | 'profile' | 'slots' | 'confirm' | 'success';
 type MainView = 'book' | 'my-appointments' | 'calendar';
+type RescheduleStep = 'calendar' | 'slots' | 'confirm';
 
 // ============================================================
 // Calendar helpers
@@ -102,6 +111,28 @@ function generate15MinSlots(dateStr: string, proId: string, proName: string, pro
   return slots;
 }
 
+// Generate reschedule slots for a specific pro/date (15-min, deterministic)
+function generateRescheduleSlots(dateStr: string, proId: string, hasVisio: boolean): RescheduleSlot[] {
+  const slots: RescheduleSlot[] = [];
+  // Use date + proId hash to vary availability per pro
+  const seed = proId.charCodeAt(0) || 1;
+  for (let h = 8; h < 18; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      // Deterministic "taken" slots vary by pro
+      const taken = (h * 4 + m / 15 + seed) % 5 === 0;
+      if (!taken) {
+        slots.push({
+          id: `reschedule-${dateStr}-${proId}-${time}`,
+          time,
+          type: hasVisio && h % 4 === 0 ? 'teleconsultation' : 'in_person',
+        });
+      }
+    }
+  }
+  return slots;
+}
+
 // ============================================================
 // Mock existing appointments
 // ============================================================
@@ -115,6 +146,7 @@ const mockAppointments: ExistingAppointment[] = [
     type: 'in_person',
     status: 'scheduled',
     scheduledAt: new Date('2026-08-20T10:00:00'),
+    proId: 'mock-1',
   },
   {
     id: 'appt-002',
@@ -125,6 +157,7 @@ const mockAppointments: ExistingAppointment[] = [
     type: 'teleconsultation',
     status: 'scheduled',
     scheduledAt: new Date('2026-08-25T14:30:00'),
+    proId: 'mock-2',
   },
   {
     id: 'appt-003',
@@ -135,6 +168,7 @@ const mockAppointments: ExistingAppointment[] = [
     type: 'in_person',
     status: 'completed',
     scheduledAt: new Date('2026-07-15T09:00:00'),
+    proId: 'mock-3',
   },
 ];
 
@@ -184,8 +218,16 @@ export default function AppointmentBookingContent() {
   const [manageReason, setManageReason] = useState('');
   const [manageReasonError, setManageReasonError] = useState('');
   const [manageSuccess, setManageSuccess] = useState('');
-  const [newApptDate, setNewApptDate] = useState('');
-  const [newApptTime, setNewApptTime] = useState('');
+
+  // ── Doctolib-style reschedule state ──
+  const [rescheduleStep, setRescheduleStep] = useState<RescheduleStep>('calendar');
+  const [rescheduleCalYear, setRescheduleCalYear] = useState(new Date().getFullYear());
+  const [rescheduleCalMonth, setRescheduleCalMonth] = useState(new Date().getMonth());
+  const [rescheduleSelectedDate, setRescheduleSelectedDate] = useState<string>('');
+  const [rescheduleAvailability, setRescheduleAvailability] = useState<Record<string, RescheduleSlot[]>>({});
+  const [rescheduleLoadingSlots, setRescheduleLoadingSlots] = useState(false);
+  const [rescheduleSelectedSlot, setRescheduleSelectedSlot] = useState<RescheduleSlot | null>(null);
+  const [rescheduleTypeFilter, setRescheduleTypeFilter] = useState<'all' | 'in_person' | 'teleconsultation'>('all');
 
   // Calendar state
   const now = new Date();
@@ -298,6 +340,73 @@ export default function AppointmentBookingContent() {
       setCalAvailability(avail);
     }
   }, [mainView, calYear, calMonth, professionals, buildCalendarAvailability]);
+
+  // Build reschedule availability for a specific professional
+  const buildRescheduleAvailability = useCallback(async (appt: ExistingAppointment, year: number, month: number) => {
+    setRescheduleLoadingSlots(true);
+    const availability: Record<string, RescheduleSlot[]> = {};
+    const daysInMonth = getDaysInMonth(year, month);
+    const proId = appt.proId || 'mock-1';
+    const hasVisio = appt.type === 'teleconsultation';
+
+    try {
+      // Try to load from Supabase first
+      const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+      const { data } = await supabase
+        .from('availability_slots')
+        .select('id, slot_date, start_time, is_available')
+        .eq('professional_id', proId)
+        .eq('is_available', true)
+        .gte('slot_date', monthStart)
+        .lte('slot_date', monthEnd)
+        .neq('slot_date', appt.date) // exclude current appointment date
+        .order('slot_date')
+        .order('start_time');
+
+      if (data && data.length > 0) {
+        data.forEach(slot => {
+          if (!availability[slot.slot_date]) availability[slot.slot_date] = [];
+          availability[slot.slot_date].push({
+            id: slot.id,
+            time: slot.start_time?.slice(0, 5) || '',
+            type: 'in_person',
+          });
+        });
+      } else {
+        // Fallback: generate deterministic slots
+        for (let d = 1; d <= daysInMonth; d++) {
+          let m = String(month + 1).padStart(2, '0');
+          const day = String(d).padStart(2, '0');
+          const dateStr = `${year}-${m}-${day}`;
+          const dayOfWeek = new Date(dateStr).getDay();
+          if (dayOfWeek === 0) continue; // no Sundays
+          if (dateStr <= todayStr) continue; // no past dates
+          if (dateStr === appt.date) continue; // exclude current date
+          const slots = generateRescheduleSlots(dateStr, proId, hasVisio);
+          if (slots.length > 0) availability[dateStr] = slots;
+        }
+      }
+    } catch {
+      // Fallback on error
+      for (let d = 1; d <= daysInMonth; d++) {
+        let m = String(month + 1).padStart(2, '0');
+        const day = String(d).padStart(2, '0');
+        const dateStr = `${year}-${m}-${day}`;
+        const dayOfWeek = new Date(dateStr).getDay();
+        if (dayOfWeek === 0) continue;
+        if (dateStr <= todayStr) continue;
+        if (dateStr === appt.date) continue;
+        const slots = generateRescheduleSlots(dateStr, proId, hasVisio);
+        if (slots.length > 0) availability[dateStr] = slots;
+      }
+    }
+
+    setRescheduleAvailability(availability);
+    setRescheduleLoadingSlots(false);
+    return availability;
+  }, [supabase, todayStr]);
 
   // Load availability slots for selected professional (booking flow)
   const loadSlots = async (proId: string) => {
@@ -498,8 +607,34 @@ export default function AppointmentBookingContent() {
     setManageReason('');
     setManageReasonError('');
     setManageSuccess('');
-    setNewApptDate('');
-    setNewApptTime('');
+    // Reset reschedule state
+    setRescheduleStep('calendar');
+    setRescheduleSelectedDate('');
+    setRescheduleSelectedSlot(null);
+    setRescheduleTypeFilter('all');
+    let yr = now.getFullYear();
+    let mo = now.getMonth();
+    setRescheduleCalYear(yr);
+    setRescheduleCalMonth(mo);
+    if (action === 'modify') {
+      buildRescheduleAvailability(appt, yr, mo);
+    }
+  };
+
+  const handleRescheduleMonthChange = (dir: 'prev' | 'next') => {
+    if (!managingAppt) return;
+    let yr = rescheduleCalYear;
+    let mo = rescheduleCalMonth;
+    if (dir === 'prev') {
+      if (mo === 0) { mo = 11; yr--; } else mo--;
+    } else {
+      if (mo === 11) { mo = 0; yr++; } else mo++;
+    }
+    setRescheduleCalYear(yr);
+    setRescheduleCalMonth(mo);
+    setRescheduleSelectedDate('');
+    setRescheduleSelectedSlot(null);
+    buildRescheduleAvailability(managingAppt, yr, mo);
   };
 
   const handleConfirmManage = () => {
@@ -508,8 +643,8 @@ export default function AppointmentBookingContent() {
       setManageReasonError('Veuillez indiquer le motif de cette modification.');
       return;
     }
-    if (manageAction === 'modify' && (!newApptDate || !newApptTime)) {
-      setManageReasonError('Veuillez sélectionner une nouvelle date et heure.');
+    if (manageAction === 'modify' && (!rescheduleSelectedSlot || !rescheduleSelectedDate)) {
+      setManageReasonError('Veuillez sélectionner un nouveau créneau.');
       return;
     }
     setManageReasonError('');
@@ -519,14 +654,15 @@ export default function AppointmentBookingContent() {
         a.id === managingAppt.id ? { ...a, status: 'cancelled' as const } : a
       ));
       setManageSuccess('Rendez-vous annulé avec succès.');
-    } else {
+    } else if (rescheduleSelectedSlot && rescheduleSelectedDate) {
       setAppointments(prev => prev.map(a =>
         a.id === managingAppt.id ? {
           ...a,
-          date: newApptDate,
-          time: newApptTime,
+          date: rescheduleSelectedDate,
+          time: rescheduleSelectedSlot.time,
+          type: rescheduleSelectedSlot.type,
           status: 'rescheduled' as const,
-          scheduledAt: new Date(`${newApptDate}T${newApptTime}:00`),
+          scheduledAt: new Date(`${rescheduleSelectedDate}T${rescheduleSelectedSlot.time}:00`),
         } : a
       ));
       setManageSuccess('Rendez-vous déplacé avec succès.');
@@ -563,12 +699,27 @@ export default function AppointmentBookingContent() {
     return `${calYear}-${m}-${d}`;
   };
 
+  const rescheduleDayStr = (day: number) => {
+    let m = String(rescheduleCalMonth + 1).padStart(2, '0');
+    let d = String(day).padStart(2, '0');
+    return `${rescheduleCalYear}-${m}-${d}`;
+  };
+
   const selectedDayAvailability = calAvailability[calSelectedDate];
   const selectedDayAppts = appointments.filter(a => a.date === calSelectedDate && (a.status === 'scheduled' || a.status === 'rescheduled'));
 
   const filteredCalSlots = (selectedDayAvailability?.slots || []).filter(s =>
     calFilterVisio === 'all' ? true : s.type === calFilterVisio
   );
+
+  const rescheduleDaysInMonth = getDaysInMonth(rescheduleCalYear, rescheduleCalMonth);
+  const rescheduleFirstDay = getFirstDayOfMonth(rescheduleCalYear, rescheduleCalMonth);
+
+  const selectedRescheduleSlots = rescheduleSelectedDate
+    ? (rescheduleAvailability[rescheduleSelectedDate] || []).filter(s =>
+        rescheduleTypeFilter === 'all' ? true : s.type === rescheduleTypeFilter
+      )
+    : [];
 
   const handleCalendarBooking = async () => {
     if (!calBookingSlot) return;
@@ -1010,97 +1161,378 @@ export default function AppointmentBookingContent() {
             <h2 className="font-bold text-lg" style={{ color: 'var(--shifa-dark)' }}>Mes rendez-vous</h2>
           </div>
 
-          {/* Manage modal */}
+          {/* ── Doctolib-style Reschedule / Cancel Modal ── */}
           {managingAppt && manageAction && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-              <div className="w-full max-w-md rounded-2xl p-6 shadow-xl" style={{ backgroundColor: 'var(--card)' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold" style={{ color: 'var(--foreground)' }}>
-                    {manageAction === 'cancel' ? 'Annuler le rendez-vous' : 'Déplacer le rendez-vous'}
-                  </h3>
-                  <button onClick={() => { setManagingAppt(null); setManageAction(null); }} className="p-1.5 rounded-lg hover:bg-muted">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+              <div className="w-full max-w-lg rounded-2xl shadow-xl overflow-hidden" style={{ backgroundColor: 'var(--card)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                {/* Modal header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: manageAction === 'cancel' ? 'rgba(239,68,68,0.1)' : 'rgba(0,102,255,0.08)' }}>
+                      <Icon name={manageAction === 'cancel' ? 'XCircleIcon' : 'ArrowPathIcon'} size={16} style={{ color: manageAction === 'cancel' ? '#ef4444' : 'var(--shifa-blue)' } as any} className="" />
+                    </div>
+                    <h3 className="font-bold text-sm" style={{ color: 'var(--foreground)' }}>
+                      {manageAction === 'cancel' ? 'Annuler le rendez-vous' : 'Déplacer le rendez-vous'}
+                    </h3>
+                  </div>
+                  <button onClick={() => { setManagingAppt(null); setManageAction(null); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
                     <Icon name="XMarkIcon" size={18} className="text-muted-foreground" />
                   </button>
                 </div>
 
-                {manageSuccess ? (
-                  <div className="flex items-center gap-3 p-4 rounded-xl" style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)' }}>
-                    <Icon name="CheckCircleIcon" size={20} style={{ color: 'var(--shifa-green)' } as any} className="" />
-                    <p className="text-sm font-semibold" style={{ color: 'var(--shifa-green)' }}>{manageSuccess}</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="p-3 rounded-xl mb-4" style={{ backgroundColor: 'var(--muted)' }}>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{managingAppt.proName}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{managingAppt.date} à {managingAppt.time}</p>
+                <div className="overflow-y-auto flex-1 px-5 py-4">
+                  {manageSuccess ? (
+                    <div className="flex flex-col items-center justify-center py-8 gap-3">
+                      <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(16,185,129,0.1)' }}>
+                        <Icon name="CheckCircleIcon" size={32} style={{ color: '#10b981' } as any} className="" />
+                      </div>
+                      <p className="font-bold text-base" style={{ color: 'var(--foreground)' }}>{manageSuccess}</p>
                     </div>
-
-                    {/* 48h warning */}
-                    <div className="flex items-start gap-2 p-3 rounded-xl mb-4" style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                      <Icon name="ExclamationTriangleIcon" size={16} style={{ color: '#f59e0b', flexShrink: 0 } as any} className="mt-0.5" />
-                      <p className="text-xs" style={{ color: '#92400e' }}>
-                        <strong>Règle des 48h :</strong> Toute annulation ou modification doit être effectuée au moins 48h avant le rendez-vous. Le non-respect de cette règle peut entraîner des sanctions.
-                      </p>
-                    </div>
-
-                    {manageAction === 'modify' && (
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Nouvelle date</label>
-                          <input
-                            type="date"
-                            className="input-field w-full text-sm"
-                            value={newApptDate}
-                            onChange={e => setNewApptDate(e.target.value)}
-                          />
+                  ) : (
+                    <>
+                      {/* Current appointment summary */}
+                      <div className="flex items-center gap-3 p-3 rounded-xl mb-4" style={{ backgroundColor: 'var(--muted)' }}>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: managingAppt.type === 'teleconsultation' ? 'rgba(139,92,246,0.12)' : 'rgba(0,102,255,0.1)' }}>
+                          <Icon name={managingAppt.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'} size={16} style={{ color: managingAppt.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' } as any} className="" />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Nouvelle heure</label>
-                          <input
-                            type="time"
-                            className="input-field w-full text-sm"
-                            value={newApptTime}
-                            onChange={e => setNewApptTime(e.target.value)}
-                          />
+                          <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{managingAppt.proName}</p>
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                            {new Date(managingAppt.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à {managingAppt.time}
+                          </p>
                         </div>
                       </div>
-                    )}
 
-                    <div className="mb-4">
-                      <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
-                        Motif <span style={{ color: 'var(--shifa-red)' }}>*</span>
-                        <span className="font-normal text-xs ml-1" style={{ color: 'var(--muted-foreground)' }}>(obligatoire)</span>
-                      </label>
-                      <textarea
-                        className="input-field w-full resize-none"
-                        rows={3}
-                        placeholder={manageAction === 'cancel' ? 'Expliquez pourquoi vous annulez ce rendez-vous...' : 'Expliquez pourquoi vous souhaitez déplacer ce rendez-vous...'}
-                        value={manageReason}
-                        onChange={e => setManageReason(e.target.value)}
-                      />
-                      {manageReasonError && (
-                        <p className="mt-1 text-xs font-medium" style={{ color: 'var(--shifa-red)' }}>{manageReasonError}</p>
+                      {/* 48h warning */}
+                      <div className="flex items-start gap-2 p-3 rounded-xl mb-4" style={{ backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                        <Icon name="ExclamationTriangleIcon" size={15} style={{ color: '#f59e0b', flexShrink: 0 } as any} className="mt-0.5" />
+                        <p className="text-xs" style={{ color: '#92400e' }}>
+                          <strong>Règle des 48h :</strong> Toute modification doit être effectuée au moins 48h avant le rendez-vous.
+                        </p>
+                      </div>
+
+                      {/* ── MODIFY: Doctolib-style calendar ── */}
+                      {manageAction === 'modify' && (
+                        <div className="mb-4">
+                          {/* Step indicator */}
+                          <div className="flex items-center gap-2 mb-4">
+                            {(['calendar', 'slots', 'confirm'] as RescheduleStep[]).map((s, i) => {
+                              const steps: RescheduleStep[] = ['calendar', 'slots', 'confirm'];
+                              const currentIdx = steps.indexOf(rescheduleStep);
+                              const stepIdx = steps.indexOf(s);
+                              const isDone = stepIdx < currentIdx;
+                              const isCurrent = s === rescheduleStep;
+                              const labels = ['Choisir une date', 'Choisir un créneau', 'Confirmer'];
+                              return (
+                                <React.Fragment key={s}>
+                                  <div className="flex items-center gap-1.5">
+                                    <div
+                                      className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                                      style={{
+                                        backgroundColor: isDone ? '#10b981' : isCurrent ? 'var(--shifa-blue)' : 'var(--muted)',
+                                        color: isDone || isCurrent ? 'white' : 'var(--muted-foreground)',
+                                      }}
+                                    >
+                                      {isDone ? <Icon name="CheckIcon" size={10} /> : i + 1}
+                                    </div>
+                                    <span className="text-xs font-medium hidden sm:block" style={{ color: isCurrent ? 'var(--shifa-blue)' : 'var(--muted-foreground)' }}>
+                                      {labels[i]}
+                                    </span>
+                                  </div>
+                                  {i < 2 && <div className="flex-1 h-px" style={{ backgroundColor: isDone ? '#10b981' : 'var(--border)' }} />}
+                                </React.Fragment>
+                              );
+                            })}
+                          </div>
+
+                          {/* STEP 1: Mini calendar */}
+                          {rescheduleStep === 'calendar' && (
+                            <div>
+                              <p className="text-xs font-semibold mb-3" style={{ color: 'var(--muted-foreground)' }}>
+                                Sélectionnez une nouvelle date pour <strong style={{ color: 'var(--foreground)' }}>{managingAppt.proName}</strong>
+                              </p>
+
+                              {/* Month nav */}
+                              <div className="flex items-center justify-between mb-3">
+                                <button
+                                  onClick={() => handleRescheduleMonthChange('prev')}
+                                  disabled={rescheduleCalYear === now.getFullYear() && rescheduleCalMonth === now.getMonth()}
+                                  className="p-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-30"
+                                >
+                                  <Icon name="ChevronLeftIcon" size={15} className="text-muted-foreground" />
+                                </button>
+                                <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>
+                                  {MONTH_NAMES_FR[rescheduleCalMonth]} {rescheduleCalYear}
+                                </span>
+                                <button
+                                  onClick={() => handleRescheduleMonthChange('next')}
+                                  className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                                >
+                                  <Icon name="ChevronRightIcon" size={15} className="text-muted-foreground" />
+                                </button>
+                              </div>
+
+                              {/* Day headers */}
+                              <div className="grid grid-cols-7 mb-1">
+                                {DAY_NAMES_FR.map(d => (
+                                  <div key={d} className="text-center text-xs font-semibold py-0.5" style={{ color: 'var(--muted-foreground)' }}>{d}</div>
+                                ))}
+                              </div>
+
+                              {/* Calendar grid */}
+                              {rescheduleLoadingSlots ? (
+                                <div className="flex items-center justify-center py-8">
+                                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                  <span className="ml-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>Chargement des disponibilités...</span>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-7 gap-0.5">
+                                  {Array.from({ length: rescheduleFirstDay }).map((_, i) => (
+                                    <div key={`re-empty-${i}`} />
+                                  ))}
+                                  {Array.from({ length: rescheduleDaysInMonth }).map((_, i) => {
+                                    const day = i + 1;
+                                    const dayStr = rescheduleDayStr(day);
+                                    const isPast = dayStr <= todayStr;
+                                    const isCurrent = dayStr === managingAppt.date;
+                                    const isSelected = dayStr === rescheduleSelectedDate;
+                                    const hasSlots = !isPast && !isCurrent && (rescheduleAvailability[dayStr]?.length || 0) > 0;
+                                    const slotCount = rescheduleAvailability[dayStr]?.length || 0;
+                                    const hasVisioSlots = (rescheduleAvailability[dayStr] || []).some(s => s.type === 'teleconsultation');
+
+                                    return (
+                                      <button
+                                        key={day}
+                                        onClick={() => {
+                                          if (hasSlots) {
+                                            setRescheduleSelectedDate(dayStr);
+                                            setRescheduleSelectedSlot(null);
+                                            setRescheduleStep('slots');
+                                          }
+                                        }}
+                                        disabled={!hasSlots}
+                                        title={hasSlots ? `${slotCount} créneau${slotCount > 1 ? 'x' : ''} disponible${slotCount > 1 ? 's' : ''}` : isCurrent ? 'RDV actuel' : ''}
+                                        className="relative flex flex-col items-center justify-center rounded-lg text-xs transition-all"
+                                        style={{
+                                          minHeight: '40px',
+                                          backgroundColor: isSelected
+                                            ? 'var(--shifa-blue)'
+                                            : isCurrent
+                                            ? 'rgba(245,158,11,0.12)'
+                                            : hasSlots
+                                            ? 'rgba(16,185,129,0.06)'
+                                            : 'transparent',
+                                          color: isSelected ? 'white' : isPast || (!hasSlots && !isCurrent) ? 'var(--muted-foreground)' : 'var(--foreground)',
+                                          border: isSelected
+                                            ? '2px solid var(--shifa-blue)'
+                                            : isCurrent
+                                            ? '1.5px solid rgba(245,158,11,0.5)'
+                                            : hasSlots
+                                            ? '1px solid rgba(16,185,129,0.35)'
+                                            : '1px solid transparent',
+                                          opacity: isPast || (!hasSlots && !isCurrent) ? 0.35 : 1,
+                                          cursor: hasSlots ? 'pointer' : 'not-allowed',
+                                        }}
+                                      >
+                                        <span className="font-semibold leading-none">{day}</span>
+                                        {/* Availability dots */}
+                                        {hasSlots && !isSelected && (
+                                          <div className="flex gap-0.5 mt-0.5">
+                                            <div className="w-1 h-1 rounded-full" style={{ backgroundColor: '#10b981' }} />
+                                            {hasVisioSlots && <div className="w-1 h-1 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />}
+                                          </div>
+                                        )}
+                                        {isCurrent && (
+                                          <div className="w-1 h-1 rounded-full mt-0.5" style={{ backgroundColor: '#f59e0b' }} />
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Legend */}
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#10b981' }} />
+                                  <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Disponible</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
+                                  <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Visio dispo</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
+                                  <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>RDV actuel</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* STEP 2: Time slot picker */}
+                          {rescheduleStep === 'slots' && rescheduleSelectedDate && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <button
+                                  onClick={() => { setRescheduleStep('calendar'); setRescheduleSelectedSlot(null); }}
+                                  className="p-1 rounded-lg hover:bg-muted transition-colors"
+                                >
+                                  <Icon name="ArrowLeftIcon" size={14} className="text-muted-foreground" />
+                                </button>
+                                <div>
+                                  <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>
+                                    {new Date(rescheduleSelectedDate + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                  </p>
+                                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                                    {(rescheduleAvailability[rescheduleSelectedDate] || []).length} créneau{(rescheduleAvailability[rescheduleSelectedDate] || []).length > 1 ? 'x' : ''} disponible{(rescheduleAvailability[rescheduleSelectedDate] || []).length > 1 ? 's' : ''}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Type filter */}
+                              <div className="flex gap-1 p-1 rounded-lg mb-3" style={{ backgroundColor: 'var(--muted)' }}>
+                                {[
+                                  { key: 'all', label: 'Tous' },
+                                  { key: 'in_person', label: 'Présentiel' },
+                                  { key: 'teleconsultation', label: 'Visio' },
+                                ].map(f => (
+                                  <button
+                                    key={f.key}
+                                    onClick={() => setRescheduleTypeFilter(f.key as any)}
+                                    className="flex-1 py-1 rounded-md text-xs font-semibold transition-all"
+                                    style={{
+                                      backgroundColor: rescheduleTypeFilter === f.key ? 'var(--card)' : 'transparent',
+                                      color: rescheduleTypeFilter === f.key ? 'var(--shifa-blue)' : 'var(--muted-foreground)',
+                                    }}
+                                  >
+                                    {f.label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {selectedRescheduleSlots.length === 0 ? (
+                                <div className="text-center py-6">
+                                  <Icon name="CalendarDaysIcon" size={28} className="text-muted-foreground mx-auto mb-2" />
+                                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Aucun créneau {rescheduleTypeFilter !== 'all' ? (rescheduleTypeFilter === 'teleconsultation' ? 'visio' : 'présentiel') : ''} ce jour</p>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                                  {selectedRescheduleSlots.map(slot => (
+                                    <button
+                                      key={slot.id}
+                                      onClick={() => {
+                                        setRescheduleSelectedSlot(slot);
+                                        setRescheduleStep('confirm');
+                                      }}
+                                      className="flex flex-col items-center justify-center py-2.5 px-1 rounded-xl border text-xs font-semibold transition-all hover:shadow-sm"
+                                      style={{
+                                        backgroundColor: slot.type === 'teleconsultation' ? 'rgba(139,92,246,0.05)' : 'rgba(0,102,255,0.04)',
+                                        borderColor: slot.type === 'teleconsultation' ? 'rgba(139,92,246,0.3)' : 'rgba(0,102,255,0.2)',
+                                        color: slot.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)',
+                                      }}
+                                    >
+                                      <span className="font-bold">{slot.time}</span>
+                                      <span className="text-xs mt-0.5 opacity-70">
+                                        {slot.type === 'teleconsultation' ? '📹' : '🏥'}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* STEP 3: Confirm new slot */}
+                          {rescheduleStep === 'confirm' && rescheduleSelectedSlot && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <button
+                                  onClick={() => { setRescheduleStep('slots'); setRescheduleSelectedSlot(null); }}
+                                  className="p-1 rounded-lg hover:bg-muted transition-colors"
+                                >
+                                  <Icon name="ArrowLeftIcon" size={14} className="text-muted-foreground" />
+                                </button>
+                                <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Récapitulatif du déplacement</p>
+                              </div>
+
+                              {/* Before → After */}
+                              <div className="rounded-xl p-3 mb-3" style={{ backgroundColor: 'var(--muted)' }}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="flex-1 p-2 rounded-lg text-center" style={{ backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                    <p className="text-xs font-semibold" style={{ color: '#ef4444' }}>Avant</p>
+                                    <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--foreground)' }}>
+                                      {new Date(managingAppt.date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                    </p>
+                                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{managingAppt.time}</p>
+                                  </div>
+                                  <Icon name="ArrowRightIcon" size={16} className="text-muted-foreground shrink-0" />
+                                  <div className="flex-1 p-2 rounded-lg text-center" style={{ backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                                    <p className="text-xs font-semibold" style={{ color: '#10b981' }}>Après</p>
+                                    <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--foreground)' }}>
+                                      {new Date(rescheduleSelectedDate + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                    </p>
+                                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{rescheduleSelectedSlot.time}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-center gap-1.5 mt-1">
+                                  <Icon
+                                    name={rescheduleSelectedSlot.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'}
+                                    size={12}
+                                    style={{ color: rescheduleSelectedSlot.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' } as any}
+                                    className=""
+                                  />
+                                  <span className="text-xs" style={{ color: rescheduleSelectedSlot.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' }}>
+                                    {rescheduleSelectedSlot.type === 'teleconsultation' ? 'Téléconsultation (Visio)' : 'Consultation en présentiel'} · 15 min
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
-                    </div>
 
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => { setManagingAppt(null); setManageAction(null); }}
-                        className="flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all hover:bg-muted"
-                        style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                      >
-                        Retour
-                      </button>
-                      <button
-                        onClick={handleConfirmManage}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                        style={{ backgroundColor: manageAction === 'cancel' ? '#ef4444' : 'var(--shifa-blue)' }}
-                      >
-                        {manageAction === 'cancel' ? 'Confirmer l\'annulation' : 'Confirmer le déplacement'}
-                      </button>
-                    </div>
-                  </>
-                )}
+                      {/* Reason field (always visible for both cancel and modify) */}
+                      {(manageAction === 'cancel' || rescheduleStep === 'confirm') && (
+                        <div className="mb-4">
+                          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+                            Motif <span style={{ color: '#ef4444' }}>*</span>
+                            <span className="font-normal text-xs ml-1" style={{ color: 'var(--muted-foreground)' }}>(obligatoire)</span>
+                          </label>
+                          <textarea
+                            className="input-field w-full resize-none"
+                            rows={3}
+                            placeholder={manageAction === 'cancel' ? 'Expliquez pourquoi vous annulez ce rendez-vous...' : 'Expliquez pourquoi vous souhaitez déplacer ce rendez-vous...'}
+                            value={manageReason}
+                            onChange={e => setManageReason(e.target.value)}
+                          />
+                          {manageReasonError && (
+                            <p className="mt-1 text-xs font-medium" style={{ color: '#ef4444' }}>{manageReasonError}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action buttons */}
+                      {(manageAction === 'cancel' || rescheduleStep === 'confirm') && (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => { setManagingAppt(null); setManageAction(null); }}
+                            className="flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all hover:bg-muted"
+                            style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                          >
+                            Retour
+                          </button>
+                          <button
+                            onClick={handleConfirmManage}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                            style={{ backgroundColor: manageAction === 'cancel' ? '#ef4444' : 'var(--shifa-blue)' }}
+                          >
+                            {manageAction === 'cancel' ? "Confirmer l'annulation" : 'Confirmer le déplacement'}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
