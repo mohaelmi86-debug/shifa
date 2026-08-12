@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { createClient } from '@/lib/supabase/client';
 
@@ -42,6 +42,25 @@ interface ExistingAppointment {
   scheduledAt: Date;
 }
 
+// Calendar availability per date
+interface DayAvailability {
+  hasSlots: boolean;
+  slotCount: number;
+  hasVisio: boolean;
+  slots: CalendarSlot[];
+}
+
+interface CalendarSlot {
+  id: string;
+  time: string;
+  proName: string;
+  proId: string;
+  proAvatar: string;
+  type: 'in_person' | 'teleconsultation';
+  specialty: string;
+  fee: string;
+}
+
 type BookingStep = 'search' | 'profile' | 'slots' | 'confirm' | 'success';
 type MainView = 'book' | 'my-appointments' | 'calendar';
 
@@ -57,6 +76,31 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 const MONTH_NAMES_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const DAY_NAMES_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+// Generate 15-min slots for a day (08:00 – 18:00)
+function generate15MinSlots(dateStr: string, proId: string, proName: string, proAvatar: string, specialty: string, hasVisio: boolean): CalendarSlot[] {
+  const slots: CalendarSlot[] = [];
+  for (let h = 8; h < 18; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      // Simulate some slots as taken (deterministic based on time)
+      const taken = (h + m) % 7 === 0;
+      if (!taken) {
+        slots.push({
+          id: `${dateStr}-${proId}-${time}`,
+          time,
+          proName,
+          proId,
+          proAvatar,
+          type: hasVisio && (h % 3 === 0) ? 'teleconsultation' : 'in_person',
+          specialty,
+          fee: '15 000 FCFA',
+        });
+      }
+    }
+  }
+  return slots;
+}
 
 // ============================================================
 // Mock existing appointments
@@ -126,8 +170,16 @@ export default function AppointmentBookingContent() {
 
   // Calendar state
   const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
   const [calYear, setCalYear] = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth());
+  const [calSelectedDate, setCalSelectedDate] = useState<string>(todayStr);
+  const [calAvailability, setCalAvailability] = useState<Record<string, DayAvailability>>({});
+  const [calBookingSlot, setCalBookingSlot] = useState<CalendarSlot | null>(null);
+  const [calBookingReason, setCalBookingReason] = useState('');
+  const [calBookingSuccess, setCalBookingSuccess] = useState('');
+  const [calBookingLoading, setCalBookingLoading] = useState(false);
+  const [calFilterVisio, setCalFilterVisio] = useState<'all' | 'in_person' | 'teleconsultation'>('all');
 
   const supabase = createClient();
 
@@ -176,7 +228,59 @@ export default function AppointmentBookingContent() {
     fetchProfessionals();
   }, []);
 
-  // Load availability slots for selected professional
+  // Build calendar availability from mock professionals (fallback when no DB data)
+  const buildCalendarAvailability = useCallback((pros: BookingProfessional[], year: number, month: number) => {
+    const availability: Record<string, DayAvailability> = {};
+    const daysInMonth = getDaysInMonth(year, month);
+
+    // Use mock pros if DB returned none
+    const prosToUse = pros.length > 0 ? pros : [
+      { id: 'mock-1', name: 'Dr. Aminata Diallo', specialty: 'Médecine générale', avatar: 'AD', teleconsultation: true },
+      { id: 'mock-2', name: 'Dr. Moussa Traoré', specialty: 'Cardiologie', avatar: 'MT', teleconsultation: false },
+      { id: 'mock-3', name: 'Dr. Fatou Ndiaye', specialty: 'Pédiatrie', avatar: 'FN', teleconsultation: true },
+    ] as any[];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      let m = String(month + 1).padStart(2, '0');
+      const day = String(d).padStart(2, '0');
+      const dateStr = `${year}-${m}-${day}`;
+      const dayOfWeek = new Date(dateStr).getDay();
+
+      // Skip Sundays
+      if (dayOfWeek === 0) continue;
+      // Skip past dates
+      if (dateStr < todayStr) continue;
+
+      // Assign 1-3 pros per day deterministically
+      const availPros = prosToUse.filter((_, i) => (d + i) % 3 !== 0).slice(0, 2);
+      if (availPros.length === 0) continue;
+
+      const allSlots: CalendarSlot[] = [];
+      availPros.forEach(pro => {
+        const proSlots = generate15MinSlots(dateStr, pro.id, pro.name, pro.avatar, pro.specialty, pro.teleconsultation);
+        allSlots.push(...proSlots);
+      });
+
+      const hasVisio = allSlots.some(s => s.type === 'teleconsultation');
+      availability[dateStr] = {
+        hasSlots: allSlots.length > 0,
+        slotCount: allSlots.length,
+        hasVisio,
+        slots: allSlots,
+      };
+    }
+    return availability;
+  }, [todayStr]);
+
+  // Rebuild calendar availability when month changes or professionals load
+  useEffect(() => {
+    if (mainView === 'calendar') {
+      const avail = buildCalendarAvailability(professionals, calYear, calMonth);
+      setCalAvailability(avail);
+    }
+  }, [mainView, calYear, calMonth, professionals, buildCalendarAvailability]);
+
+  // Load availability slots for selected professional (booking flow)
   const loadSlots = async (proId: string) => {
     setLoadingSlots(true);
     try {
@@ -204,10 +308,10 @@ export default function AppointmentBookingContent() {
         const dateKey = slot.slot_date;
         if (!grouped[dateKey]) grouped[dateKey] = [];
         const dateObj = new Date(slot.slot_date + 'T00:00:00');
-        const todayStr = today.toISOString().split('T')[0];
+        const todayDateStr = today.toISOString().split('T')[0];
         const tomorrowStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
         let dateLabel = dateObj.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-        if (slot.slot_date === todayStr) dateLabel = "Aujourd'hui";
+        if (slot.slot_date === todayDateStr) dateLabel = "Aujourd'hui";
         else if (slot.slot_date === tomorrowStr) dateLabel = 'Demain';
 
         grouped[dateKey].push({
@@ -277,7 +381,7 @@ export default function AppointmentBookingContent() {
           patient_id: patientData.id,
           professional_id: selectedPro.id,
           scheduled_at: scheduledAt,
-          duration_minutes: 30,
+          duration_minutes: 15,
           appointment_type: 'consultation',
           status: 'scheduled',
           reason: reason || null,
@@ -377,7 +481,7 @@ export default function AppointmentBookingContent() {
     }, 2000);
   };
 
-  // ── Calendar rendering ──
+  // ── Calendar helpers ──
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDayOfMonth(calYear, calMonth);
   const apptDates = new Set(
@@ -396,9 +500,50 @@ export default function AppointmentBookingContent() {
   };
 
   const calendarDayStr = (day: number) => {
-    const m = String(calMonth + 1).padStart(2, '0');
-    const d = String(day).padStart(2, '0');
+    let m = String(calMonth + 1).padStart(2, '0');
+    let d = String(day).padStart(2, '0');
     return `${calYear}-${m}-${d}`;
+  };
+
+  const selectedDayAvailability = calAvailability[calSelectedDate];
+  const selectedDayAppts = appointments.filter(a => a.date === calSelectedDate && (a.status === 'scheduled' || a.status === 'rescheduled'));
+
+  const filteredCalSlots = (selectedDayAvailability?.slots || []).filter(s =>
+    calFilterVisio === 'all' ? true : s.type === calFilterVisio
+  );
+
+  const handleCalendarBooking = async () => {
+    if (!calBookingSlot) return;
+    setCalBookingLoading(true);
+    // Simulate booking (optimistic)
+    await new Promise(r => setTimeout(r, 800));
+    const ref = 'RDV-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    const newAppt: ExistingAppointment = {
+      id: ref,
+      proName: calBookingSlot.proName,
+      specialty: calBookingSlot.specialty,
+      date: calSelectedDate,
+      time: calBookingSlot.time,
+      type: calBookingSlot.type,
+      status: 'scheduled',
+      scheduledAt: new Date(`${calSelectedDate}T${calBookingSlot.time}:00`),
+    };
+    setAppointments(prev => [...prev, newAppt]);
+    setCalBookingSuccess(ref);
+    setCalBookingLoading(false);
+    // Remove slot from availability
+    setCalAvailability(prev => {
+      const day = prev[calSelectedDate];
+      if (!day) return prev;
+      return {
+        ...prev,
+        [calSelectedDate]: {
+          ...day,
+          slots: day.slots.filter(s => s.id !== calBookingSlot.id),
+          slotCount: day.slotCount - 1,
+        },
+      };
+    });
   };
 
   const apptStatusConfig = {
@@ -433,98 +578,367 @@ export default function AppointmentBookingContent() {
       </div>
 
       {/* ══════════════════════════════════════════════════════
-          VIEW: CALENDAR
+          VIEW: INTERACTIVE CALENDAR
       ══════════════════════════════════════════════════════ */}
       {mainView === 'calendar' && (
-        <div className="card-base p-6">
-          <div className="flex items-center justify-between mb-5">
-            <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-muted transition-colors">
-              <Icon name="ChevronLeftIcon" size={18} className="text-muted-foreground" />
-            </button>
-            <h2 className="font-bold text-lg" style={{ color: 'var(--shifa-dark)' }}>
-              {MONTH_NAMES_FR[calMonth]} {calYear}
-            </h2>
-            <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-muted transition-colors">
-              <Icon name="ChevronRightIcon" size={18} className="text-muted-foreground" />
-            </button>
-          </div>
-
-          {/* Day headers */}
-          <div className="grid grid-cols-7 mb-2">
-            {DAY_NAMES_FR.map(d => (
-              <div key={d} className="text-center text-xs font-semibold py-1" style={{ color: 'var(--muted-foreground)' }}>{d}</div>
-            ))}
-          </div>
-
-          {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: firstDay }).map((_, i) => (
-              <div key={`empty-${i}`} />
-            ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const dayStr = calendarDayStr(day);
-              const hasAppt = apptDates.has(dayStr);
-              const isToday = dayStr === now.toISOString().split('T')[0];
-              const dayAppts = appointments.filter(a => a.date === dayStr && (a.status === 'scheduled' || a.status === 'rescheduled'));
-              return (
-                <div
-                  key={day}
-                  className="relative aspect-square flex flex-col items-center justify-start pt-1.5 rounded-xl text-sm transition-all cursor-default"
-                  style={{
-                    backgroundColor: isToday ? 'var(--shifa-blue)' : hasAppt ? 'rgba(0,102,255,0.06)' : 'transparent',
-                    color: isToday ? 'white' : 'var(--foreground)',
-                    border: hasAppt && !isToday ? '1px solid rgba(0,102,255,0.2)' : '1px solid transparent',
-                  }}
-                  title={dayAppts.map(a => `${a.time} - ${a.proName}`).join('\n')}
-                >
-                  <span className="font-semibold text-xs">{day}</span>
-                  {hasAppt && (
-                    <div className="flex gap-0.5 mt-0.5">
-                      {dayAppts.slice(0, 3).map((_, idx) => (
-                        <div key={idx} className="w-1 h-1 rounded-full" style={{ backgroundColor: isToday ? 'rgba(255,255,255,0.8)' : 'var(--shifa-blue)' }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--shifa-blue)' }} />
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Aujourd'hui</span>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+          {/* ── Left: Calendar grid ── */}
+          <div className="lg:col-span-3 card-base p-5">
+            {/* Month navigation */}
+            <div className="flex items-center justify-between mb-5">
+              <button
+                onClick={prevMonth}
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
+                disabled={calYear === now.getFullYear() && calMonth === now.getMonth()}
+                style={{ opacity: calYear === now.getFullYear() && calMonth === now.getMonth() ? 0.3 : 1 }}
+              >
+                <Icon name="ChevronLeftIcon" size={18} className="text-muted-foreground" />
+              </button>
+              <h2 className="font-bold text-lg" style={{ color: 'var(--shifa-dark)' }}>
+                {MONTH_NAMES_FR[calMonth]} {calYear}
+              </h2>
+              <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-muted transition-colors">
+                <Icon name="ChevronRightIcon" size={18} className="text-muted-foreground" />
+              </button>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: 'rgba(0,102,255,0.06)', borderColor: 'rgba(0,102,255,0.2)' }} />
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Rendez-vous prévu</span>
+
+            {/* Day headers */}
+            <div className="grid grid-cols-7 mb-2">
+              {DAY_NAMES_FR.map(d => (
+                <div key={d} className="text-center text-xs font-semibold py-1" style={{ color: 'var(--muted-foreground)' }}>{d}</div>
+              ))}
+            </div>
+
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: firstDay }).map((_, i) => (
+                <div key={`empty-${i}`} />
+              ))}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const dayStr = calendarDayStr(day);
+                const hasAppt = apptDates.has(dayStr);
+                const isToday = dayStr === todayStr;
+                const isSelected = dayStr === calSelectedDate;
+                const isPast = dayStr < todayStr;
+                const avail = calAvailability[dayStr];
+                const hasSlots = avail?.hasSlots;
+                const hasVisio = avail?.hasVisio;
+                const dayAppts = appointments.filter(a => a.date === dayStr && (a.status === 'scheduled' || a.status === 'rescheduled'));
+
+                return (
+                  <button
+                    key={day}
+                    onClick={() => {
+                      if (!isPast) {
+                        setCalSelectedDate(dayStr);
+                        setCalBookingSlot(null);
+                        setCalBookingSuccess('');
+                        setCalBookingReason('');
+                      }
+                    }}
+                    disabled={isPast}
+                    className="relative flex flex-col items-center justify-start pt-1.5 pb-1 rounded-xl text-sm transition-all"
+                    style={{
+                      minHeight: '52px',
+                      backgroundColor: isSelected
+                        ? 'var(--shifa-blue)'
+                        : isToday
+                        ? 'rgba(0,102,255,0.12)'
+                        : hasAppt
+                        ? 'rgba(0,102,255,0.05)'
+                        : 'transparent',
+                      color: isSelected ? 'white' : isPast ? 'var(--muted-foreground)' : 'var(--foreground)',
+                      border: isSelected
+                        ? '2px solid var(--shifa-blue)'
+                        : isToday
+                        ? '2px solid rgba(0,102,255,0.4)'
+                        : hasSlots
+                        ? '1px solid rgba(16,185,129,0.3)'
+                        : '1px solid transparent',
+                      opacity: isPast ? 0.35 : 1,
+                      cursor: isPast ? 'not-allowed' : 'pointer',
+                    }}
+                    title={
+                      hasSlots
+                        ? `${avail.slotCount} créneaux disponibles${hasVisio ? ' (dont visio)' : ''}`
+                        : hasAppt
+                        ? dayAppts.map(a => `${a.time} - ${a.proName}`).join('\n')
+                        : ''
+                    }
+                  >
+                    <span className="font-semibold text-xs leading-none">{day}</span>
+
+                    {/* Indicators row */}
+                    <div className="flex gap-0.5 mt-1 items-center justify-center flex-wrap">
+                      {/* Green dot = available slots */}
+                      {hasSlots && !isSelected && (
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#10b981' }} />
+                      )}
+                      {/* Camera icon for visio availability */}
+                      {hasVisio && !isSelected && (
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
+                      )}
+                      {/* Blue dot = existing appointment */}
+                      {hasAppt && (
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--shifa-blue)' }} />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#10b981' }} />
+                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Créneaux libres</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
+                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Visio disponible</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--shifa-blue)' }} />
+                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Rendez-vous prévu</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: 'rgba(0,102,255,0.4)', backgroundColor: 'rgba(0,102,255,0.12)' }} />
+                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Aujourd'hui</span>
+              </div>
             </div>
           </div>
 
-          {/* Upcoming appointments list */}
-          <div className="mt-5">
-            <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--foreground)' }}>Rendez-vous à venir</h3>
-            <div className="flex flex-col gap-2">
-              {appointments
-                .filter(a => (a.status === 'scheduled' || a.status === 'rescheduled') && a.scheduledAt >= now)
-                .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())
-                .map(appt => (
-                  <div key={appt.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--muted)' }}>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0,102,255,0.1)' }}>
-                      <Icon name={appt.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'} size={15} style={{ color: 'var(--shifa-blue)' } as any} className="" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{appt.proName}</p>
-                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{appt.date} à {appt.time}</p>
-                    </div>
-                  </div>
-                ))}
-              {appointments.filter(a => (a.status === 'scheduled' || a.status === 'rescheduled') && a.scheduledAt >= now).length === 0 && (
-                <p className="text-sm text-center py-4" style={{ color: 'var(--muted-foreground)' }}>Aucun rendez-vous à venir</p>
+          {/* ── Right: Day detail panel ── */}
+          <div className="lg:col-span-2 flex flex-col gap-4">
+            {/* Selected date header */}
+            <div className="card-base p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Icon name="CalendarDaysIcon" size={16} style={{ color: 'var(--shifa-blue)' } as any} className="" />
+                <h3 className="font-bold text-sm" style={{ color: 'var(--shifa-dark)' }}>
+                  {calSelectedDate
+                    ? new Date(calSelectedDate + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+                    : 'Sélectionnez une date'}
+                </h3>
+              </div>
+              {selectedDayAvailability && (
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  {selectedDayAvailability.slotCount} créneau{selectedDayAvailability.slotCount > 1 ? 'x' : ''} disponible{selectedDayAvailability.slotCount > 1 ? 's' : ''}
+                  {selectedDayAvailability.hasVisio && ' · dont visio'}
+                </p>
               )}
             </div>
+
+            {/* Existing appointments for this day */}
+            {selectedDayAppts.length > 0 && (
+              <div className="card-base p-4">
+                <h4 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--muted-foreground)' }}>Mes RDV ce jour</h4>
+                <div className="flex flex-col gap-2">
+                  {selectedDayAppts.map(appt => (
+                    <div key={appt.id} className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ backgroundColor: 'var(--muted)' }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: appt.type === 'teleconsultation' ? 'rgba(139,92,246,0.12)' : 'rgba(0,102,255,0.1)' }}>
+                        <Icon
+                          name={appt.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'}
+                          size={13}
+                          style={{ color: appt.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' } as any}
+                          className=""
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate" style={{ color: 'var(--foreground)' }}>{appt.proName}</p>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{appt.time} · {appt.type === 'teleconsultation' ? 'Visio' : 'Présentiel'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Available slots for booking */}
+            {calBookingSuccess ? (
+              <div className="card-base p-5 text-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'rgba(16,185,129,0.1)' }}>
+                  <Icon name="CheckCircleIcon" size={28} style={{ color: '#10b981' } as any} className="" />
+                </div>
+                <p className="font-bold text-sm mb-1" style={{ color: 'var(--foreground)' }}>Rendez-vous confirmé !</p>
+                <p className="text-xs font-mono font-bold mb-3" style={{ color: '#10b981' }}>{calBookingSuccess}</p>
+                <button
+                  onClick={() => { setCalBookingSuccess(''); setCalBookingSlot(null); setCalBookingReason(''); }}
+                  className="text-xs font-semibold px-4 py-2 rounded-lg transition-all"
+                  style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}
+                >
+                  Réserver un autre créneau
+                </button>
+              </div>
+            ) : calBookingSlot ? (
+              /* Booking confirmation mini-panel */
+              <div className="card-base p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Confirmer le RDV</h4>
+                  <button onClick={() => { setCalBookingSlot(null); setCalBookingReason(''); }} className="p-1 rounded-lg hover:bg-muted">
+                    <Icon name="XMarkIcon" size={15} className="text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="p-3 rounded-xl mb-3" style={{ backgroundColor: 'var(--muted)' }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
+                      style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}
+                    >
+                      {calBookingSlot.proAvatar}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: 'var(--foreground)' }}>{calBookingSlot.proName}</p>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{calBookingSlot.specialty}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <Icon name="ClockIcon" size={12} className="text-muted-foreground" />
+                      <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{calBookingSlot.time}</span>
+                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>· 15 min</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Icon
+                        name={calBookingSlot.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'}
+                        size={12}
+                        style={{ color: calBookingSlot.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' } as any}
+                        className=""
+                      />
+                      <span className="text-xs" style={{ color: calBookingSlot.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' }}>
+                        {calBookingSlot.type === 'teleconsultation' ? 'Visio' : 'Présentiel'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <textarea
+                  className="input-field w-full resize-none text-xs mb-3"
+                  rows={2}
+                  placeholder="Motif (optionnel)..."
+                  value={calBookingReason}
+                  onChange={e => setCalBookingReason(e.target.value)}
+                />
+
+                <button
+                  onClick={handleCalendarBooking}
+                  disabled={calBookingLoading}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                  style={{ backgroundColor: 'var(--shifa-blue)' }}
+                >
+                  {calBookingLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Icon name="CheckIcon" size={15} />
+                      Confirmer en 1 clic
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              /* Slots list */
+              <div className="card-base p-4 flex-1">
+                {/* Filter bar */}
+                {selectedDayAvailability?.hasSlots && (
+                  <div className="flex gap-1 p-1 rounded-lg mb-3" style={{ backgroundColor: 'var(--muted)' }}>
+                    {[
+                      { key: 'all', label: 'Tous' },
+                      { key: 'in_person', label: 'Présentiel' },
+                      { key: 'teleconsultation', label: 'Visio' },
+                    ].map(f => (
+                      <button
+                        key={f.key}
+                        onClick={() => setCalFilterVisio(f.key as any)}
+                        className="flex-1 py-1 rounded-md text-xs font-semibold transition-all"
+                        style={{
+                          backgroundColor: calFilterVisio === f.key ? 'var(--card)' : 'transparent',
+                          color: calFilterVisio === f.key ? 'var(--shifa-blue)' : 'var(--muted-foreground)',
+                        }}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <h4 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--muted-foreground)' }}>
+                  Créneaux disponibles
+                </h4>
+
+                {!calSelectedDate ? (
+                  <div className="text-center py-8">
+                    <Icon name="CalendarIcon" size={32} className="text-muted-foreground mx-auto mb-2" />
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cliquez sur une date pour voir les créneaux</p>
+                  </div>
+                ) : !selectedDayAvailability?.hasSlots ? (
+                  <div className="text-center py-8">
+                    <Icon name="CalendarDaysIcon" size={32} className="text-muted-foreground mx-auto mb-2" />
+                    <p className="text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Aucun créneau disponible</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Choisissez une autre date</p>
+                  </div>
+                ) : filteredCalSlots.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Icon name="VideoCameraSlashIcon" size={32} className="text-muted-foreground mx-auto mb-2" />
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Aucun créneau {calFilterVisio === 'teleconsultation' ? 'visio' : 'présentiel'} ce jour</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-1">
+                    {filteredCalSlots.slice(0, 20).map(slot => (
+                      <button
+                        key={slot.id}
+                        onClick={() => { setCalBookingSlot(slot); setCalBookingSuccess(''); }}
+                        className="flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all hover:shadow-sm group"
+                        style={{
+                          backgroundColor: 'var(--card)',
+                          borderColor: slot.type === 'teleconsultation' ? 'rgba(139,92,246,0.25)' : 'var(--border)',
+                        }}
+                      >
+                        {/* Time */}
+                        <div
+                          className="w-12 text-center py-1 rounded-lg shrink-0"
+                          style={{
+                            backgroundColor: slot.type === 'teleconsultation' ? 'rgba(139,92,246,0.1)' : 'rgba(0,102,255,0.08)',
+                          }}
+                        >
+                          <span className="text-xs font-bold" style={{ color: slot.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' }}>
+                            {slot.time}
+                          </span>
+                        </div>
+
+                        {/* Pro info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-semibold truncate" style={{ color: 'var(--foreground)' }}>{slot.proName}</span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Icon
+                              name={slot.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'}
+                              size={10}
+                              style={{ color: slot.type === 'teleconsultation' ? '#8b5cf6' : 'var(--muted-foreground)' } as any}
+                              className=""
+                            />
+                            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                              {slot.type === 'teleconsultation' ? 'Visio' : 'Présentiel'} · 15 min
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Book arrow */}
+                        <div
+                          className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ backgroundColor: 'var(--shifa-blue)' }}
+                        >
+                          <Icon name="ArrowRightIcon" size={11} style={{ color: 'white' } as any} className="" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -641,8 +1055,8 @@ export default function AppointmentBookingContent() {
               return (
                 <div key={appt.id} className="card-base p-5">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0,102,255,0.08)' }}>
-                      <Icon name={appt.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'} size={18} style={{ color: 'var(--shifa-blue)' } as any} className="" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: appt.type === 'teleconsultation' ? 'rgba(139,92,246,0.1)' : 'rgba(0,102,255,0.08)' }}>
+                      <Icon name={appt.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'} size={18} style={{ color: appt.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' } as any} className="" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -659,8 +1073,8 @@ export default function AppointmentBookingContent() {
                           <Icon name="CalendarDaysIcon" size={13} className="text-muted-foreground" />
                           <span className="text-xs" style={{ color: 'var(--foreground)' }}>{appt.date} à {appt.time}</span>
                         </div>
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                          {appt.type === 'teleconsultation' ? 'Téléconsultation' : 'Présentiel'}
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: appt.type === 'teleconsultation' ? 'rgba(139,92,246,0.08)' : 'var(--muted)', color: appt.type === 'teleconsultation' ? '#8b5cf6' : 'var(--muted-foreground)' }}>
+                          {appt.type === 'teleconsultation' ? '📹 Visio' : 'Présentiel'}
                         </span>
                       </div>
 
@@ -822,8 +1236,8 @@ export default function AppointmentBookingContent() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           {pro.teleconsultation && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(0, 242, 195, 0.1)', color: 'var(--shifa-cyan)' }}>
-                              Téléconsultation
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}>
+                              📹 Visio
                             </span>
                           )}
                         </div>
@@ -878,8 +1292,8 @@ export default function AppointmentBookingContent() {
                     <span key={lang} className="px-2 py-0.5 rounded-full text-xs border" style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}>{lang}</span>
                   ))}
                   {selectedPro.teleconsultation && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(0, 242, 195, 0.1)', color: 'var(--shifa-cyan)' }}>
-                      Téléconsultation disponible
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}>
+                      📹 Visio disponible
                     </span>
                   )}
                 </div>
@@ -890,7 +1304,7 @@ export default function AppointmentBookingContent() {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { key: 'in_person', label: 'En présentiel', icon: 'BuildingOffice2Icon' },
-                    { key: 'teleconsultation', label: 'Téléconsultation', icon: 'VideoCameraIcon', disabled: !selectedPro.teleconsultation },
+                    { key: 'teleconsultation', label: 'Visio (15 min)', icon: 'VideoCameraIcon', disabled: !selectedPro.teleconsultation },
                   ].map(opt => (
                     <button
                       key={opt.key}
@@ -997,8 +1411,12 @@ export default function AppointmentBookingContent() {
                     <span style={{ color: 'var(--foreground)' }}>{selectedSlot.date} à {selectedSlot.time}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
+                    <Icon name="ClockIcon" size={16} className="text-muted-foreground" />
+                    <span style={{ color: 'var(--foreground)' }}>Durée : 15 minutes</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
                     <Icon name={consultationType === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'} size={16} className="text-muted-foreground" />
-                    <span style={{ color: 'var(--foreground)' }}>{consultationType === 'teleconsultation' ? 'Téléconsultation' : 'En présentiel'}</span>
+                    <span style={{ color: 'var(--foreground)' }}>{consultationType === 'teleconsultation' ? 'Visio (téléconsultation)' : 'En présentiel'}</span>
                   </div>
                 </div>
               </div>
@@ -1041,7 +1459,7 @@ export default function AppointmentBookingContent() {
                 ) : (
                   <>
                     <Icon name="CheckIcon" size={16} />
-                    Confirmer le rendez-vous
+                    Confirmer le rendez-vous (15 min)
                   </>
                 )}
               </button>
@@ -1055,7 +1473,7 @@ export default function AppointmentBookingContent() {
                 <Icon name="CheckCircleIcon" size={40} style={{ color: 'var(--shifa-green)' } as any} className="" />
               </div>
               <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--foreground)' }}>Rendez-vous confirmé !</h2>
-              <p className="text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>Votre rendez-vous a été enregistré avec succès.</p>
+              <p className="text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>Votre rendez-vous de 15 minutes a été enregistré avec succès.</p>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border mb-6" style={{ borderColor: 'var(--shifa-green)', backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
                 <span className="text-sm font-mono font-bold" style={{ color: 'var(--shifa-green)' }}>{bookingRef}</span>
               </div>
