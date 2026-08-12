@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Link from 'next/link';
 
-type Tab = 'catalog' | 'mycourses' | 'viewer' | 'quiz' | 'certificates' | 'instructor' | 'universite' | 'emploi';
+type Tab = 'catalog' | 'mycourses' | 'viewer' | 'quiz' | 'certificates' | 'instructor' | 'universite' | 'emploi' | 'workforce';
 
 const courses = [
   { id: 1, title: 'Télémédecine en Afrique subsaharienne', category: 'Numérique', level: 'Débutant', duration: '4h 30min', enrolled: 1247, rating: 4.8, instructor: 'Dr. Aminata Koné', color: '#0ea5e9', bg: '#e0f2fe', progress: 0, certified: false, modules: 8, price: 'Gratuit' },
@@ -122,6 +123,7 @@ export default function ShifaAcademyContent() {
     { key: 'quiz', label: 'Quiz & Évaluations', icon: 'ClipboardDocumentCheckIcon' },
     { key: 'certificates', label: 'Certificats', icon: 'StarIcon' },
     { key: 'instructor', label: 'Espace Formateur', icon: 'UserGroupIcon' },
+    { key: 'workforce', label: 'Workforce & Habilitations', icon: 'ShieldCheckIcon' },
   ];
 
   return (
@@ -686,6 +688,151 @@ export default function ShifaAcademyContent() {
               <button className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
                 <Icon name="PlusIcon" size={14} /> Créer le cours
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── WORKFORCE & HABILITATIONS ── */}
+        {activeTab === 'workforce' && (
+          <div className="space-y-6">
+            {/* Header notice */}
+            <div className="flex items-start gap-3 p-4 rounded-2xl border" style={{ backgroundColor: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.2)' }}>
+              <Icon name="ArrowsRightLeftIcon" size={20} style={{ color: '#8b5cf6' }} className="shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>SHIFA Academy ↔ Workforce — Connexion habilitations</p>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Les certifications obtenues dans SHIFA Academy alimentent automatiquement les habilitations dans Workforce Admin. Une certification expirée déclenche une alerte et peut suspendre l'accès au module concerné.
+                </p>
+              </div>
+              <Link href="/workforce-admin" className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shrink-0" style={{ backgroundColor: '#8b5cf6' }}>
+                Workforce Admin →
+              </Link>
+            </div>
+
+            {/* KPIs */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: 'Formations obligatoires', value: '5', icon: 'ExclamationCircleIcon', color: '#dc2626', bg: '#fee2e2' },
+                { label: 'Habilitations actives', value: '3', icon: 'ShieldCheckIcon', color: '#16a34a', bg: '#dcfce7' },
+                { label: 'Expirent dans 30j', value: '1', icon: 'ClockIcon', color: '#d97706', bg: '#fef3c7' },
+                { label: 'Renouvellements requis', value: '2', icon: 'ArrowPathIcon', color: '#2563eb', bg: '#dbeafe' },
+              ].map(kpi => (
+                <div key={kpi.label} className="rounded-2xl p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: kpi.bg }}>
+                    <Icon name={kpi.icon as any} size={18} style={{ color: kpi.color }} />
+                  </div>
+                  <p className="text-2xl font-bold mb-0.5" style={{ color: 'var(--shifa-dark)' }}>{kpi.value}</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Mandatory trainings */}
+            <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Formations obligatoires — Mon profil</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>2 en retard</span>
+              </div>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                {[
+                  { name: 'BLS — Basic Life Support', category: 'Urgences', status: 'completed', expires: '15 mars 2027', daysLeft: 580, habilitation: 'Urgences vitales', color: '#16a34a', bg: '#dcfce7' },
+                  { name: 'Radioprotection — Niveau 1', category: 'Sécurité', status: 'overdue', expires: '—', daysLeft: -45, habilitation: 'Utilisation équipements radiologiques', color: '#dc2626', bg: '#fee2e2' },
+                  { name: 'Hygiène hospitalière', category: 'Qualité', status: 'overdue', expires: '—', daysLeft: -12, habilitation: 'Soins infirmiers spécialisés', color: '#dc2626', bg: '#fee2e2' },
+                  { name: 'ACLS — Advanced Cardiac Life Support', category: 'Urgences', status: 'expiring', expires: '20 sept. 2026', daysLeft: 39, habilitation: 'Réanimation adulte', color: '#d97706', bg: '#fef3c7' },
+                  { name: 'Gestion des déchets médicaux', category: 'Environnement', status: 'pending', expires: '—', daysLeft: 0, habilitation: 'Gestion déchets hospitaliers', color: '#64748b', bg: '#f1f5f9' },
+                ].map((training, i) => {
+                  const statusLabel = training.status === 'completed' ? 'Complété' : training.status === 'overdue' ? 'En retard' : training.status === 'expiring' ? 'Expire bientôt' : 'À faire';
+                  return (
+                    <div key={i} className="p-4 flex items-center gap-4 flex-wrap">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: training.bg }}>
+                        <Icon name={training.status === 'completed' ? 'CheckCircleIcon' : training.status === 'overdue' ? 'XCircleIcon' : training.status === 'expiring' ? 'ExclamationTriangleIcon' : 'ClockIcon'} size={18} style={{ color: training.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{training.name}</p>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                          {training.category} · Habilitation : <span style={{ color: training.color }}>{training.habilitation}</span>
+                        </p>
+                        {training.status !== 'pending' && training.expires !== '—' && (
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Expire le : {training.expires}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: training.bg, color: training.color }}>{statusLabel}</span>
+                        {(training.status === 'overdue' || training.status === 'expiring' || training.status === 'pending') && (
+                          <button className="px-3 py-1.5 rounded-xl text-xs font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
+                            Commencer
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Habilitations status */}
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Habilitations liées à mes certifications</h3>
+              <div className="space-y-3">
+                {[
+                  { name: 'Urgences vitales', linkedCert: 'BLS — Basic Life Support', status: 'valid', expires: '15 mars 2027', module: 'Urgences', color: '#16a34a', bg: '#dcfce7' },
+                  { name: 'Réanimation adulte', linkedCert: 'ACLS — Advanced Cardiac Life Support', status: 'expiring', expires: '20 sept. 2026', module: 'Réanimation', color: '#d97706', bg: '#fef3c7' },
+                  { name: 'Médecin Téléconsultant', linkedCert: 'Médecin Téléconsultant Certifié SHIFA', status: 'valid', expires: '15 mars 2028', module: 'Téléconsultation', color: '#16a34a', bg: '#dcfce7' },
+                  { name: 'Utilisation équipements radiologiques', linkedCert: 'Radioprotection — Niveau 1', status: 'expired', expires: 'Expiré', module: 'Imagerie', color: '#dc2626', bg: '#fee2e2' },
+                ].map((hab, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 rounded-xl border" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: hab.bg }}>
+                      <Icon name={hab.status === 'valid' ? 'ShieldCheckIcon' : hab.status === 'expiring' ? 'ExclamationTriangleIcon' : 'ShieldExclamationIcon'} size={16} style={{ color: hab.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{hab.name}</p>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Via : {hab.linkedCert} · Module : {hab.module}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{hab.expires}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: hab.bg, color: hab.color }}>
+                        {hab.status === 'valid' ? 'Valide' : hab.status === 'expiring' ? 'Expire bientôt' : 'Expiré'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Workflow diagram */}
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Workflow : Certification → Habilitation → Permission Module</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  { label: 'Formation SHIFA Academy', icon: 'AcademicCapIcon', color: '#8b5cf6', bg: '#ede9fe' },
+                  { label: '→', icon: null, color: 'var(--muted-foreground)', bg: 'transparent' },
+                  { label: 'Évaluation / Quiz', icon: 'ClipboardDocumentCheckIcon', color: '#0891b2', bg: '#cffafe' },
+                  { label: '→', icon: null, color: 'var(--muted-foreground)', bg: 'transparent' },
+                  { label: 'Certificat SHIFA', icon: 'StarIcon', color: '#f59e0b', bg: '#fef3c7' },
+                  { label: '→', icon: null, color: 'var(--muted-foreground)', bg: 'transparent' },
+                  { label: 'Habilitation Workforce', icon: 'ShieldCheckIcon', color: '#16a34a', bg: '#dcfce7' },
+                  { label: '→', icon: null, color: 'var(--muted-foreground)', bg: 'transparent' },
+                  { label: 'Accès Module SHIFA', icon: 'LockOpenIcon', color: '#2563eb', bg: '#dbeafe' },
+                ].map((step, i) => (
+                  step.icon ? (
+                    <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: step.bg }}>
+                      <Icon name={step.icon as any} size={14} style={{ color: step.color }} />
+                      <span className="text-xs font-medium" style={{ color: step.color }}>{step.label}</span>
+                    </div>
+                  ) : (
+                    <span key={i} className="text-sm font-bold" style={{ color: step.color }}>{step.label}</span>
+                  )
+                ))}
+              </div>
+              <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: '#fee2e2', border: '1px solid #dc2626' }}>
+                <div className="flex items-center gap-2">
+                  <Icon name="ExclamationTriangleIcon" size={16} style={{ color: '#dc2626' }} />
+                  <p className="text-xs font-semibold" style={{ color: '#991b1b' }}>Expiration → Notification → Formation → Renouvellement → Maintien de l'accès</p>
+                </div>
+                <p className="text-xs mt-1" style={{ color: '#b91c1c' }}>
+                  Si une habilitation expire et n'est pas renouvelée dans les 30 jours, l'accès au module concerné peut être suspendu automatiquement selon la politique de l'organisation.
+                </p>
+              </div>
             </div>
           </div>
         )}

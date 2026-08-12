@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-type Tab = 'status' | 'queue' | 'cache' | 'sync' | 'devices' | 'settings';
+type Tab = 'status' | 'queue' | 'cache' | 'sync' | 'devices' | 'settings' | 'conflicts' | 'audit';
 type NetworkMode = 'online' | 'low-bandwidth' | 'offline';
 
 interface SyncItem {
@@ -97,6 +97,8 @@ export default function OfflineModeConfigContent() {
     { id: 'cache', label: 'Cache local', icon: 'CircleStackIcon' },
     { id: 'sync', label: 'Synchronisation', icon: 'ArrowPathIcon' },
     { id: 'devices', label: 'Appareils', icon: 'DeviceTabletIcon' },
+    { id: 'conflicts', label: 'Conflits', icon: 'ExclamationTriangleIcon' },
+    { id: 'audit', label: 'Audit Offline', icon: 'ClipboardDocumentListIcon' },
     { id: 'settings', label: 'Configuration', icon: 'Cog6ToothIcon' },
   ];
 
@@ -558,6 +560,167 @@ export default function OfflineModeConfigContent() {
           <button className="w-full py-3 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>
             Enregistrer la configuration
           </button>
+        </div>
+      )}
+
+      {/* ── CONFLICTS TAB ── */}
+      {activeTab === 'conflicts' && (
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 p-4 rounded-xl border" style={{ backgroundColor: '#fef3c7', borderColor: '#fbbf24' }}>
+            <Icon name="ExclamationTriangleIcon" size={18} style={{ color: '#d97706' }} className="shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: '#92400e' }}>1 conflit de synchronisation détecté</p>
+              <p className="text-xs" style={{ color: '#92400e' }}>Un enregistrement a été modifié simultanément en mode offline et en ligne. Une résolution manuelle est requise.</p>
+            </div>
+          </div>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Conflits actifs', value: '1', icon: 'ExclamationTriangleIcon', color: '#dc2626', bg: '#fee2e2' },
+              { label: 'Résolus (7j)', value: '4', icon: 'CheckCircleIcon', color: '#16a34a', bg: '#dcfce7' },
+              { label: 'Résolution auto', value: '3', icon: 'ArrowPathIcon', color: '#2563eb', bg: '#dbeafe' },
+              { label: 'Résolution manuelle', value: '2', icon: 'UserCircleIcon', color: '#d97706', bg: '#fef3c7' },
+            ].map(kpi => (
+              <div key={kpi.label} className="rounded-xl p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: kpi.bg }}>
+                    <Icon name={kpi.icon as any} size={20} style={{ color: kpi.color }} />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>{kpi.value}</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.label}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Active conflict */}
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Conflit actif — Résolution requise</h2>
+            <div className="rounded-xl border p-4 mb-4" style={{ backgroundColor: '#fef3c7', borderColor: '#fbbf24' }}>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-bold" style={{ color: '#92400e' }}>SQ-005 — Demande transfert — Fatou Ndiaye</p>
+                  <p className="text-xs" style={{ color: '#92400e' }}>Type : Transfert patient · Priorité : Critique</p>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>Conflit</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-lg p-3 border" style={{ backgroundColor: 'var(--card)', borderColor: '#fbbf24' }}>
+                  <p className="text-xs font-bold mb-2" style={{ color: '#2563eb' }}>Version OFFLINE (Tablette Urgences 1)</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Modifié le : 12/08/2026 08:40</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Auteur : Dr. Mohamed Sy</p>
+                  <p className="text-xs mt-2" style={{ color: 'var(--foreground)' }}>Statut : <strong>Autorisé</strong> · Destination : CHU Dakar</p>
+                  <button className="mt-3 w-full py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#2563eb' }}>
+                    Utiliser cette version
+                  </button>
+                </div>
+                <div className="rounded-lg p-3 border" style={{ backgroundColor: 'var(--card)', borderColor: '#fbbf24' }}>
+                  <p className="text-xs font-bold mb-2" style={{ color: '#16a34a' }}>Version CLOUD (Serveur SHIFA)</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Modifié le : 12/08/2026 08:42</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Auteur : Inf. Aminata Sow</p>
+                  <p className="text-xs mt-2" style={{ color: 'var(--foreground)' }}>Statut : <strong>En attente</strong> · Destination : Clinique Pasteur</p>
+                  <button className="mt-3 w-full py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#16a34a' }}>
+                    Utiliser cette version
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button className="flex-1 py-2 rounded-lg text-xs font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                  Fusionner manuellement
+                </button>
+                <button className="flex-1 py-2 rounded-lg text-xs font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                  Escalader au superviseur
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Conflict resolution rules */}
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Règles de résolution automatique</h2>
+            <div className="space-y-3">
+              {[
+                { rule: 'Données critiques (constantes, urgences)', strategy: 'Conserver la version la plus récente', auto: true, color: '#dc2626' },
+                { rule: 'Prescriptions', strategy: 'Conserver la version du médecin prescripteur', auto: true, color: '#d97706' },
+                { rule: 'Dossier patient (notes cliniques)', strategy: 'Résolution manuelle obligatoire', auto: false, color: '#2563eb' },
+                { rule: 'Résultats de laboratoire', strategy: 'Conserver la version du laborantin', auto: true, color: '#16a34a' },
+                { rule: 'Transferts patients', strategy: 'Résolution manuelle obligatoire', auto: false, color: '#7c3aed' },
+                { rule: 'Données administratives', strategy: 'Conserver la version la plus récente', auto: true, color: '#64748b' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-4 p-3 rounded-lg border" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{item.rule}</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{item.strategy}</p>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: item.auto ? '#dcfce7' : '#fef3c7', color: item.auto ? '#16a34a' : '#d97706' }}>
+                    {item.auto ? 'Auto' : 'Manuel'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── AUDIT OFFLINE TAB ── */}
+      {activeTab === 'audit' && (
+        <div className="space-y-5">
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Journal d'audit — Opérations offline</h2>
+            <div className="space-y-2">
+              {[
+                { id: 'AUD-OFF-001', action: 'Consultation enregistrée en mode offline', actor: 'Dr. Mohamed Sy', device: 'Tablette Urgences 1', timestamp: '12/08/2026 09:14', type: 'consultation', result: 'success' },
+                { id: 'AUD-OFF-002', action: 'Constantes vitales enregistrées', actor: 'Inf. Fatou Sow', device: 'Mobile Infirmier 3', timestamp: '12/08/2026 09:10', type: 'vitals', result: 'success' },
+                { id: 'AUD-OFF-003', action: 'Prescription créée hors ligne', actor: 'Dr. Mohamed Sy', device: 'Tablette Urgences 1', timestamp: '12/08/2026 09:05', type: 'prescription', result: 'success' },
+                { id: 'AUD-OFF-004', action: 'Conflit détecté lors de la synchronisation', actor: 'Système SHIFA', device: 'Serveur', timestamp: '12/08/2026 08:45', type: 'conflict', result: 'warning' },
+                { id: 'AUD-OFF-005', action: 'Tentative d\'accès données non mises en cache', actor: 'Tech. Aminata Ba', device: 'Tablette Labo', timestamp: '12/08/2026 08:30', type: 'access', result: 'error' },
+                { id: 'AUD-OFF-006', action: 'Synchronisation complète réussie', actor: 'Système SHIFA', device: 'Tablette Urgences 1', timestamp: '12/08/2026 08:15', type: 'sync', result: 'success' },
+              ].map(event => {
+                const resultConfig = {
+                  success: { color: '#16a34a', bg: '#dcfce7', icon: 'CheckCircleIcon' },
+                  warning: { color: '#d97706', bg: '#fef3c7', icon: 'ExclamationTriangleIcon' },
+                  error: { color: '#dc2626', bg: '#fee2e2', icon: 'XCircleIcon' },
+                }[event.result];
+                return (
+                  <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg border" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: resultConfig.bg }}>
+                      <Icon name={resultConfig.icon as any} size={16} style={{ color: resultConfig.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{event.action}</p>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{event.actor} · {event.device}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{event.timestamp}</p>
+                      <p className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{event.id}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Audit summary */}
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Résumé des opérations offline (7 derniers jours)</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Consultations offline', value: '47', color: '#2563eb' },
+                { label: 'Prescriptions offline', value: '23', color: '#8b5cf6' },
+                { label: 'Constantes enregistrées', value: '156', color: '#16a34a' },
+                { label: 'Conflits résolus', value: '4', color: '#d97706' },
+              ].map(stat => (
+                <div key={stat.label} className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--muted)' }}>
+                  <p className="text-2xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

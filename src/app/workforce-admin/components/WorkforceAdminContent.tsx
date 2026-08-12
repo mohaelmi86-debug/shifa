@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-type Tab = 'dashboard' | 'employees' | 'recruitment' | 'contracts' | 'planning' | 'habilitations' | 'training' | 'evaluations' | 'payroll' | 'offboarding';
+type Tab = 'dashboard' | 'employees' | 'recruitment' | 'contracts' | 'planning' | 'habilitations' | 'training' | 'evaluations' | 'payroll' | 'offboarding' | 'academy-link';
 
 interface Employee {
   id: string;
@@ -129,6 +129,7 @@ export default function WorkforceAdminContent() {
     { key: 'evaluations', label: 'Évaluations', icon: 'StarIcon' },
     { key: 'payroll', label: 'Paie & RH', icon: 'BanknotesIcon' },
     { key: 'offboarding', label: 'Offboarding', icon: 'ArrowLeftOnRectangleIcon' },
+    { key: 'academy-link', label: 'Academy & Habilitations', icon: 'LinkIcon' },
   ];
 
   const filteredEmployees = employees.filter(e =>
@@ -501,40 +502,137 @@ export default function WorkforceAdminContent() {
         </div>
       )}
 
-      {/* ── CONTRACTS ── */}
-      {activeTab === 'contracts' && (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)', marginBottom: '16px' }}>Contrats & Postes</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                  {['Employé', 'Poste', 'Service', 'Type contrat', 'Depuis', 'Responsable', 'Statut'].map(h => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--muted-foreground)', fontWeight: 600 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map(emp => {
-                  const st = statusConfig[emp.status];
-                  return (
-                    <tr key={emp.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--foreground)' }}>{emp.name}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--muted-foreground)' }}>{emp.profession}{emp.specialty ? ` — ${emp.specialty}` : ''}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--muted-foreground)' }}>{emp.service}</td>
+      {/* ── ACADEMY & HABILITATIONS LINK ── */}
+      {activeTab === 'academy-link' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header notice */}
+          <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <Icon name="ArrowsRightLeftIcon" size={20} color="#8b5cf6" />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)', margin: '0 0 4px 0' }}>Workforce Admin ↔ SHIFA Academy — Connexion habilitations</p>
+              <p style={{ fontSize: '12px', color: 'var(--muted-foreground)', margin: 0 }}>
+                Les certifications obtenues dans SHIFA Academy alimentent automatiquement les habilitations des employés. Une habilitation expirée déclenche une alerte et peut restreindre l'accès au module concerné.
+              </p>
+            </div>
+            <Link href="/shifa-academy" style={{ padding: '6px 14px', borderRadius: '8px', background: '#8b5cf6', color: '#fff', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              SHIFA Academy →
+            </Link>
+          </div>
+
+          {/* KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+            {[
+              { label: 'Habilitations expirées', value: '8', icon: 'XCircleIcon', color: '#dc2626', bg: '#fee2e2' },
+              { label: 'Expirent dans 30j', value: '5', icon: 'ExclamationTriangleIcon', color: '#d97706', bg: '#fef3c7' },
+              { label: 'Formations en retard', value: '14', icon: 'ClockIcon', color: '#7c3aed', bg: '#ede9fe' },
+              { label: 'Certifications valides', value: '142', icon: 'ShieldCheckIcon', color: '#16a34a', bg: '#dcfce7' },
+            ].map(kpi => (
+              <div key={kpi.label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                  <Icon name={kpi.icon} size={18} color={kpi.color} />
+                </div>
+                <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--foreground)', margin: '0 0 2px 0' }}>{kpi.value}</p>
+                <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', margin: 0 }}>{kpi.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Employees with expiring/expired habilitations */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)', margin: 0 }}>Employés — Habilitations à renouveler</h3>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#fee2e2', color: '#dc2626', fontWeight: 600 }}>13 actions requises</span>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ background: 'var(--muted)' }}>
+                    {['Employé', 'Poste', 'Habilitation', 'Statut', 'Expiration', 'Formation requise', 'Action'].map(h => (
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--muted-foreground)', fontWeight: 600 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { name: 'Inf. Fatou Sow', role: 'Infirmière', hab: 'Soins infirmiers spécialisés', status: 'expired', expiry: 'Expiré', training: 'Soins infirmiers avancés', color: '#dc2626', bg: '#fee2e2' },
+                    { name: 'Tech. Ibrahima Sow', role: 'Technicien Biomédical', hab: 'Ventilateurs Dräger', status: 'expiring', expiry: '01 sept. 2026', training: 'Maintenance ventilateurs', color: '#d97706', bg: '#fef3c7' },
+                    { name: 'Dr. Aminata Faye', role: 'Cardiologue', hab: 'Cardiologie interventionnelle', status: 'expiring', expiry: '31 déc. 2026', training: 'Cardiologie interventionnelle avancée', color: '#d97706', bg: '#fef3c7' },
+                    { name: 'Oumar Diop', role: 'Aide-soignant', hab: 'Gestes d\'urgence', status: 'pending', expiry: '—', training: 'Gestes d\'urgence de base', color: '#64748b', bg: '#f1f5f9' },
+                  ].map((row, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--foreground)' }}>{row.name}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--muted-foreground)' }}>{row.role}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--foreground)' }}>{row.hab}</td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: emp.contractType === 'CDI' ? '#dcfce7' : '#fef3c7', color: emp.contractType === 'CDI' ? '#16a34a' : '#d97706', fontWeight: 600 }}>{emp.contractType}</span>
+                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: row.bg, color: row.color, fontWeight: 600 }}>
+                          {row.status === 'expired' ? 'Expiré' : row.status === 'expiring' ? 'Expire bientôt' : 'À faire'}
+                        </span>
                       </td>
-                      <td style={{ padding: '10px 12px', color: 'var(--muted-foreground)' }}>{emp.startDate}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--muted-foreground)' }}>{emp.manager}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--muted-foreground)' }}>{row.expiry}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--muted-foreground)' }}>{row.training}</td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span>
+                        <Link href="/shifa-academy" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#8b5cf6', color: '#fff', fontWeight: 600, textDecoration: 'none' }}>
+                          Inscrire →
+                        </Link>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Workflow */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)', marginBottom: '16px' }}>Workflow : Expiration → Renouvellement → Maintien accès</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {[
+                { label: 'Habilitation expire', icon: 'ExclamationTriangleIcon', color: '#dc2626', bg: '#fee2e2' },
+                { label: '→', icon: null },
+                { label: 'Notification employé + RH', icon: 'BellIcon', color: '#d97706', bg: '#fef3c7' },
+                { label: '→', icon: null },
+                { label: 'Inscription formation Academy', icon: 'AcademicCapIcon', color: '#8b5cf6', bg: '#ede9fe' },
+                { label: '→', icon: null },
+                { label: 'Certification obtenue', icon: 'StarIcon', color: '#f59e0b', bg: '#fef3c7' },
+                { label: '→', icon: null },
+                { label: 'Habilitation renouvelée', icon: 'ShieldCheckIcon', color: '#16a34a', bg: '#dcfce7' },
+                { label: '→', icon: null },
+                { label: 'Accès module maintenu', icon: 'LockOpenIcon', color: '#2563eb', bg: '#dbeafe' },
+              ].map((step, i) => (
+                step.icon ? (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '8px', background: step.bg }}>
+                    <Icon name={step.icon} size={13} color={step.color} />
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: step.color }}>{step.label}</span>
+                  </div>
+                ) : (
+                  <span key={i} style={{ fontSize: '14px', fontWeight: 700, color: 'var(--muted-foreground)' }}>{step.label}</span>
+                )
+              ))}
+            </div>
+          </div>
+
+          {/* Module access impact */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)', marginBottom: '16px' }}>Impact habilitations sur accès aux modules SHIFA</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+              {[
+                { hab: 'Réanimation adulte', module: 'Module Réanimation / ICU', impact: 'Accès restreint si expiré', color: '#dc2626' },
+                { hab: 'Soins infirmiers spécialisés', module: 'Module Soins Infirmiers', impact: 'Accès restreint si expiré', color: '#dc2626' },
+                { hab: 'Cardiologie interventionnelle', module: 'Module Cardiologie', impact: 'Accès lecture seule si expiré', color: '#d97706' },
+                { hab: 'Maintenance IRM', module: 'Module Biomédical', impact: 'Accès restreint si expiré', color: '#dc2626' },
+                { hab: 'Médecin Téléconsultant', module: 'Module Téléconsultation', impact: 'Accès restreint si expiré', color: '#dc2626' },
+                { hab: 'Radioprotection', module: 'Module Imagerie', impact: 'Accès restreint si expiré', color: '#dc2626' },
+              ].map((item, i) => (
+                <div key={i} style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--muted)', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <Icon name="ShieldExclamationIcon" size={16} color={item.color} />
+                  <div>
+                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--foreground)', margin: '0 0 2px 0' }}>{item.hab}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', margin: '0 0 2px 0' }}>→ {item.module}</p>
+                    <p style={{ fontSize: '11px', color: item.color, margin: 0 }}>{item.impact}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
