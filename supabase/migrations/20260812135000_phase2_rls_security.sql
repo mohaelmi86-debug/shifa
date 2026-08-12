@@ -143,58 +143,74 @@ CREATE POLICY "appointments_delete" ON public.appointments
     OR public.is_platform_admin()
   );
 
--- prescriptions
-ALTER TABLE IF EXISTS public.prescriptions ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "prescriptions_select" ON public.prescriptions;
-DROP POLICY IF EXISTS "prescriptions_insert" ON public.prescriptions;
-DROP POLICY IF EXISTS "prescriptions_update" ON public.prescriptions;
+-- prescriptions (if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'prescriptions') THEN
+    EXECUTE 'ALTER TABLE public.prescriptions ENABLE ROW LEVEL SECURITY';
+    EXECUTE 'DROP POLICY IF EXISTS "prescriptions_select" ON public.prescriptions';
+    EXECUTE 'DROP POLICY IF EXISTS "prescriptions_insert" ON public.prescriptions';
+    EXECUTE 'DROP POLICY IF EXISTS "prescriptions_update" ON public.prescriptions';
+    EXECUTE $policy$
+      CREATE POLICY "prescriptions_select" ON public.prescriptions
+        FOR SELECT USING (
+          auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+          OR auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
+          OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
+          OR public.is_platform_admin()
+        )
+    $policy$;
+    EXECUTE $policy$
+      CREATE POLICY "prescriptions_insert" ON public.prescriptions
+        FOR INSERT WITH CHECK (
+          auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
+          AND public.belongs_to_org(organization_id)
+          AND public.user_role() IN ('professional', 'platform_admin')
+        )
+    $policy$;
+    EXECUTE $policy$
+      CREATE POLICY "prescriptions_update" ON public.prescriptions
+        FOR UPDATE USING (
+          auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
+          OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
+          OR public.is_platform_admin()
+        )
+    $policy$;
+  END IF;
+END $$;
 
-CREATE POLICY "prescriptions_select" ON public.prescriptions
-  FOR SELECT USING (
-    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
-    OR auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
-    OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
-    OR public.is_platform_admin()
-  );
-
-CREATE POLICY "prescriptions_insert" ON public.prescriptions
-  FOR INSERT WITH CHECK (
-    auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
-    AND public.belongs_to_org(organization_id)
-    AND public.user_role() IN ('professional', 'platform_admin')
-  );
-
-CREATE POLICY "prescriptions_update" ON public.prescriptions
-  FOR UPDATE USING (
-    auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
-    OR (public.belongs_to_org(organization_id) AND public.is_org_admin())
-    OR public.is_platform_admin()
-  );
-
--- lab_results
-ALTER TABLE IF EXISTS public.lab_results ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "lab_results_select" ON public.lab_results;
-DROP POLICY IF EXISTS "lab_results_insert" ON public.lab_results;
-DROP POLICY IF EXISTS "lab_results_update" ON public.lab_results;
-
-CREATE POLICY "lab_results_select" ON public.lab_results
-  FOR SELECT USING (
-    auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
-    OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
-    OR public.is_platform_admin()
-  );
-
-CREATE POLICY "lab_results_insert" ON public.lab_results
-  FOR INSERT WITH CHECK (
-    public.belongs_to_org(organization_id)
-    AND public.user_role() IN ('professional', 'org_admin', 'platform_admin')
-  );
-
-CREATE POLICY "lab_results_update" ON public.lab_results
-  FOR UPDATE USING (
-    public.belongs_to_org(organization_id)
-    AND public.user_role() IN ('professional', 'org_admin', 'platform_admin')
-  );
+-- lab_results (if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'lab_results') THEN
+    EXECUTE 'ALTER TABLE public.lab_results ENABLE ROW LEVEL SECURITY';
+    EXECUTE 'DROP POLICY IF EXISTS "lab_results_select" ON public.lab_results';
+    EXECUTE 'DROP POLICY IF EXISTS "lab_results_insert" ON public.lab_results';
+    EXECUTE 'DROP POLICY IF EXISTS "lab_results_update" ON public.lab_results';
+    EXECUTE $policy$
+      CREATE POLICY "lab_results_select" ON public.lab_results
+        FOR SELECT USING (
+          auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+          OR (public.belongs_to_org(organization_id) AND public.user_role() IN ('professional', 'org_admin'))
+          OR public.is_platform_admin()
+        )
+    $policy$;
+    EXECUTE $policy$
+      CREATE POLICY "lab_results_insert" ON public.lab_results
+        FOR INSERT WITH CHECK (
+          public.belongs_to_org(organization_id)
+          AND public.user_role() IN ('professional', 'org_admin', 'platform_admin')
+        )
+    $policy$;
+    EXECUTE $policy$
+      CREATE POLICY "lab_results_update" ON public.lab_results
+        FOR UPDATE USING (
+          public.belongs_to_org(organization_id)
+          AND public.user_role() IN ('professional', 'org_admin', 'platform_admin')
+        )
+    $policy$;
+  END IF;
+END $$;
 
 -- consultations (if table exists)
 DO $$
