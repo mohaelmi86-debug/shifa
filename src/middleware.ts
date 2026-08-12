@@ -43,6 +43,7 @@ const ROLE_GUARDS: Record<string, string[]> = {
   '/admin-translations': ['platform_admin'],
   '/admin-financial-dashboard': ['platform_admin'],
   '/workforce-admin': ['platform_admin'],
+  '/super-admin-shifa': ['platform_admin'],
   '/ministere-oversight': ['platform_admin', 'ministry'],
   '/epidemio-surveillance': ['platform_admin', 'ministry', 'public_health'],
   '/research-ethics-board': ['platform_admin', 'researcher'],

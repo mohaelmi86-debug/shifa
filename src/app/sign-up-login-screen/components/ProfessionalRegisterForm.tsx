@@ -35,6 +35,7 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
     try {
       await signUp(data.email, data.password, {
         fullName: `${data.firstName} ${data.lastName}`,
+        role: 'professional',
       });
       router.push('/workspace-professionnel');
     } catch (err: any) {

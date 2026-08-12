@@ -34,6 +34,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
     try {
       await signUp(data.adminEmail, data.password, {
         fullName: `${data.adminFirstName} ${data.adminLastName}`,
+        role: 'org_admin',
       });
       router.push('/administration-tablissement');
     } catch (err: any) {
