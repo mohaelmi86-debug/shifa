@@ -185,7 +185,7 @@ BEGIN
     EXECUTE $p$
       CREATE POLICY "payments_select" ON public.payments FOR SELECT USING (
         public.is_finance_role()
-        OR auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+        OR auth.uid() = user_id
         OR public.is_platform_admin()
       )
     $p$;
