@@ -42,16 +42,10 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           .eq('id', user.id)
           .single();
         const role = profile?.role || 'patient';
-        if (role === 'org_admin') {
+        if (role === 'admin') {
           router.push('/administration-tablissement');
         } else if (role === 'professional') {
           router.push('/workspace-professionnel');
-        } else if (role === 'platform_admin') {
-          router.push('/platform-admin');
-        } else if (role === 'institution' || role === 'ministry' || role === 'insurance' || role === 'university' || role === 'ngo' || role === 'public_health') {
-          router.push('/administration-tablissement');
-        } else if (role === 'ambassador') {
-          router.push('/ambassador-workspace');
         } else {
           router.push('/patient-home');
         }

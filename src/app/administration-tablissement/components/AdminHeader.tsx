@@ -1,6 +1,5 @@
 'use client';
 import React from 'react';
-import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslations } from '@/lib/i18n';
@@ -42,10 +41,10 @@ export default function AdminHeader() {
           <Icon name="ArrowDownTrayIcon" size={15} />
           {tr.export}
         </button>
-        <Link href="/admin-parametres" className="btn-primary text-sm px-4 py-2 flex items-center gap-2">
+        <button className="btn-primary text-sm px-4 py-2 flex items-center gap-2">
           <Icon name="Cog6ToothIcon" size={15} />
           {tr.settings}
-        </Link>
+        </button>
       </div>
     </div>
   );

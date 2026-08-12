@@ -26,18 +26,12 @@ export async function GET(request: NextRequest) {
         const role = profile?.role;
         let redirectPath = next;
 
-        if (role === 'platform_admin') {
-          redirectPath = '/platform-admin';
-        } else if (role === 'org_admin') {
+        if (role === 'org_admin' || role === 'platform_admin') {
           redirectPath = '/administration-tablissement';
         } else if (role === 'professional') {
           redirectPath = '/workspace-professionnel';
         } else if (role === 'patient') {
           redirectPath = '/patient-home';
-        } else if (role === 'ambassador') {
-          redirectPath = '/ambassador-workspace';
-        } else if (role === 'institution' || role === 'ministry' || role === 'insurance' || role === 'university' || role === 'ngo' || role === 'public_health') {
-          redirectPath = '/administration-tablissement';
         }
 
         return NextResponse.redirect(`${origin}${redirectPath}`);

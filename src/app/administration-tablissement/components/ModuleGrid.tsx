@@ -1,6 +1,5 @@
 'use client';
 import React, { useState } from 'react';
-import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
 
 const modules = [
@@ -45,10 +44,10 @@ export default function ModuleGrid() {
             <span className="font-semibold" style={{ color: 'var(--shifa-green)' }}>{activeCount}</span> actifs sur {modules.length} disponibles
           </p>
         </div>
-        <Link href="/module-catalog" className="btn-secondary text-sm px-4 py-2">
+        <button className="btn-secondary text-sm px-4 py-2">
           <Icon name="PuzzlePieceIcon" size={15} />
           Catalogue complet
-        </Link>
+        </button>
       </div>
 
       {/* Category filter */}

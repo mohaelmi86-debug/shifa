@@ -116,9 +116,6 @@ const ROLE_GUARDS: Record<string, string[]> = {
   '/imaging-dashboard': ['professional', 'org_admin', 'platform_admin'],
   '/imaging-lms': ['professional', 'org_admin', 'platform_admin'],
   '/laboratory-lms': ['professional', 'org_admin', 'platform_admin'],
-  '/lab-lis-connector': ['professional', 'org_admin', 'platform_admin'],
-  '/lab-sample-transfer': ['professional', 'org_admin', 'platform_admin'],
-  '/lab-international-transfer': ['professional', 'org_admin', 'platform_admin'],
   '/billing-dashboard': ['professional', 'org_admin', 'platform_admin'],
   '/emergency-dashboard': ['professional', 'org_admin', 'platform_admin'],
   '/emergency-workspace': ['professional', 'org_admin', 'platform_admin'],
@@ -344,17 +341,6 @@ export async function middleware(request: NextRequest) {
         url.pathname = '/administration-tablissement';
       } else if (userRole === 'platform_admin') {
         url.pathname = '/platform-admin';
-      } else if (userRole === 'ambassador') {
-        url.pathname = '/ambassador-workspace';
-      } else if (
-        userRole === 'institution' ||
-        userRole === 'ministry' ||
-        userRole === 'insurance' ||
-        userRole === 'university' ||
-        userRole === 'ngo' ||
-        userRole === 'public_health'
-      ) {
-        url.pathname = '/administration-tablissement';
       } else {
         url.pathname = '/patient-home';
       }
