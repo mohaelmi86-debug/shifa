@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslations } from '@/lib/i18n';
@@ -55,14 +56,14 @@ export default function WorkspaceHeader() {
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--shifa-green)' }} />
           <span style={{ color: 'var(--foreground)' }}>{statusLabels[language] || statusLabels.fr}</span>
         </div>
-        <button className="btn-primary text-sm px-4 py-2">
+        <Link href="/consultation-workspace" className="btn-primary text-sm px-4 py-2">
           <Icon name="PlayIcon" size={15} />
           {startConsultLabels[language] || startConsultLabels.fr}
-        </button>
-        <button className="relative p-2.5 rounded-xl border transition-colors hover:bg-muted" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+        </Link>
+        <Link href="/notifications-center" className="relative p-2.5 rounded-xl border transition-colors hover:bg-muted" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
           <Icon name="BellIcon" size={18} className="text-muted-foreground" />
           <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--shifa-red)' }} />
-        </button>
+        </Link>
       </div>
     </div>
   );
