@@ -12,6 +12,8 @@ export class ShifaSyncQueueService {
   private localQueue: SyncQueueItem[] = [];
   private isOnline = typeof window !== 'undefined' ? navigator.onLine : true;
   private listeners: Array<(items: SyncQueueItem[]) => void> = [];
+  private activeChannels: Map<string, ReturnType<ReturnType<typeof createClient>['channel']>> = new Map();
+  private conflictResolvers: Map<string, (conflict: SyncConflict) => 'server' | 'client' | 'merge'> = new Map();
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -54,7 +56,7 @@ export class ShifaSyncQueueService {
         return priorityOrder[a.priority] - priorityOrder[b.priority];
       });
 
-    for (const item of pending) {
+    for (let item of pending) {
       await this.syncItem(item);
     }
   }
@@ -63,6 +65,27 @@ export class ShifaSyncQueueService {
     this.updateItemStatus(item.id, 'syncing');
 
     try {
+      // Conflict detection before upsert
+      const conflict = await this.detectConflicts(item);
+      if (conflict) {
+        const resolver = this.conflictResolvers.get(item.moduleId) || (() => 'server' as const);
+        const resolution = resolver(conflict);
+
+        if (resolution === 'server') {
+          // Server wins — discard local change
+          this.updateItemStatus(item.id, 'synced', { syncedAt: new Date().toISOString() });
+          this.notifyListeners();
+          return;
+        } else if (resolution === 'merge') {
+          // Merge payloads
+          item = {
+            ...item,
+            payload: { ...conflict.serverVersion, ...conflict.clientVersion },
+          };
+        }
+        // 'client' falls through to normal upsert
+      }
+
       const { error } = await this.supabase
         .from('sync_queue')
         .upsert({
@@ -128,11 +151,42 @@ export class ShifaSyncQueueService {
     return null;
   }
 
-  // ─── REAL-TIME SUBSCRIPTION ───────────────────────────────────────────────
+  // ─── CONFLICT RESOLUTION STRATEGY ────────────────────────────────────────
+
+  registerConflictResolver(
+    moduleId: string,
+    resolver: (conflict: SyncConflict) => 'server' | 'client' | 'merge'
+  ): void {
+    this.conflictResolvers.set(moduleId, resolver);
+  }
+
+  resolveConflict(itemId: string, resolution: 'server' | 'client'): void {
+    let item = this.localQueue.find(i => i.id === itemId);
+    if (!item) return;
+
+    if (resolution === 'server') {
+      this.updateItemStatus(itemId, 'synced', { syncedAt: new Date().toISOString() });
+    } else {
+      // Force re-sync with client version
+      this.updateItemStatus(itemId, 'pending', { attemptCount: 0 });
+      if (this.isOnline) {
+        this.processPendingItems();
+      }
+    }
+    this.notifyListeners();
+  }
+
+  // ─── REAL-TIME SUBSCRIPTION (enhanced bi-directional) ────────────────────
 
   subscribeToQueue(organizationId: string, callback: (event: ShifaEvent) => void): () => void {
+    const channelKey = `sync-queue-${organizationId}`;
+    if (this.activeChannels.has(channelKey)) {
+      const existing = this.activeChannels.get(channelKey)!;
+      this.supabase.removeChannel(existing);
+    }
+
     const channel = this.supabase
-      .channel(`sync-queue-${organizationId}`)
+      .channel(channelKey)
       .on(
         'postgres_changes',
         {
@@ -142,12 +196,23 @@ export class ShifaSyncQueueService {
           filter: `organization_id=eq.${organizationId}`,
         },
         (payload) => {
+          const newRecord = payload.new as Record<string, unknown>;
+          // Bi-directional: if server updated a record we have locally, update local state
+          if (newRecord?.id && typeof newRecord.id === 'string') {
+            const localItem = this.localQueue.find(i => i.id === newRecord.id);
+            if (localItem && newRecord.status === 'synced') {
+              this.updateItemStatus(newRecord.id, 'synced', {
+                syncedAt: String(newRecord.updated_at ?? new Date().toISOString()),
+              });
+            }
+          }
+
           const shifaEvent: ShifaEvent = {
             id: this.generateOfflineId(),
             type: 'sync.completed',
             sourceModule: 'offline-sync',
             targetModules: ['audit'],
-            payload: payload.new as Record<string, unknown>,
+            payload: newRecord,
             timestamp: new Date().toISOString(),
             organizationId,
             userId: 'system',
@@ -158,14 +223,23 @@ export class ShifaSyncQueueService {
       )
       .subscribe();
 
+    this.activeChannels.set(channelKey, channel);
+
     return () => {
       this.supabase.removeChannel(channel);
+      this.activeChannels.delete(channelKey);
     };
   }
 
   subscribeToTransferEvents(organizationId: string, callback: (event: ShifaEvent) => void): () => void {
+    const channelKey = `transfer-events-${organizationId}`;
+    if (this.activeChannels.has(channelKey)) {
+      const existing = this.activeChannels.get(channelKey)!;
+      this.supabase.removeChannel(existing);
+    }
+
     const channel = this.supabase
-      .channel(`transfer-events-${organizationId}`)
+      .channel(channelKey)
       .on(
         'postgres_changes',
         {
@@ -193,9 +267,49 @@ export class ShifaSyncQueueService {
       )
       .subscribe();
 
+    this.activeChannels.set(channelKey, channel);
+
     return () => {
       this.supabase.removeChannel(channel);
+      this.activeChannels.delete(channelKey);
     };
+  }
+
+  // ─── SUBSCRIBE TO ALL MODULE EVENTS (for Super Admin live screen) ─────────
+
+  subscribeToAllModuleEvents(callback: (event: Record<string, unknown>) => void): () => void {
+    const channelKey = 'platform-events-all';
+    if (this.activeChannels.has(channelKey)) {
+      const existing = this.activeChannels.get(channelKey)!;
+      this.supabase.removeChannel(existing);
+    }
+
+    const channel = this.supabase
+      .channel(channelKey)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'platform_events' },
+        (payload) => {
+          if (payload.new) callback(payload.new as Record<string, unknown>);
+        }
+      )
+      .subscribe();
+
+    this.activeChannels.set(channelKey, channel);
+
+    return () => {
+      this.supabase.removeChannel(channel);
+      this.activeChannels.delete(channelKey);
+    };
+  }
+
+  // ─── CLEANUP ALL CHANNELS ─────────────────────────────────────────────────
+
+  cleanupAllChannels(): void {
+    this.activeChannels.forEach(channel => {
+      this.supabase.removeChannel(channel);
+    });
+    this.activeChannels.clear();
   }
 
   // ─── QUEUE STATS ──────────────────────────────────────────────────────────
@@ -255,10 +369,8 @@ export class ShifaSyncQueueService {
     if (typeof window !== 'undefined') {
       try {
         const serialized = JSON.stringify(this.localQueue);
-        // In production: encrypt before storing
         sessionStorage.setItem('shifa_sync_queue', serialized);
       } catch {
-        // Storage quota exceeded — prune synced items
         this.localQueue = this.localQueue.filter(i => i.status !== 'synced');
       }
     }
@@ -294,6 +406,7 @@ export function useSyncQueue(organizationId?: string) {
   const [queue, setQueue] = useState<SyncQueueItem[]>([]);
   const [stats, setStats] = useState(syncQueueService.getStats());
   const [isOnline, setIsOnline] = useState(true);
+  const [liveEvents, setLiveEvents] = useState<ShifaEvent[]>([]);
 
   useEffect(() => {
     syncQueueService.loadPersistedQueue();
@@ -305,7 +418,10 @@ export function useSyncQueue(organizationId?: string) {
       setStats(syncQueueService.getStats());
     });
 
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncQueueService.processPendingItems();
+    };
     const handleOffline = () => setIsOnline(false);
 
     if (typeof window !== 'undefined') {
@@ -314,15 +430,22 @@ export function useSyncQueue(organizationId?: string) {
       window.addEventListener('offline', handleOffline);
     }
 
+    let unsubSync: (() => void) | undefined;
     let unsubTransfer: (() => void) | undefined;
+
     if (organizationId) {
+      unsubSync = syncQueueService.subscribeToQueue(organizationId, (event) => {
+        setLiveEvents(prev => [event, ...prev].slice(0, 50));
+      });
+
       unsubTransfer = syncQueueService.subscribeToTransferEvents(organizationId, (event) => {
-        console.log('[SHIFA Sync] Transfer event:', event.type, event.patientId);
+        setLiveEvents(prev => [event, ...prev].slice(0, 50));
       });
     }
 
     return () => {
       unsubQueue();
+      unsubSync?.();
       unsubTransfer?.();
       if (typeof window !== 'undefined') {
         window.removeEventListener('online', handleOnline);
@@ -335,7 +458,10 @@ export function useSyncQueue(organizationId?: string) {
     queue,
     stats,
     isOnline,
+    liveEvents,
     enqueue: syncQueueService.enqueue.bind(syncQueueService),
     processNow: syncQueueService.processPendingItems.bind(syncQueueService),
+    resolveConflict: syncQueueService.resolveConflict.bind(syncQueueService),
+    registerConflictResolver: syncQueueService.registerConflictResolver.bind(syncQueueService),
   };
 }
