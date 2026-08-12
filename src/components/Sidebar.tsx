@@ -218,6 +218,7 @@ const institutionNav: NavItem[] = [
   { key: 'nav-inst-ong', label: 'ONG / Humanitaire', icon: 'HeartIcon', href: '/espace-ong', group: 'espaces' },
   { key: 'nav-inst-sante-pub', label: 'Santé Publique', icon: 'ChartBarIcon', href: '/espace-sante-publique', group: 'espaces' },
   { key: 'nav-inst-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'espaces' },
+  { key: 'nav-inst-gov-licensing', label: 'Licences Gouvernements & ONG', icon: 'BuildingLibraryIcon', href: '/government-licensing', group: 'espaces' },
   { key: 'nav-inst-shifa-ai-institution', label: 'SHIFA AI Institution', icon: 'CpuChipIcon', href: '/shifa-ai-institution', group: 'workspaces' },
   { key: 'nav-inst-shifa-ai-research', label: 'SHIFA AI Recherche', icon: 'BeakerIcon', href: '/shifa-ai-research', group: 'workspaces' },
   { key: 'nav-inst-research-datasets', label: 'Jeux de données recherche', icon: 'CircleStackIcon', href: '/research-datasets', group: 'workspaces' },

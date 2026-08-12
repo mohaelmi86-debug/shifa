@@ -248,6 +248,7 @@ const ROLE_GUARDS: Record<string, string[]> = {
   '/marketplace-buyer': [],
   '/marketplace-commercial': ['platform_admin'],
   '/health-marketplace': [],
+  '/government-licensing': [],
   '/pro-parametres': ['professional', 'platform_admin'],
   '/settings': ['platform_admin'],
   '/tax-configuration': ['platform_admin'],
@@ -319,6 +320,7 @@ export async function middleware(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
+  // Default to 'patient' if no profile found — never block an authenticated user
   const userRole: string = profile?.role ?? 'patient';
   const orgId: string | null = profile?.organization_id ?? null;
 
@@ -331,9 +333,18 @@ export async function middleware(request: NextRequest) {
     const [, allowedRoles] = matchedGuard;
     // Empty array = any authenticated user
     if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+      // Redirect to the appropriate home for the user's actual role
       const url = request.nextUrl.clone();
-      url.pathname = '/sign-up-login-screen';
-      url.searchParams.set('error', 'insufficient_permissions');
+      if (userRole === 'professional') {
+        url.pathname = '/workspace-professionnel';
+      } else if (userRole === 'org_admin') {
+        url.pathname = '/administration-tablissement';
+      } else if (userRole === 'platform_admin') {
+        url.pathname = '/platform-admin';
+      } else {
+        url.pathname = '/patient-home';
+      }
+      url.searchParams.delete('error');
       return NextResponse.redirect(url);
     }
   }
