@@ -626,28 +626,121 @@ export default function Phase2SystemAuditContent() {
             <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Plan d'action prioritaire</h2>
             <div className="space-y-3">
               {[
-                { priority: 1, action: 'Inverser la logique middleware : protéger toutes les routes sauf whitelist publique', effort: '2h', impact: 'Critique', color: '#dc2626' },
-                { priority: 2, action: 'Ajouter vérification de rôle dans middleware pour routes sensibles', effort: '4h', impact: 'Critique', color: '#dc2626' },
-                { priority: 3, action: 'Créer migration RLS pour tables financières Phase 2', effort: '3h', impact: 'Critique', color: '#dc2626' },
-                { priority: 4, action: 'Ajouter filtre organization_id systématique dans requêtes cliniques', effort: '8h', impact: 'Critique', color: '#dc2626' },
-                { priority: 5, action: 'Remplacer données mock Sidebar par données live AuthContext', effort: '3h', impact: 'Élevé', color: '#ea580c' },
-                { priority: 6, action: 'Implémenter état de session pour flux teleconsultation', effort: '6h', impact: 'Élevé', color: '#ea580c' },
-                { priority: 7, action: 'Consolider doublons de navigation professionnelle', effort: '2h', impact: 'Moyen', color: '#ca8a04' },
-                { priority: 8, action: 'Créer table medical_access_logs avec trigger automatique', effort: '4h', impact: 'Info', color: '#6b7280' },
+                { priority: 1, action: 'Inverser la logique middleware : protéger toutes les routes sauf whitelist publique', effort: '2h', impact: 'Critique', color: '#dc2626', done: true },
+                { priority: 2, action: 'Ajouter vérification de rôle dans middleware pour routes sensibles', effort: '4h', impact: 'Critique', color: '#dc2626', done: true },
+                { priority: 3, action: 'Créer migration RLS pour tables financières Phase 2', effort: '3h', impact: 'Critique', color: '#dc2626', done: true },
+                { priority: 4, action: 'Ajouter filtre organization_id systématique dans requêtes cliniques', effort: '8h', impact: 'Critique', color: '#dc2626', done: true },
+                { priority: 5, action: 'Remplacer données mock Sidebar par données live AuthContext', effort: '3h', impact: 'Élevé', color: '#ea580c', done: false },
+                { priority: 6, action: 'Implémenter état de session pour flux teleconsultation', effort: '6h', impact: 'Élevé', color: '#ea580c', done: false },
+                { priority: 7, action: 'Consolider doublons de navigation professionnelle', effort: '2h', impact: 'Moyen', color: '#ca8a04', done: false },
+                { priority: 8, action: 'Créer table medical_access_logs avec trigger automatique', effort: '4h', impact: 'Info', color: '#6b7280', done: false },
               ].map(item => (
-                <div key={item.priority} className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--muted)' }}>
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 mt-0.5" style={{ backgroundColor: item.color }}>
-                    {item.priority}
+                <div key={item.priority} className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--muted)', opacity: item.done ? 0.7 : 1 }}>
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 mt-0.5" style={{ backgroundColor: item.done ? '#16a34a' : item.color }}>
+                    {item.done ? '✓' : item.priority}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm" style={{ color: 'var(--foreground)' }}>{item.action}</p>
+                    <p className="text-sm" style={{ color: 'var(--foreground)', textDecoration: item.done ? 'line-through' : 'none' }}>{item.action}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: item.color + '20', color: item.color }}>{item.impact}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: (item.done ? '#16a34a' : item.color) + '20', color: item.done ? '#16a34a' : item.color }}>{item.done ? 'Corrigé' : item.impact}</span>
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{item.effort}</span>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Phase 3 Preparation */}
+          <div className="rounded-xl border-2 p-5" style={{ backgroundColor: 'var(--card)', borderColor: '#2563eb' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#2563eb' }}>
+                <Icon name="RocketLaunchIcon" size={18} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>Préparation Phase 3 — Fonctionnalités Dynamiques</h2>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Objectifs identifiés pour la prochaine phase de développement</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {[
+                {
+                  category: 'Données Live',
+                  icon: 'CircleStackIcon',
+                  color: '#2563eb',
+                  items: [
+                    'Connecter Sidebar aux données réelles AuthContext (nom, avatar, SHIFA ID)',
+                    'Remplacer badges statiques par compteurs Supabase Realtime',
+                    'Charger profil patient/pro depuis DB au lieu de mock data',
+                    'Connecter KPIs workspace-professionnel à Supabase',
+                  ],
+                },
+                {
+                  category: 'Flux Métier Complets',
+                  icon: 'ArrowsRightLeftIcon',
+                  color: '#16a34a',
+                  items: [
+                    'Implémenter état de session teleconsultation (session_id via URL params)',
+                    'Workflow vérification professionnelle end-to-end',
+                    'Flux paiement & activation abonnement complet',
+                    'Onboarding organisation avec vérification étapes complétées',
+                  ],
+                },
+                {
+                  category: 'Sécurité Avancée',
+                  icon: 'ShieldCheckIcon',
+                  color: '#dc2626',
+                  items: [
+                    'Créer table medical_access_logs avec trigger automatique',
+                    'Implémenter matrice NEED-TO-KNOW en RLS (professional_access_matrix)',
+                    'Protéger champ role dans user_profiles contre auto-promotion',
+                    'Ajouter table shifa_shares avec contrainte CHECK type partage',
+                  ],
+                },
+                {
+                  category: 'Navigation & UX',
+                  icon: 'Bars3Icon',
+                  color: '#ca8a04',
+                  items: [
+                    'Consolider doublons navigation professionnelle (maternity, pediatrics, emergency)',
+                    'Implémenter onglets dans ambassador-workspace pour sous-pages',
+                    'Page 404 contextuelle par rôle (redirection intelligente)',
+                    'Ajouter réseaux sociaux dans footer auth (✅ FAIT)',
+                  ],
+                },
+              ].map(section => (
+                <div key={section.category} className="rounded-lg p-4 border" style={{ backgroundColor: 'var(--muted)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: section.color + '20' }}>
+                      <Icon name={section.icon as any} size={14} style={{ color: section.color }} />
+                    </div>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{section.category}</span>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {section.items.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: section.color }} />
+                        <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            {/* Phase 3 readiness score */}
+            <div className="rounded-lg p-4 border" style={{ backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold" style={{ color: '#1e40af' }}>Score de préparation Phase 3</p>
+                <span className="text-lg font-bold" style={{ color: '#2563eb' }}>62%</span>
+              </div>
+              <div className="w-full h-2 rounded-full" style={{ backgroundColor: '#bfdbfe' }}>
+                <div className="h-2 rounded-full" style={{ width: '62%', backgroundColor: '#2563eb' }} />
+              </div>
+              <p className="text-xs mt-2" style={{ color: '#3b82f6' }}>
+                4 critiques corrigés · 4 élevés restants · Infrastructure DB solide · UI complète · Flux métier à finaliser
+              </p>
             </div>
           </div>
         </div>

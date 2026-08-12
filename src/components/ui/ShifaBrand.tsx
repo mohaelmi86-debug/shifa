@@ -53,7 +53,7 @@ const ShifaBrand = memo(function ShifaBrand({
   // Symbol-only: show just the icon portion at small size
   // Used in: collapsed sidebar, compact contexts
   if (variant === 'symbol') {
-    const size = symbolSize ?? 32;
+    const size = symbolSize ?? 40;
     return (
       <div className={wrapperClass} onClick={onClick}>
         <AppImage
@@ -103,14 +103,14 @@ const ShifaBrand = memo(function ShifaBrand({
         <AppImage
           src={SHIFA_LOGO_SRC}
           alt="SHIFA Health OS"
-          width={180}
-          height={72}
+          width={220}
+          height={88}
           className="object-contain"
           priority
           style={{
-            maxWidth: '180px',
+            maxWidth: '220px',
             height: 'auto',
-            aspectRatio: '180 / 72',
+            aspectRatio: '220 / 88',
           }}
         />
       </div>
@@ -125,14 +125,14 @@ const ShifaBrand = memo(function ShifaBrand({
         <AppImage
           src={SHIFA_LOGO_SRC}
           alt="SHIFA Health OS"
-          width={140}
-          height={44}
+          width={180}
+          height={56}
           className="object-contain flex-shrink-0"
           priority
           style={{
-            maxWidth: '140px',
+            maxWidth: '180px',
             height: 'auto',
-            aspectRatio: '140 / 44',
+            aspectRatio: '180 / 56',
           }}
         />
       </div>
@@ -147,14 +147,14 @@ const ShifaBrand = memo(function ShifaBrand({
         <AppImage
           src={SHIFA_LOGO_SRC}
           alt="SHIFA Health OS"
-          width={110}
-          height={36}
+          width={140}
+          height={44}
           className="object-contain flex-shrink-0"
           priority={variant === 'topnav'}
           style={{
-            maxWidth: '110px',
+            maxWidth: '140px',
             height: 'auto',
-            aspectRatio: '110 / 36',
+            aspectRatio: '140 / 44',
           }}
         />
       </div>
