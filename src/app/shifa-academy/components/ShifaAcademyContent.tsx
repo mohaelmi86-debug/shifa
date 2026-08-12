@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-type Tab = 'catalog' | 'mycourses' | 'viewer' | 'quiz' | 'certificates' | 'instructor';
+type Tab = 'catalog' | 'mycourses' | 'viewer' | 'quiz' | 'certificates' | 'instructor' | 'universite' | 'emploi';
 
 const courses = [
   { id: 1, title: 'Télémédecine en Afrique subsaharienne', category: 'Numérique', level: 'Débutant', duration: '4h 30min', enrolled: 1247, rating: 4.8, instructor: 'Dr. Aminata Koné', color: '#0ea5e9', bg: '#e0f2fe', progress: 0, certified: false, modules: 8, price: 'Gratuit' },
@@ -70,6 +70,24 @@ const levelColors: Record<string, { bg: string; text: string }> = {
   'Avancé': { bg: '#fee2e2', text: '#dc2626' },
 };
 
+const universityCourses = [
+  { id: 'u1', title: 'Pharmacologie clinique avancée', university: 'Université Cheikh Anta Diop', category: 'Pharmacologie', level: 'Avancé', duration: '12h', credits: 2, price: '45 000 FCFA', enrolled: 234, rating: 4.9, color: '#7c3aed', bg: '#ede9fe', openTo: 'Professionnels de santé', startDate: '15 Sep 2026', seats: 30, seatsLeft: 8 },
+  { id: 'u2', title: 'Épidémiologie des maladies tropicales', university: 'Université de Bamako', category: 'Santé publique', level: 'Intermédiaire', duration: '8h', credits: 1, price: 'Gratuit', enrolled: 892, rating: 4.7, color: '#0ea5e9', bg: '#e0f2fe', openTo: 'Tous professionnels', startDate: '01 Oct 2026', seats: 100, seatsLeft: 42 },
+  { id: 'u3', title: 'Chirurgie laparoscopique — bases', university: 'Université de Lomé', category: 'Chirurgie', level: 'Avancé', duration: '20h', credits: 3, price: '80 000 FCFA', enrolled: 78, rating: 4.8, color: '#ef4444', bg: '#fee2e2', openTo: 'Chirurgiens, internes', startDate: '20 Sep 2026', seats: 20, seatsLeft: 5 },
+  { id: 'u4', title: 'Santé mentale et psychiatrie communautaire', university: 'Université de Ouagadougou', category: 'Psychiatrie', level: 'Intermédiaire', duration: '6h', credits: 1, price: '20 000 FCFA', enrolled: 445, rating: 4.6, color: '#06b6d4', bg: '#cffafe', openTo: 'Tous professionnels', startDate: '10 Oct 2026', seats: 60, seatsLeft: 22 },
+  { id: 'u5', title: 'Gestion des urgences obstétricales', university: 'Université de Conakry', category: 'Gynécologie', level: 'Avancé', duration: '10h', credits: 2, price: '35 000 FCFA', enrolled: 167, rating: 4.9, color: '#ec4899', bg: '#fce7f3', openTo: 'Gynécologues, sages-femmes', startDate: '05 Oct 2026', seats: 25, seatsLeft: 11 },
+  { id: 'u6', title: 'Intelligence artificielle en médecine', university: 'Université Virtuelle du Sénégal', category: 'Numérique', level: 'Débutant', duration: '5h', credits: 1, price: 'Gratuit', enrolled: 1340, rating: 4.5, color: '#10b981', bg: '#d1fae5', openTo: 'Tous professionnels', startDate: '01 Sep 2026', seats: 500, seatsLeft: 187 },
+];
+
+const universityPartners = [
+  { name: 'Université Cheikh Anta Diop', country: 'Sénégal', courses: 12, students: 890, color: '#7c3aed' },
+  { name: 'Université de Bamako', country: 'Mali', courses: 8, students: 654, color: '#0ea5e9' },
+  { name: 'Université de Lomé', country: 'Togo', courses: 6, students: 312, color: '#ef4444' },
+  { name: 'Université de Ouagadougou', country: 'Burkina Faso', courses: 9, students: 445, color: '#06b6d4' },
+  { name: 'Université de Conakry', country: 'Guinée', courses: 5, students: 234, color: '#ec4899' },
+  { name: 'Université Virtuelle du Sénégal', country: 'Sénégal', courses: 15, students: 2100, color: '#10b981' },
+];
+
 export default function ShifaAcademyContent() {
   const [activeTab, setActiveTab] = useState<Tab>('catalog');
   const [search, setSearch] = useState('');
@@ -77,11 +95,18 @@ export default function ShifaAcademyContent() {
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('Tous');
+  const [uniFilter, setUniFilter] = useState('Tous');
+  const [enrolledUni, setEnrolledUni] = useState<string[]>([]);
 
   const categories = ['Tous', ...Array.from(new Set(courses.map(c => c.category)))];
 
   const filtered = courses.filter(c =>
     (categoryFilter === 'Tous' || c.category === categoryFilter) &&
+    (c.title.toLowerCase().includes(search.toLowerCase()) || c.category.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const filteredUni = universityCourses.filter(c =>
+    (uniFilter === 'Tous' || c.university === uniFilter) &&
     (c.title.toLowerCase().includes(search.toLowerCase()) || c.category.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -92,6 +117,7 @@ export default function ShifaAcademyContent() {
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'catalog', label: 'Catalogue', icon: 'BookOpenIcon' },
     { key: 'mycourses', label: 'Mes formations', icon: 'AcademicCapIcon' },
+    { key: 'universite', label: 'Universités', icon: 'BuildingLibraryIcon' },
     { key: 'viewer', label: 'Lecteur de cours', icon: 'PlayCircleIcon' },
     { key: 'quiz', label: 'Quiz & Évaluations', icon: 'ClipboardDocumentCheckIcon' },
     { key: 'certificates', label: 'Certificats', icon: 'StarIcon' },
@@ -108,7 +134,7 @@ export default function ShifaAcademyContent() {
           </div>
           <div>
             <h1 className="text-lg font-bold" style={{ color: 'var(--foreground)', fontFamily: 'DM Sans, sans-serif' }}>SHIFA Academy</h1>
-            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Formation médicale continue · Certifications professionnelles</p>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Formation médicale continue · Universités partenaires · Certifications</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -256,6 +282,164 @@ export default function ShifaAcademyContent() {
                   </button>
                 </div>
               ))}
+              {enrolledUni.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-3 mt-4" style={{ color: 'var(--foreground)' }}>Formations universitaires inscrites</h3>
+                  {universityCourses.filter(c => enrolledUni.includes(c.id)).map(course => (
+                    <div key={course.id} className="rounded-2xl border p-4 flex items-center gap-4 mb-3" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: course.bg }}>
+                        <Icon name="BuildingLibraryIcon" size={22} style={{ color: course.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold mb-0.5" style={{ color: 'var(--foreground)' }}>{course.title}</h3>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{course.university} · {course.duration} · {course.credits} crédit(s)</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#8b5cf6' }}>Début : {course.startDate}</p>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#dcfce7', color: '#16a34a' }}>Inscrit</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── UNIVERSITÉS ── */}
+        {activeTab === 'universite' && (
+          <div className="space-y-6">
+            {/* Banner */}
+            <div className="rounded-2xl p-5 border" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(6,182,212,0.1))', borderColor: 'var(--border)' }}>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)' }}>
+                  <Icon name="BuildingLibraryIcon" size={22} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold mb-1" style={{ color: 'var(--foreground)' }}>Formations continues universitaires</h2>
+                  <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    Les universités partenaires de SHIFA Academy proposent leurs cours de formation continue aux professionnels de santé. Inscrivez-vous directement depuis SHIFA et obtenez des crédits universitaires reconnus.
+                  </p>
+                  <div className="flex gap-4 mt-3 flex-wrap">
+                    {[
+                      { label: '6 universités partenaires', icon: 'BuildingLibraryIcon', color: '#8b5cf6' },
+                      { label: '55 cours disponibles', icon: 'BookOpenIcon', color: '#0ea5e9' },
+                      { label: 'Crédits reconnus', icon: 'AcademicCapIcon', color: '#10b981' },
+                      { label: 'Accès hybride', icon: 'ComputerDesktopIcon', color: '#f59e0b' },
+                    ].map((b, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-xs font-medium" style={{ color: b.color }}>
+                        <Icon name={b.icon as any} size={13} />
+                        {b.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* University partners */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground)' }}>Universités partenaires</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {universityPartners.map(uni => (
+                  <button
+                    key={uni.name}
+                    onClick={() => setUniFilter(uniFilter === uni.name ? 'Tous' : uni.name)}
+                    className="rounded-xl border p-3 text-left transition-all hover:shadow-sm"
+                    style={{
+                      backgroundColor: uniFilter === uni.name ? uni.color + '15' : 'var(--card)',
+                      borderColor: uniFilter === uni.name ? uni.color : 'var(--border)',
+                    }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ backgroundColor: uni.color + '20' }}>
+                      <Icon name="BuildingLibraryIcon" size={16} style={{ color: uni.color }} />
+                    </div>
+                    <p className="text-xs font-semibold leading-tight mb-0.5" style={{ color: 'var(--foreground)' }}>{uni.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{uni.country}</p>
+                    <p className="text-xs mt-1" style={{ color: uni.color }}>{uni.courses} cours · {uni.students} inscrits</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <Icon name="MagnifyingGlassIcon" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Rechercher une formation universitaire..."
+                className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border outline-none"
+                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
+            </div>
+
+            {/* Course grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredUni.map(course => (
+                <div key={course.id} className="rounded-2xl border overflow-hidden hover:shadow-md transition-shadow" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="h-2" style={{ backgroundColor: course.color }} />
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: course.bg, color: course.color }}>{course.category}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: levelColors[course.level]?.bg, color: levelColors[course.level]?.text }}>{course.level}</span>
+                    </div>
+                    <h3 className="text-sm font-semibold mb-1 leading-snug" style={{ color: 'var(--foreground)' }}>{course.title}</h3>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Icon name="BuildingLibraryIcon" size={12} style={{ color: course.color }} />
+                      <p className="text-xs font-medium" style={{ color: course.color }}>{course.university}</p>
+                    </div>
+                    <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>Ouvert à : {course.openTo}</p>
+                    <div className="grid grid-cols-2 gap-2 mb-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                      <span className="flex items-center gap-1"><Icon name="ClockIcon" size={11} />{course.duration}</span>
+                      <span className="flex items-center gap-1"><Icon name="AcademicCapIcon" size={11} />{course.credits} crédit(s)</span>
+                      <span className="flex items-center gap-1"><Icon name="CalendarIcon" size={11} />Début {course.startDate}</span>
+                      <span className="flex items-center gap-1"><Icon name="UserGroupIcon" size={11} />{course.seatsLeft} places restantes</span>
+                    </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-bold" style={{ color: course.price === 'Gratuit' ? '#16a34a' : course.color }}>{course.price}</span>
+                      <div className="flex items-center gap-1 text-xs" style={{ color: '#f59e0b' }}>
+                        <Icon name="StarIcon" size={11} />
+                        <span>{course.rating}</span>
+                        <span style={{ color: 'var(--muted-foreground)' }}>({course.enrolled})</span>
+                      </div>
+                    </div>
+                    {/* Seats progress */}
+                    <div className="mb-3">
+                      <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>
+                        <span>Places disponibles</span>
+                        <span>{course.seatsLeft}/{course.seats}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full" style={{ backgroundColor: 'var(--muted)' }}>
+                        <div className="h-1.5 rounded-full" style={{ width: `${((course.seats - course.seatsLeft) / course.seats) * 100}%`, backgroundColor: course.color }} />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setEnrolledUni(prev => prev.includes(course.id) ? prev.filter(id => id !== course.id) : [...prev, course.id])}
+                      className="w-full py-2 rounded-xl text-xs font-medium text-white transition-all"
+                      style={{ backgroundColor: enrolledUni.includes(course.id) ? '#16a34a' : course.color }}>
+                      {enrolledUni.includes(course.id) ? '✓ Inscrit — Voir dans Mes formations' : "S'inscrire à cette formation"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* University CTA for institutions */}
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(139,92,246,0.1)' }}>
+                  <Icon name="PlusCircleIcon" size={20} style={{ color: '#8b5cf6' }} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--foreground)' }}>Vous êtes une université ou école de santé ?</h3>
+                  <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>
+                    Proposez vos formations continues sur SHIFA Academy et touchez des milliers de professionnels de santé en Afrique. Gérez vos inscriptions, crédits et certifications depuis votre espace université.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <a href="/espace-universite" className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
+                      <Icon name="BuildingLibraryIcon" size={13} /> Accéder à l'espace université
+                    </a>
+                    <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                      <Icon name="EnvelopeIcon" size={13} /> Demander un partenariat
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
