@@ -1,0 +1,511 @@
+'use client';
+import React, { useState } from 'react';
+import Icon from '@/components/ui/AppIcon';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+type Tab = 'catalog' | 'mycourses' | 'viewer' | 'quiz' | 'certificates' | 'instructor';
+
+const courses = [
+  { id: 1, title: 'Télémédecine en Afrique subsaharienne', category: 'Numérique', level: 'Débutant', duration: '4h 30min', enrolled: 1247, rating: 4.8, instructor: 'Dr. Aminata Koné', color: '#0ea5e9', bg: '#e0f2fe', progress: 0, certified: false, modules: 8, price: 'Gratuit' },
+  { id: 2, title: 'Prise en charge du paludisme grave', category: 'Infectiologie', level: 'Avancé', duration: '6h 15min', enrolled: 892, rating: 4.9, instructor: 'Pr. Oumar Diallo', color: '#ef4444', bg: '#fee2e2', progress: 65, certified: false, modules: 12, price: '25 000 FCFA' },
+  { id: 3, title: 'Échographie obstétricale de base', category: 'Gynécologie', level: 'Intermédiaire', duration: '8h', enrolled: 634, rating: 4.7, instructor: 'Dr. Mariama Sow', color: '#8b5cf6', bg: '#ede9fe', progress: 100, certified: true, modules: 15, price: '35 000 FCFA' },
+  { id: 4, title: 'Urgences pédiatriques tropicales', category: 'Pédiatrie', level: 'Avancé', duration: '5h 45min', enrolled: 521, rating: 4.6, instructor: 'Dr. Ibrahima Ndiaye', color: '#f59e0b', bg: '#fef3c7', progress: 30, certified: false, modules: 10, price: '30 000 FCFA' },
+  { id: 5, title: 'Diabète et maladies chroniques', category: 'Endocrinologie', level: 'Intermédiaire', duration: '3h 20min', enrolled: 1089, rating: 4.8, instructor: 'Dr. Fatou Traoré', color: '#10b981', bg: '#d1fae5', progress: 0, certified: false, modules: 7, price: 'Gratuit' },
+  { id: 6, title: 'Santé mentale en contexte africain', category: 'Psychiatrie', level: 'Débutant', duration: '4h', enrolled: 743, rating: 4.5, instructor: 'Dr. Cheikh Ba', color: '#06b6d4', bg: '#cffafe', progress: 0, certified: false, modules: 9, price: '20 000 FCFA' },
+];
+
+const courseModules = [
+  { id: 1, title: 'Introduction à la télémédecine', type: 'video', duration: '18 min', done: true },
+  { id: 2, title: 'Cadre réglementaire en Afrique', type: 'document', duration: '12 min', done: true },
+  { id: 3, title: 'Équipements et connectivité', type: 'video', duration: '25 min', done: true },
+  { id: 4, title: 'Consultation à distance — pratique', type: 'video', duration: '32 min', done: false },
+  { id: 5, title: 'Cas cliniques interactifs', type: 'interactive', duration: '20 min', done: false },
+  { id: 6, title: 'Quiz de validation — Module 1', type: 'quiz', duration: '15 min', done: false },
+];
+
+const quizQuestions = [
+  {
+    id: 1,
+    question: 'Quelle est la principale contrainte de la télémédecine en Afrique subsaharienne ?',
+    options: ['Le coût des équipements', 'La connectivité Internet', 'La formation des médecins', 'La réglementation'],
+    correct: 1,
+  },
+  {
+    id: 2,
+    question: 'Quel équipement est indispensable pour une téléconsultation de qualité ?',
+    options: ['Scanner IRM', 'Caméra HD + microphone', 'Tensiomètre connecté', 'Stéthoscope numérique'],
+    correct: 1,
+  },
+  {
+    id: 3,
+    question: 'La télémédecine peut-elle remplacer totalement la consultation en présentiel ?',
+    options: ['Oui, dans tous les cas', 'Non, jamais', 'Partiellement, selon le contexte clinique', 'Uniquement pour les urgences'],
+    correct: 2,
+  },
+];
+
+const certifications = [
+  { id: 1, name: 'Médecin Téléconsultant Certifié SHIFA', course: 'Télémédecine en Afrique', date: '15/03/2026', expires: '15/03/2028', status: 'valide', color: '#16a34a', bg: '#dcfce7', icon: 'VideoCameraIcon', score: 92 },
+  { id: 2, name: 'Praticien Urgences Tropicales', course: 'Urgences pédiatriques tropicales', date: '20/01/2026', expires: '20/01/2027', status: 'valide', color: '#16a34a', bg: '#dcfce7', icon: 'BoltIcon', score: 88 },
+  { id: 3, name: 'Échographie Obstétricale Niveau 1', course: 'Échographie obstétricale de base', date: '05/06/2025', expires: '05/06/2026', status: 'expire_bientot', color: '#ca8a04', bg: '#fef9c3', icon: 'HeartIcon', score: 95 },
+];
+
+const instructorCourses = [
+  { id: 1, title: 'Télémédecine en Afrique subsaharienne', enrolled: 1247, rating: 4.8, revenue: '0 FCFA', status: 'publié', completions: 892 },
+  { id: 2, title: 'Urgences pédiatriques tropicales', enrolled: 521, rating: 4.6, revenue: '15 630 000 FCFA', status: 'publié', completions: 312 },
+];
+
+const progressData = [
+  { semaine: 'S1', heures: 2.5 },
+  { semaine: 'S2', heures: 4 },
+  { semaine: 'S3', heures: 1.5 },
+  { semaine: 'S4', heures: 3 },
+  { semaine: 'S5', heures: 5 },
+  { semaine: 'S6', heures: 3.5 },
+];
+
+const levelColors: Record<string, { bg: string; text: string }> = {
+  'Débutant': { bg: '#dcfce7', text: '#16a34a' },
+  'Intermédiaire': { bg: '#fef9c3', text: '#ca8a04' },
+  'Avancé': { bg: '#fee2e2', text: '#dc2626' },
+};
+
+export default function ShifaAcademyContent() {
+  const [activeTab, setActiveTab] = useState<Tab>('catalog');
+  const [search, setSearch] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('Tous');
+
+  const categories = ['Tous', ...Array.from(new Set(courses.map(c => c.category)))];
+
+  const filtered = courses.filter(c =>
+    (categoryFilter === 'Tous' || c.category === categoryFilter) &&
+    (c.title.toLowerCase().includes(search.toLowerCase()) || c.category.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const quizScore = quizSubmitted
+    ? quizQuestions.filter(q => quizAnswers[q.id] === q.correct).length
+    : 0;
+
+  const tabs: { key: Tab; label: string; icon: string }[] = [
+    { key: 'catalog', label: 'Catalogue', icon: 'BookOpenIcon' },
+    { key: 'mycourses', label: 'Mes formations', icon: 'AcademicCapIcon' },
+    { key: 'viewer', label: 'Lecteur de cours', icon: 'PlayCircleIcon' },
+    { key: 'quiz', label: 'Quiz & Évaluations', icon: 'ClipboardDocumentCheckIcon' },
+    { key: 'certificates', label: 'Certificats', icon: 'StarIcon' },
+    { key: 'instructor', label: 'Espace Formateur', icon: 'UserGroupIcon' },
+  ];
+
+  return (
+    <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--background)' }}>
+      {/* Header */}
+      <div className="border-b px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)' }}>
+            <Icon name="AcademicCapIcon" size={22} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold" style={{ color: 'var(--foreground)', fontFamily: 'DM Sans, sans-serif' }}>SHIFA Academy</h1>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Formation médicale continue · Certifications professionnelles</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs font-bold" style={{ color: 'var(--foreground)' }}>28h de formation</p>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>3 certifications obtenues</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b px-6 overflow-x-auto" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+        <div className="flex gap-0">
+          {tabs.map(tab => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+              className="flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap"
+              style={{ borderColor: activeTab === tab.key ? '#8b5cf6' : 'transparent', color: activeTab === tab.key ? '#8b5cf6' : 'var(--muted-foreground)' }}>
+              <Icon name={tab.icon as any} size={15} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6">
+
+        {/* ── CATALOG ── */}
+        {activeTab === 'catalog' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: 'Formations disponibles', value: '124', icon: 'BookOpenIcon', color: '#0ea5e9' },
+                { label: 'Mes formations', value: '4', icon: 'AcademicCapIcon', color: '#8b5cf6' },
+                { label: 'Certifications obtenues', value: '3', icon: 'StarIcon', color: '#f59e0b' },
+                { label: 'Heures de formation', value: '28h', icon: 'ClockIcon', color: '#10b981' },
+              ].map((k, i) => (
+                <div key={i} className="rounded-xl p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: k.color + '20' }}>
+                      <Icon name={k.icon as any} size={16} style={{ color: k.color }} />
+                    </div>
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{k.label}</span>
+                  </div>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{k.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-48">
+                <Icon name="MagnifyingGlassIcon" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Rechercher une formation..."
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border outline-none"
+                  style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {categories.map(cat => (
+                  <button key={cat} onClick={() => setCategoryFilter(cat)}
+                    className="px-3 py-2 rounded-xl text-xs font-medium border transition-colors"
+                    style={{ backgroundColor: categoryFilter === cat ? '#8b5cf6' : 'var(--card)', color: categoryFilter === cat ? '#fff' : 'var(--muted-foreground)', borderColor: 'var(--border)' }}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map(course => (
+                <div key={course.id} className="rounded-2xl border overflow-hidden hover:shadow-md transition-shadow cursor-pointer" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="h-3" style={{ backgroundColor: course.color }} />
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: course.bg, color: course.color }}>{course.category}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: levelColors[course.level]?.bg, color: levelColors[course.level]?.text }}>{course.level}</span>
+                    </div>
+                    <h3 className="text-sm font-semibold mb-1 leading-snug" style={{ color: 'var(--foreground)' }}>{course.title}</h3>
+                    <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>{course.instructor}</p>
+                    <div className="flex items-center justify-between text-xs mb-2" style={{ color: 'var(--muted-foreground)' }}>
+                      <span className="flex items-center gap-1"><Icon name="ClockIcon" size={12} />{course.duration}</span>
+                      <span className="flex items-center gap-1"><Icon name="RectangleStackIcon" size={12} />{course.modules} modules</span>
+                      <span className="flex items-center gap-1"><Icon name="StarIcon" size={12} style={{ color: '#f59e0b' }} />{course.rating}</span>
+                    </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-bold" style={{ color: course.price === 'Gratuit' ? '#16a34a' : course.color }}>{course.price}</span>
+                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{course.enrolled.toLocaleString()} inscrits</span>
+                    </div>
+                    {course.progress > 0 && (
+                      <div className="mb-3">
+                        <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>
+                          <span>Progression</span><span>{course.progress}%</span>
+                        </div>
+                        <div className="h-1.5 rounded-full" style={{ backgroundColor: 'var(--muted)' }}>
+                          <div className="h-1.5 rounded-full transition-all" style={{ width: `${course.progress}%`, backgroundColor: course.color }} />
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => { setSelectedCourse(course.id); setActiveTab('viewer'); }}
+                      className="w-full py-2 rounded-xl text-xs font-medium text-white"
+                      style={{ backgroundColor: course.progress === 100 ? '#16a34a' : course.color }}>
+                      {course.progress === 100 ? '✓ Terminé — Voir certificat' : course.progress > 0 ? 'Continuer' : 'Commencer'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── MY COURSES ── */}
+        {activeTab === 'mycourses' && (
+          <div className="space-y-6">
+            <div className="rounded-2xl p-5 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Heures de formation par semaine</h3>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={progressData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="semaine" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px' }} />
+                  <Bar dataKey="heures" name="Heures" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-3">
+              {courses.filter(c => c.progress > 0).map(course => (
+                <div key={course.id} className="rounded-2xl border p-4 flex items-center gap-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: course.bg }}>
+                    <Icon name="BookOpenIcon" size={22} style={{ color: course.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold mb-0.5" style={{ color: 'var(--foreground)' }}>{course.title}</h3>
+                    <p className="text-xs mb-2" style={{ color: 'var(--muted-foreground)' }}>{course.instructor} · {course.duration} · {course.modules} modules</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: 'var(--muted)' }}>
+                        <div className="h-1.5 rounded-full" style={{ width: `${course.progress}%`, backgroundColor: course.color }} />
+                      </div>
+                      <span className="text-xs font-medium shrink-0" style={{ color: course.color }}>{course.progress}%</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedCourse(course.id); setActiveTab('viewer'); }}
+                    className="px-3 py-1.5 rounded-xl text-xs font-medium text-white shrink-0"
+                    style={{ backgroundColor: course.color }}>
+                    {course.progress === 100 ? 'Revoir' : 'Continuer'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── VIEWER ── */}
+        {activeTab === 'viewer' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="aspect-video flex items-center justify-center" style={{ backgroundColor: '#0f172a' }}>
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                      <Icon name="PlayIcon" size={32} className="text-white" />
+                    </div>
+                    <p className="text-white text-sm font-medium">Consultation à distance — pratique</p>
+                    <p className="text-white/60 text-xs mt-1">32 min · Module 4/8</p>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Consultation à distance — pratique</h3>
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>32 min</span>
+                  </div>
+                  <div className="h-1.5 rounded-full mb-3" style={{ backgroundColor: 'var(--muted)' }}>
+                    <div className="h-1.5 rounded-full" style={{ width: '45%', backgroundColor: '#8b5cf6' }} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
+                      <Icon name="PlayIcon" size={14} /> Reprendre
+                    </button>
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                      <Icon name="ArrowDownTrayIcon" size={14} /> Ressources
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground)' }}>Notes du cours</h4>
+                <textarea
+                  placeholder="Prenez vos notes ici..."
+                  rows={4}
+                  className="w-full px-3 py-2 text-sm rounded-xl border outline-none resize-none"
+                  style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                />
+                <button className="mt-2 px-3 py-1.5 rounded-xl text-xs font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>Sauvegarder</button>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Modules du cours</h3>
+              {courseModules.map(mod => (
+                <div key={mod.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: mod.done ? '#dcfce7' : 'var(--muted)' }}>
+                    <Icon name={mod.done ? 'CheckIcon' : mod.type === 'video' ? 'PlayIcon' : mod.type === 'quiz' ? 'ClipboardDocumentCheckIcon' : 'DocumentTextIcon'} size={14} style={{ color: mod.done ? '#16a34a' : 'var(--muted-foreground)' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>{mod.title}</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{mod.type} · {mod.duration}</p>
+                  </div>
+                  {mod.type === 'quiz' && !mod.done && (
+                    <button onClick={() => setActiveTab('quiz')} className="text-xs px-2 py-1 rounded-lg text-white shrink-0" style={{ backgroundColor: '#8b5cf6' }}>Quiz</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── QUIZ ── */}
+        {activeTab === 'quiz' && (
+          <div className="max-w-2xl mx-auto space-y-6">
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(139,92,246,0.1)' }}>
+                  <Icon name="ClipboardDocumentCheckIcon" size={20} style={{ color: '#8b5cf6' }} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Quiz de validation — Télémédecine Module 1</h3>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{quizQuestions.length} questions · Score minimum : 70%</p>
+                </div>
+              </div>
+              {quizSubmitted ? (
+                <div className="text-center py-6">
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: quizScore >= 2 ? '#dcfce7' : '#fee2e2' }}>
+                    <span className="text-3xl font-bold" style={{ color: quizScore >= 2 ? '#16a34a' : '#dc2626' }}>{Math.round((quizScore / quizQuestions.length) * 100)}%</span>
+                  </div>
+                  <h4 className="font-bold text-base mb-1" style={{ color: 'var(--foreground)' }}>{quizScore >= 2 ? '🎉 Quiz réussi !' : 'Quiz non validé'}</h4>
+                  <p className="text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>{quizScore}/{quizQuestions.length} bonnes réponses</p>
+                  {quizScore >= 2 ? (
+                    <button onClick={() => setActiveTab('certificates')} className="px-6 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: '#16a34a' }}>
+                      Voir mon certificat
+                    </button>
+                  ) : (
+                    <button onClick={() => { setQuizAnswers({}); setQuizSubmitted(false); }} className="px-6 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
+                      Réessayer
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {quizQuestions.map((q, qi) => (
+                    <div key={q.id}>
+                      <p className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground)' }}>{qi + 1}. {q.question}</p>
+                      <div className="space-y-2">
+                        {q.options.map((opt, oi) => (
+                          <button
+                            key={oi}
+                            onClick={() => setQuizAnswers(prev => ({ ...prev, [q.id]: oi }))}
+                            className="w-full text-left px-4 py-3 rounded-xl border text-sm transition-all"
+                            style={{
+                              backgroundColor: quizAnswers[q.id] === oi ? 'rgba(139,92,246,0.1)' : 'var(--muted)',
+                              borderColor: quizAnswers[q.id] === oi ? '#8b5cf6' : 'var(--border)',
+                              color: quizAnswers[q.id] === oi ? '#8b5cf6' : 'var(--foreground)',
+                            }}>
+                            <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>{opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setQuizSubmitted(true)}
+                    disabled={Object.keys(quizAnswers).length < quizQuestions.length}
+                    className="w-full py-3 rounded-xl text-sm font-medium text-white disabled:opacity-50"
+                    style={{ backgroundColor: '#8b5cf6' }}>
+                    Soumettre mes réponses ({Object.keys(quizAnswers).length}/{quizQuestions.length})
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── CERTIFICATES ── */}
+        {activeTab === 'certificates' && (
+          <div className="space-y-4 max-w-2xl">
+            {certifications.map(cert => (
+              <div key={cert.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="h-2" style={{ backgroundColor: cert.color }} />
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: cert.bg }}>
+                        <Icon name={cert.icon as any} size={22} style={{ color: cert.color }} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{cert.name}</h3>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{cert.course}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Obtenu le {cert.date} · Expire le {cert.expires}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: cert.bg, color: cert.color }}>{cert.status === 'valide' ? 'Valide' : 'Expire bientôt'}</span>
+                      <span className="text-lg font-bold" style={{ color: cert.color }}>{cert.score}/100</span>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-xl mb-4 border" style={{ backgroundColor: 'var(--muted)', borderColor: 'var(--border)' }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>CERTIFICAT SHIFA ACADEMY</span>
+                      <Icon name="ShieldCheckIcon" size={16} style={{ color: cert.color }} />
+                    </div>
+                    <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{cert.name}</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>Délivré à : Dr. Kofi Diallo · Score : {cert.score}/100</p>
+                    <p className="text-xs font-mono mt-1" style={{ color: 'var(--muted-foreground)' }}>ID : SHIFA-CERT-{cert.id}-2026-{cert.score}X</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                      <Icon name="ArrowDownTrayIcon" size={13} /> Télécharger PDF
+                    </button>
+                    <button className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                      <Icon name="ShareIcon" size={13} /> Partager
+                    </button>
+                    <button className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                      <Icon name="LinkIcon" size={13} /> Lien de vérification
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── INSTRUCTOR ── */}
+        {activeTab === 'instructor' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: 'Mes cours publiés', value: '2', icon: 'BookOpenIcon', color: '#8b5cf6' },
+                { label: 'Apprenants inscrits', value: '1 768', icon: 'UsersIcon', color: '#0ea5e9' },
+                { label: 'Revenus générés', value: '15,6M FCFA', icon: 'BanknotesIcon', color: '#10b981' },
+                { label: 'Note moyenne', value: '4.7/5', icon: 'StarIcon', color: '#f59e0b' },
+              ].map((k, i) => (
+                <div key={i} className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ backgroundColor: k.color + '20' }}>
+                    <Icon name={k.icon as any} size={16} style={{ color: k.color }} />
+                  </div>
+                  <p className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>{k.value}</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{k.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Mes cours</h3>
+                <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
+                  <Icon name="PlusIcon" size={13} /> Créer un cours
+                </button>
+              </div>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                {instructorCourses.map(c => (
+                  <div key={c.id} className="p-4 flex items-center gap-4 flex-wrap">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(139,92,246,0.1)' }}>
+                      <Icon name="BookOpenIcon" size={18} style={{ color: '#8b5cf6' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{c.title}</p>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.enrolled} inscrits · {c.completions} complétions · Note : {c.rating}/5</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm font-bold" style={{ color: '#10b981' }}>{c.revenue}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#dcfce7', color: '#16a34a' }}>{c.status}</span>
+                      <button className="p-1.5 rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+                        <Icon name="PencilIcon" size={13} style={{ color: 'var(--muted-foreground)' }} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Créer un nouveau cours</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { label: 'Titre du cours', placeholder: 'Ex: Prise en charge du diabète de type 2' },
+                  { label: 'Catégorie', placeholder: 'Ex: Endocrinologie' },
+                  { label: 'Niveau', placeholder: 'Débutant / Intermédiaire / Avancé' },
+                  { label: 'Prix (FCFA)', placeholder: 'Ex: 25000 ou Gratuit' },
+                ].map(f => (
+                  <div key={f.label}>
+                    <label className="text-xs font-medium block mb-1" style={{ color: 'var(--muted-foreground)' }}>{f.label}</label>
+                    <input placeholder={f.placeholder} className="w-full px-3 py-2 text-sm rounded-xl border outline-none" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
+                  </div>
+                ))}
+              </div>
+              <button className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
+                <Icon name="PlusIcon" size={14} /> Créer le cours
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
