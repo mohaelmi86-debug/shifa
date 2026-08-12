@@ -158,6 +158,25 @@ export default function AppointmentBookingContent() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingError, setBookingError] = useState('');
 
+  // Confirmation modal state
+  const [confirmedAppt, setConfirmedAppt] = useState<{
+    ref: string;
+    proName: string;
+    specialty: string;
+    date: string;
+    time: string;
+    type: 'in_person' | 'teleconsultation';
+    location: string;
+    visioLink?: string;
+    notes: string;
+  } | null>(null);
+  const [confirmNotes, setConfirmNotes] = useState('');
+  const [showRescheduleRequest, setShowRescheduleRequest] = useState(false);
+  const [rescheduleReason, setRescheduleReason] = useState('');
+  const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
+
   // Appointment management state
   const [appointments, setAppointments] = useState<ExistingAppointment[]>(mockAppointments);
   const [managingAppt, setManagingAppt] = useState<ExistingAppointment | null>(null);
@@ -402,13 +421,52 @@ export default function AppointmentBookingContent() {
         .update({ is_available: false, appointment_id: appt.id })
         .eq('id', selectedSlot.id);
 
-      setBookingRef('RDV-' + appt.id.substring(0, 8).toUpperCase());
+      const ref = 'RDV-' + appt.id.substring(0, 8).toUpperCase();
+      setBookingRef(ref);
+
+      // Build confirmed appointment details for modal
+      setConfirmedAppt({
+        ref,
+        proName: selectedPro.name,
+        specialty: selectedPro.specialty,
+        date: selectedSlot.date,
+        time: selectedSlot.time,
+        type: consultationType,
+        location: consultationType === 'teleconsultation' ? 'Téléconsultation' : selectedPro.location,
+        visioLink: consultationType === 'teleconsultation' ? `https://shifa1387.builtwithrocket.new/teleconsultation-session?ref=${ref}` : undefined,
+        notes: reason,
+      });
+      setConfirmNotes(reason);
+      setNotesSaved(false);
+      setShowRescheduleRequest(false);
+      setRescheduleReason('');
+      setRescheduleSuccess(false);
       setStep('success');
     } catch (err: any) {
       setBookingError(err.message || 'Une erreur est survenue.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!confirmedAppt) return;
+    setSavingNotes(true);
+    await new Promise(r => setTimeout(r, 600));
+    setConfirmedAppt(prev => prev ? { ...prev, notes: confirmNotes } : prev);
+    setSavingNotes(false);
+    setNotesSaved(true);
+    setTimeout(() => setNotesSaved(false), 3000);
+  };
+
+  const handleRescheduleRequest = () => {
+    if (!rescheduleReason.trim()) return;
+    setRescheduleSuccess(true);
+    setTimeout(() => {
+      setShowRescheduleRequest(false);
+      setRescheduleSuccess(false);
+      setRescheduleReason('');
+    }, 2500);
   };
 
   const resetBooking = () => {
@@ -1467,21 +1525,165 @@ export default function AppointmentBookingContent() {
           )}
 
           {/* ── STEP 5: SUCCESS ── */}
-          {step === 'success' && (
-            <div className="text-center py-8">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
-                <Icon name="CheckCircleIcon" size={40} style={{ color: 'var(--shifa-green)' } as any} className="" />
+          {step === 'success' && confirmedAppt && (
+            <div className="max-w-lg mx-auto">
+              {/* Success header */}
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)' }}>
+                  <Icon name="CheckCircleIcon" size={36} style={{ color: '#10b981' } as any} className="" />
+                </div>
+                <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--foreground)' }}>Rendez-vous confirmé !</h2>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-xl" style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                  <span className="text-sm font-mono font-bold" style={{ color: '#10b981' }}>{confirmedAppt.ref}</span>
+                </div>
               </div>
-              <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--foreground)' }}>Rendez-vous confirmé !</h2>
-              <p className="text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>Votre rendez-vous de 15 minutes a été enregistré avec succès.</p>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border mb-6" style={{ borderColor: 'var(--shifa-green)', backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
-                <span className="text-sm font-mono font-bold" style={{ color: 'var(--shifa-green)' }}>{bookingRef}</span>
+
+              {/* Appointment details card */}
+              <div className="rounded-2xl border p-5 mb-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <h3 className="text-sm font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--shifa-dark)' }}>
+                  <Icon name="CalendarDaysIcon" size={16} style={{ color: 'var(--shifa-blue)' } as any} className="" />
+                  Détails du rendez-vous
+                </h3>
+
+                {/* Provider */}
+                <div className="flex items-center gap-3 mb-4 p-3 rounded-xl" style={{ backgroundColor: 'var(--muted)' }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0" style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}>
+                    {confirmedAppt.proName.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{confirmedAppt.proName}</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{confirmedAppt.specialty}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {/* Date & time */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'rgba(0,102,255,0.04)', border: '1px solid rgba(0,102,255,0.1)' }}>
+                    <Icon name="CalendarDaysIcon" size={16} style={{ color: 'var(--shifa-blue)' } as any} className="shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{confirmedAppt.date} à {confirmedAppt.time}</p>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Durée : 15 minutes</p>
+                    </div>
+                  </div>
+
+                  {/* Type & location */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: confirmedAppt.type === 'teleconsultation' ? 'rgba(139,92,246,0.05)' : 'rgba(0,102,255,0.04)', border: `1px solid ${confirmedAppt.type === 'teleconsultation' ? 'rgba(139,92,246,0.15)' : 'rgba(0,102,255,0.1)'}` }}>
+                    <Icon name={confirmedAppt.type === 'teleconsultation' ? 'VideoCameraIcon' : 'BuildingOffice2Icon'} size={16} style={{ color: confirmedAppt.type === 'teleconsultation' ? '#8b5cf6' : 'var(--shifa-blue)' } as any} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                        {confirmedAppt.type === 'teleconsultation' ? 'Téléconsultation (Visio)' : 'Consultation en présentiel'}
+                      </p>
+                      <p className="text-xs truncate" style={{ color: 'var(--muted-foreground)' }}>{confirmedAppt.location}</p>
+                    </div>
+                  </div>
+
+                  {/* Visio link */}
+                  {confirmedAppt.visioLink && (
+                    <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                      <Icon name="LinkIcon" size={16} style={{ color: '#8b5cf6' } as any} className="shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold mb-0.5" style={{ color: '#8b5cf6' }}>Lien de connexion visio</p>
+                        <p className="text-xs font-mono truncate" style={{ color: 'var(--muted-foreground)' }}>{confirmedAppt.visioLink}</p>
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(confirmedAppt.visioLink || '')}
+                        className="p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0"
+                        title="Copier le lien"
+                      >
+                        <Icon name="ClipboardDocumentIcon" size={13} style={{ color: '#8b5cf6' } as any} className="" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={resetBooking} className="btn-secondary px-6 py-2.5">
+
+              {/* Notes section */}
+              <div className="rounded-2xl border p-5 mb-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--shifa-dark)' }}>
+                  <Icon name="PencilSquareIcon" size={16} style={{ color: 'var(--shifa-blue)' } as any} className="" />
+                  Notes personnelles
+                </h3>
+                <textarea
+                  className="input-field w-full resize-none text-sm mb-3"
+                  rows={3}
+                  placeholder="Ajoutez des notes pour ce rendez-vous (symptômes, questions à poser, médicaments à mentionner...)..."
+                  value={confirmNotes}
+                  onChange={e => { setConfirmNotes(e.target.value); setNotesSaved(false); }}
+                />
+                <button
+                  onClick={handleSaveNotes}
+                  disabled={savingNotes || notesSaved}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    backgroundColor: notesSaved ? 'rgba(16,185,129,0.1)' : 'rgba(0,102,255,0.08)',
+                    color: notesSaved ? '#10b981' : 'var(--shifa-blue)',
+                    border: `1px solid ${notesSaved ? 'rgba(16,185,129,0.3)' : 'rgba(0,102,255,0.2)'}`,
+                  }}
+                >
+                  {savingNotes ? (
+                    <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : notesSaved ? (
+                    <Icon name="CheckIcon" size={14} />
+                  ) : (
+                    <Icon name="CloudArrowUpIcon" size={14} />
+                  )}
+                  {notesSaved ? 'Notes enregistrées' : 'Enregistrer les notes'}
+                </button>
+              </div>
+
+              {/* Reschedule request */}
+              <div className="rounded-2xl border p-5 mb-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <button
+                  onClick={() => setShowRescheduleRequest(v => !v)}
+                  className="flex items-center justify-between w-full"
+                >
+                  <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--shifa-dark)' }}>
+                    <Icon name="ArrowPathIcon" size={16} style={{ color: '#f59e0b' } as any} className="" />
+                    Demander un report
+                  </h3>
+                  <Icon name={showRescheduleRequest ? 'ChevronUpIcon' : 'ChevronDownIcon'} size={16} className="text-muted-foreground" />
+                </button>
+
+                {showRescheduleRequest && (
+                  <div className="mt-4">
+                    {rescheduleSuccess ? (
+                      <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                        <Icon name="CheckCircleIcon" size={16} style={{ color: '#10b981' } as any} className="" />
+                        <p className="text-sm font-semibold" style={{ color: '#10b981' }}>Demande de report envoyée au prestataire.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>
+                          Expliquez pourquoi vous souhaitez reporter ce rendez-vous. Le prestataire sera notifié.
+                        </p>
+                        <textarea
+                          className="input-field w-full resize-none text-sm mb-3"
+                          rows={3}
+                          placeholder="Motif du report (obligatoire)..."
+                          value={rescheduleReason}
+                          onChange={e => setRescheduleReason(e.target.value)}
+                        />
+                        <button
+                          onClick={handleRescheduleRequest}
+                          disabled={!rescheduleReason.trim()}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+                          style={{ backgroundColor: '#f59e0b', color: 'white' }}
+                        >
+                          <Icon name="PaperAirplaneIcon" size={14} />
+                          Envoyer la demande
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button onClick={resetBooking} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all hover:bg-muted" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
                   Nouveau rendez-vous
                 </button>
-                <button onClick={() => setMainView('my-appointments')} className="btn-primary px-6 py-2.5">
+                <button onClick={() => setMainView('my-appointments')} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90" style={{ backgroundColor: 'var(--shifa-blue)' }}>
                   Voir mes rendez-vous
                 </button>
               </div>

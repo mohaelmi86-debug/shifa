@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Icon from '@/components/ui/AppIcon';
 import { createClient } from '@/lib/supabase/client';
@@ -80,109 +80,118 @@ export default function DossierTabs() {
   const [labResults, setLabResults] = useState<LabResult[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [vaccinations, setVaccinations] = useState<DossierVaccination[]>(STATIC_VACCINATIONS);
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'live' | 'error'>('connecting');
+  const channelsRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']>[]>([]);
 
   const supabase = createClient();
 
-  useEffect(() => {
-    const fetchHealthRecords = async () => {
-      setLoadingRecords(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  const fetchHealthRecords = async (patientId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('health_records')
+        .select(`
+          id,
+          record_type,
+          title,
+          content,
+          is_signed,
+          created_at,
+          professionals (
+            first_name,
+            last_name,
+            specialty,
+            profession
+          )
+        `)
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false });
 
-        // Get patient record
-        const { data: patient } = await supabase
-          .from('patients')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!patient) return;
-
-        // Fetch health records
-        const { data: records, error } = await supabase
-          .from('health_records')
-          .select(`
-            id,
-            record_type,
-            title,
-            content,
-            is_signed,
-            created_at,
-            professionals (
-              first_name,
-              last_name,
-              specialty,
-              profession
-            )
-          `)
-          .eq('patient_id', patient.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.log('Health records fetch error:', error.message);
-          return;
-        }
-
-        const cons: ConsultationRecord[] = [];
-        const presc: PrescriptionRecord[] = [];
-        const labs: LabResult[] = [];
-
-        (records || []).forEach((r: any) => {
-          const dateStr = r.created_at
-            ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
-            : '—';
-          const pro = r.professionals;
-          const doctorName = pro ? `Dr. ${pro.first_name} ${pro.last_name}` : 'Médecin';
-          const specialty = pro?.specialty || pro?.profession || 'Médecine générale';
-
-          if (r.record_type === 'consultation') {
-            cons.push({
-              id: r.id,
-              date: dateStr,
-              doctor: doctorName,
-              specialty,
-              motif: r.content?.motif || r.title || 'Consultation',
-              diagnostic: r.content?.diagnostic || r.content?.evaluation || '—',
-              status: r.is_signed ? 'signed' : 'draft',
-            });
-          } else if (r.record_type === 'prescription') {
-            const meds = r.content?.medications || [];
-            presc.push({
-              id: r.id,
-              date: dateStr,
-              doctor: doctorName,
-              medications: Array.isArray(meds) ? meds.map((m: any) => typeof m === 'string' ? m : `${m.drug || ''} — ${m.dosage || ''} ${m.frequency || ''}`.trim()) : [r.title],
-              status: 'active',
-            });
-          } else if (r.record_type === 'lab_result') {
-            labs.push({
-              id: r.id,
-              date: dateStr,
-              type: 'Biologie',
-              label: r.title || 'Résultat',
-              lab: r.content?.lab || 'Laboratoire',
-              status: 'available',
-              alert: r.content?.alert || false,
-            });
-          }
-        });
-
-        setConsultations(cons);
-        setPrescriptions(presc);
-        setLabResults(labs);
-      } catch {
-        // Keep empty state
-      } finally {
-        setLoadingRecords(false);
+      if (error) {
+        console.log('Health records fetch error:', (error as any).message);
+        return;
       }
-    };
 
-    fetchHealthRecords();
-  }, []);
+      const cons: ConsultationRecord[] = [];
+      const presc: PrescriptionRecord[] = [];
+      const labs: LabResult[] = [];
 
-  // Sync vaccinations from localStorage (added via /patient-vaccination)
-  useEffect(() => {
+      (data || []).forEach((r: any) => {
+        const dateStr = r.created_at
+          ? new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '—';
+        const pro = r.professionals;
+        const doctorName = pro ? `Dr. ${pro.first_name} ${pro.last_name}` : 'Médecin';
+        const specialty = pro?.specialty || pro?.profession || 'Médecine générale';
+
+        if (r.record_type === 'consultation') {
+          cons.push({
+            id: r.id,
+            date: dateStr,
+            doctor: doctorName,
+            specialty,
+            motif: r.content?.motif || r.title || 'Consultation',
+            diagnostic: r.content?.diagnostic || r.content?.evaluation || '—',
+            status: r.is_signed ? 'signed' : 'draft',
+          });
+        } else if (r.record_type === 'prescription') {
+          const meds = r.content?.medications || [];
+          presc.push({
+            id: r.id,
+            date: dateStr,
+            doctor: doctorName,
+            medications: Array.isArray(meds) ? meds.map((m: any) => typeof m === 'string' ? m : `${m.drug || ''} — ${m.dosage || ''} ${m.frequency || ''}`.trim()) : [r.title],
+            status: 'active',
+          });
+        } else if (r.record_type === 'lab_result') {
+          labs.push({
+            id: r.id,
+            date: dateStr,
+            type: 'Biologie',
+            label: r.title || 'Résultat',
+            lab: r.content?.lab || 'Laboratoire',
+            status: 'available',
+            alert: r.content?.alert || false,
+          });
+        }
+      });
+
+      setConsultations(cons);
+      setPrescriptions(presc);
+      setLabResults(labs);
+    } catch {
+      // Keep empty state
+    }
+  };
+
+  const fetchVaccinations = async (patientId: string) => {
+    try {
+      // Try to get vaccinations from Supabase health_records (vaccination type)
+      const { data } = await supabase
+        .from('health_records')
+        .select('id, title, content, created_at')
+        .eq('patient_id', patientId)
+        .eq('record_type', 'vaccination')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        const dbVaccinations: DossierVaccination[] = data.map((r: any) => ({
+          id: r.id,
+          name: r.title || r.content?.name || 'Vaccin',
+          date: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : '—',
+          nextDue: r.content?.nextDose || null,
+          status: r.content?.status || 'done',
+          lab: r.content?.lot ? `Lot: ${r.content.lot}` : r.content?.provider || 'Laboratoire',
+          boosterDueDate: r.content?.boosterDueDate || null,
+          notes: r.content?.notes || null,
+        }));
+        setVaccinations([...dbVaccinations, ...STATIC_VACCINATIONS]);
+        return;
+      }
+    } catch {
+      // fall through to localStorage
+    }
+
+    // Fallback: localStorage
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -202,12 +211,110 @@ export default function DossierTabs() {
     } catch {
       // keep static data
     }
+  };
+
+  useEffect(() => {
+    let patientId: string | null = null;
+
+    const initAndSubscribe = async () => {
+      setLoadingRecords(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: patient } = await supabase
+          .from('patients')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!patient) return;
+        patientId = patient.id;
+
+        // Initial fetch
+        await Promise.all([
+          fetchHealthRecords(patientId),
+          fetchVaccinations(patientId),
+        ]);
+
+        // ── Realtime: health_records ──
+        const hrChannel = supabase
+          .channel(`dossier-health-records-${patientId}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'health_records',
+            filter: `patient_id=eq.${patientId}`,
+          }, () => {
+            fetchHealthRecords(patientId!);
+            fetchVaccinations(patientId!);
+          })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') setRealtimeStatus('live');
+            else if (status === 'CHANNEL_ERROR') setRealtimeStatus('error');
+          });
+
+        // ── Realtime: appointments ──
+        const apptChannel = supabase
+          .channel(`dossier-appointments-${patientId}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'appointments',
+            filter: `patient_id=eq.${patientId}`,
+          }, () => {
+            fetchHealthRecords(patientId!);
+          })
+          .subscribe();
+
+        channelsRef.current = [hrChannel, apptChannel];
+        setRealtimeStatus('live');
+      } catch {
+        setRealtimeStatus('error');
+      } finally {
+        setLoadingRecords(false);
+      }
+    };
+
+    initAndSubscribe();
+
+    return () => {
+      channelsRef.current.forEach(ch => supabase.removeChannel(ch));
+      channelsRef.current = [];
+    };
+  }, []);
+
+  // Sync vaccinations from localStorage when tab changes (legacy support)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const stored: Array<{ id: string; name: string; date: string; nextDose?: string; boosterDueDate?: string; lot: string; provider: string; status: string; doses: number; totalDoses: number; notes?: string }> = JSON.parse(raw);
+        const mapped: DossierVaccination[] = stored.map(v => ({
+          id: v.id,
+          name: v.name,
+          date: v.date,
+          nextDue: v.nextDose || null,
+          status: v.status === 'done' ? 'done' : 'due',
+          lab: v.lot !== '—' ? `Lot: ${v.lot}` : v.provider,
+          boosterDueDate: v.boosterDueDate || null,
+          notes: v.notes || null,
+        }));
+        setVaccinations(prev => {
+          const existingIds = new Set(mapped.map(m => m.id));
+          const staticOnly = STATIC_VACCINATIONS.filter(s => !existingIds.has(s.id));
+          return [...mapped, ...staticOnly];
+        });
+      }
+    } catch {
+      // keep static data
+    }
   }, [activeTab]);
 
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin mb-6 pb-1">
+      <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin mb-4 pb-1">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -223,6 +330,20 @@ export default function DossierTabs() {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      {/* Realtime indicator */}
+      <div className="flex items-center gap-1.5 mb-5">
+        <div
+          className="w-2 h-2 rounded-full"
+          style={{
+            backgroundColor: realtimeStatus === 'live' ? '#10b981' : realtimeStatus === 'error' ? '#ef4444' : '#f59e0b',
+            boxShadow: realtimeStatus === 'live' ? '0 0 0 3px rgba(16,185,129,0.2)' : 'none',
+          }}
+        />
+        <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          {realtimeStatus === 'live' ? 'Synchronisation en temps réel active' : realtimeStatus === 'error' ? 'Synchronisation indisponible' : 'Connexion en cours...'}
+        </span>
       </div>
 
       {/* Tab content */}

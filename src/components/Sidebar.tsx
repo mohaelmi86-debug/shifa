@@ -23,6 +23,7 @@ const patientNav: NavItem[] = [
   { key: 'nav-accueil', label: 'Accueil', icon: 'HomeIcon', href: '/patient-home', group: 'principal' },
   { key: 'nav-explorer', label: 'Explorer', icon: 'MagnifyingGlassIcon', href: '/patient-explorer', group: 'principal' },
   { key: 'nav-rdv', label: 'Rendez-vous', icon: 'CalendarDaysIcon', href: '/appointment-booking', badge: 2, group: 'principal' },
+  { key: 'nav-rdv-history', label: 'Historique RDV', icon: 'ClockIcon', href: '/appointment-history', group: 'principal' },
   { key: 'nav-sante', label: 'Ma Santé', icon: 'HeartIcon', href: '/dossier-de-sant', group: 'principal' },
   { key: 'nav-messages', label: 'Messages', icon: 'ChatBubbleLeftRightIcon', href: '/patient-messages', badge: 3, group: 'principal' },
   { key: 'nav-community-hub-pat', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'principal' },
