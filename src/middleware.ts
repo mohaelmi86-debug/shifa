@@ -324,14 +324,26 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── Role & org context lookup ────────────────────────────────────────────
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
     .select('role, organization_id, professional_id')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
-  // Default to 'patient' if no profile found — never block an authenticated user
-  const userRole: string = profile?.role ?? 'patient';
+  // Fallback chain: DB profile → user metadata → allow through without blocking
+  let userRole: string;
+  if (profile?.role) {
+    userRole = profile.role;
+  } else if (user.user_metadata?.role) {
+    userRole = user.user_metadata.role;
+  } else if (user.app_metadata?.role) {
+    userRole = user.app_metadata.role;
+  } else {
+    // Cannot determine role — allow the request through without redirecting
+    // This prevents incorrectly blocking admin/org users due to a DB fetch failure
+    userRole = '__unknown__';
+  }
+
   const orgId: string | null = profile?.organization_id ?? null;
 
   // ─── Role-based access control ────────────────────────────────────────────
@@ -342,7 +354,8 @@ export async function middleware(request: NextRequest) {
   if (matchedGuard) {
     const [, allowedRoles] = matchedGuard;
     // Empty array = any authenticated user
-    if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+    // __unknown__ role = profile fetch failed, allow through to avoid false blocks
+    if (allowedRoles.length > 0 && userRole !== '__unknown__' && !allowedRoles.includes(userRole)) {
       // Redirect to the appropriate home for the user's actual role
       const url = request.nextUrl.clone();
       if (userRole === 'professional') {
@@ -380,7 +393,9 @@ export async function middleware(request: NextRequest) {
   // ─── Inject org context into request headers ──────────────────────────────
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', user.id);
-  requestHeaders.set('x-user-role', userRole);
+  if (userRole !== '__unknown__') {
+    requestHeaders.set('x-user-role', userRole);
+  }
   if (orgId) {
     requestHeaders.set('x-org-id', orgId);
   }
