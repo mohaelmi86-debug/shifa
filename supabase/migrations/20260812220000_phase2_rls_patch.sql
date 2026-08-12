@@ -55,6 +55,42 @@ CREATE POLICY "user_profiles_delete_admin" ON public.user_profiles
   );
 
 -- ============================================================
+-- FIX 7 (moved up): Add organization_id column to user_profiles if missing
+-- Must be added BEFORE user_org_id() function references it.
+-- ============================================================
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'user_profiles'
+      AND column_name = 'organization_id'
+  ) THEN
+    ALTER TABLE public.user_profiles
+      ADD COLUMN organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- ============================================================
+-- FIX 8 (moved up): Add shifa_id column to user_profiles if missing
+-- (used by Sidebar for display)
+-- ============================================================
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'user_profiles'
+      AND column_name = 'shifa_id'
+  ) THEN
+    ALTER TABLE public.user_profiles
+      ADD COLUMN shifa_id TEXT UNIQUE;
+  END IF;
+END $$;
+
+-- ============================================================
 -- FIX 2: user_org_id() — extend to support patient org lookup
 -- Patients may belong to an org via patient_organizations table
 -- or via the patients table itself. Provide a safe fallback.
@@ -179,42 +215,6 @@ BEGIN
           OR public.is_platform_admin()
         )
     $policy$;
-  END IF;
-END $$;
-
--- ============================================================
--- FIX 7: Add organization_id column to user_profiles if missing
--- (needed for org_admin direct org lookup in user_org_id())
--- ============================================================
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'user_profiles'
-      AND column_name = 'organization_id'
-  ) THEN
-    ALTER TABLE public.user_profiles
-      ADD COLUMN organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
-  END IF;
-END $$;
-
--- ============================================================
--- FIX 8: Add shifa_id column to user_profiles if missing
--- (used by Sidebar for display)
--- ============================================================
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'user_profiles'
-      AND column_name = 'shifa_id'
-  ) THEN
-    ALTER TABLE public.user_profiles
-      ADD COLUMN shifa_id TEXT UNIQUE;
   END IF;
 END $$;
 
