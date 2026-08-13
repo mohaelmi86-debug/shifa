@@ -3,37 +3,37 @@
 @tailwind utilities;
 
 :root {
-  --background: #F0F4FA;
-  --foreground: #0F1F3D;
-  --primary: #1558D6;
+  --background: #F8FAFF;
+  --foreground: #123B86;
+  --primary: #0878EF;
   --primary-foreground: #FFFFFF;
-  --secondary: #E8F0FE;
-  --secondary-foreground: #1558D6;
-  --accent: #0EA5E9;
+  --secondary: #EBF4FF;
+  --secondary-foreground: #0878EF;
+  --accent: #38B6FF;
   --accent-foreground: #FFFFFF;
-  --muted: #EDF1F9;
-  --muted-foreground: #6B7A99;
+  --muted: #F0F4FA;
+  --muted-foreground: #5F7A9B;
   --card: #FFFFFF;
-  --card-foreground: #0F1F3D;
-  --border: #DDE5F4;
-  --input: #F5F8FF;
-  --ring: #1558D6;
+  --card-foreground: #123B86;
+  --border: #E8EFF8;
+  --input: #F8FAFF;
+  --ring: #0878EF;
   --radius: 12px;
   --font-sans: var(--font-plus-jakarta-sans), sans-serif;
 
-  --shifa-dark: #0F1F3D;
-  --shifa-blue: #1558D6;
-  --shifa-blue-light: #4A8EF8;
-  --shifa-blue-deep: #0D47B5;
+  --shifa-dark: #123B86;
+  --shifa-blue: #0878EF;
+  --shifa-blue-light: #38B6FF;
+  --shifa-blue-deep: #0660C8;
   --shifa-cyan: #0EA5E9;
-  --shifa-mid: #1E4FC2;
-  --shifa-light: #F0F4FA;
+  --shifa-mid: #0A5ED4;
+  --shifa-light: #F8FAFF;
   --shifa-surface: #FFFFFF;
-  --shifa-purple: #6D4FC2;
-  --shifa-green: #0D9E6E;
-  --shifa-amber: #E8900A;
-  --shifa-red: #D93025;
-  --shifa-gray: #6B7A99;
+  --shifa-purple: #7C3AED;
+  --shifa-green: #059669;
+  --shifa-amber: #D97706;
+  --shifa-red: #EF4444;
+  --shifa-gray: #5F7A9B;
 
   /* Mobile safe areas */
   --safe-area-top: env(safe-area-inset-top, 0px);

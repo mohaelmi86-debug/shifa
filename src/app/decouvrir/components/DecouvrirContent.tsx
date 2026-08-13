@@ -2,26 +2,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import ShifaBrand from '@/components/ui/ShifaBrand';
-import LanguageSelector from '@/components/ui/LanguageSelector';
+
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const specialties = [
-  { icon: '🫀', label: 'Cardiologie', href: '/cardiology-workspace' },
-  { icon: '🧠', label: 'Neurologie', href: '/neurology-workspace' },
-  { icon: '👶', label: 'Pédiatrie', href: '/pediatrics-workspace' },
-  { icon: '🦷', label: 'Dentaire', href: '/dental-care' },
-  { icon: '👁️', label: 'Ophtalmologie', href: '/ophthalmology' },
-  { icon: '🩺', label: 'Généraliste', href: '/appointment-booking' },
-  { icon: '🤰', label: 'Gynécologie', href: '/gynecology-workspace' },
-  { icon: '🦴', label: 'Orthopédie', href: '/orthopedics-workspace' },
-  { icon: '🫁', label: 'Pneumologie', href: '/pneumology-workspace' },
-  { icon: '🧬', label: 'Oncologie', href: '/pro-oncology' },
-  { icon: '🧪', label: 'Laboratoire', href: '/lab-dashboard' },
-  { icon: '💊', label: 'Pharmacie', href: '/pharmacy-dashboard' },
-];
-
-const services = [
+const quickServices = [
   {
+    key: 'pro',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-6 h-6">
         <path strokeLinecap="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -29,134 +15,152 @@ const services = [
       </svg>
     ),
     label: 'Trouver un professionnel',
-    desc: 'Près de chez vous',
     href: '/patient-explorer',
-    color: '#1A73E8',
-    bg: '#EBF3FF',
-    available: true,
+    color: '#0878EF',
+    bg: '#EBF4FF',
   },
   {
+    key: 'rdv',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-6 h-6">
+        <rect x="3" y="4" width="18" height="18" rx="2" /><path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18" />
+      </svg>
+    ),
+    label: 'Prendre rendez-vous',
+    href: '/appointment-booking',
+    color: '#0878EF',
+    bg: '#EBF4FF',
+  },
+  {
+    key: 'teleconsult',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-6 h-6">
         <path strokeLinecap="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
       </svg>
     ),
     label: 'Téléconsultation',
-    desc: 'Consultation à distance',
     href: '/patient-teleconsultation',
     color: '#0EA5E9',
     bg: '#E0F2FE',
-    available: true,
   },
   {
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-6 h-6">
-        <path strokeLinecap="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-      </svg>
-    ),
-    label: 'Laboratoire',
-    desc: 'Analyses & résultats',
-    href: '/lab-dashboard',
-    color: '#7B5EA7',
-    bg: '#F3F0FF',
-    available: true,
-  },
-  {
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-6 h-6">
-        <path strokeLinecap="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-      </svg>
-    ),
-    label: 'Urgences',
-    desc: 'Informations & contacts',
-    href: '/patient-emergency',
-    color: '#EF4444',
-    bg: '#FEF2F2',
-    available: true,
-  },
-  {
+    key: 'pharma',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-6 h-6">
         <path strokeLinecap="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
       </svg>
     ),
-    label: 'Pharmacie',
-    desc: 'Médicaments & ordonnances',
+    label: 'Pharmacies',
     href: '/pharmacy-dashboard',
     color: '#10B981',
     bg: '#ECFDF5',
-    available: true,
   },
   {
+    key: 'lab',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-6 h-6">
-        <path strokeLinecap="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-        <path strokeLinecap="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+        <path strokeLinecap="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
       </svg>
     ),
-    label: 'Imagerie médicale',
-    desc: 'Radio, IRM, Scanner',
-    href: '/imaging-dashboard',
-    color: '#F59E0B',
-    bg: '#FFFBEB',
-    available: false,
+    label: 'Laboratoires',
+    href: '/lab-dashboard',
+    color: '#7C3AED',
+    bg: '#F5F3FF',
+  },
+  {
+    key: 'more',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-6 h-6">
+        <path strokeLinecap="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+    label: 'Plus de services',
+    href: '/health-marketplace',
+    color: '#5F7A9B',
+    bg: '#F0F4FA',
   },
 ];
+
+const nearbyPros = [
+  {
+    key: 'p1',
+    name: 'Dr. Amina Koné',
+    specialty: 'Médecine générale',
+    distance: '800 m',
+    rating: 4.8,
+    reviews: 105,
+    available: true,
+    avatar: 'AK',
+    color: '#0878EF',
+  },
+  {
+    key: 'p2',
+    name: 'Centre Médical Lumière',
+    specialty: 'Polyclinique',
+    distance: '1,2 km',
+    rating: 4.5,
+    reviews: 98,
+    available: true,
+    avatar: 'CL',
+    color: '#10B981',
+  },
+  {
+    key: 'p3',
+    name: 'Pharmacie du Marché',
+    specialty: 'Pharmacie',
+    distance: '1,4 km',
+    rating: 4.7,
+    reviews: 54,
+    available: true,
+    avatar: 'PM',
+    color: '#7C3AED',
+  },
+];
+
+const shifaCardData = {
+  name: 'Aïcha DIALLO',
+  id: 'SHF-24-0010-001',
+};
 
 export default function DecouvrirContent() {
   const { language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const headings: Record<string, { title: string; sub: string }> = {
-    fr: { title: 'Votre santé, simplement.', sub: 'Trouvez les soins dont vous avez besoin, où que vous soyez.' },
-    en: { title: 'Your health, simply.', sub: 'Find the care you need, wherever you are.' },
-    ar: { title: 'صحتك، ببساطة.', sub: 'اعثر على الرعاية التي تحتاجها، أينما كنت.' },
-    es: { title: 'Tu salud, simplemente.', sub: 'Encuentra la atención que necesitas, donde estés.' },
-    pt: { title: 'A sua saúde, simplesmente.', sub: 'Encontre os cuidados de que precisa, onde quer que esteja.' },
-    zh: { title: '您的健康，简单明了。', sub: '无论身在何处，找到您需要的医疗服务。' },
-  };
-
-  const h = headings[language] || headings.fr;
-
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#F8FAFF' }}>
       {/* Header */}
       <header
-        className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 gap-3"
-        style={{
-          backgroundColor: 'var(--card)',
-          borderBottom: '1px solid var(--border)',
-          boxShadow: '0 1px 8px rgba(26,115,232,0.06)',
-        }}
+        className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 gap-3 bg-white"
+        style={{ borderBottom: '1px solid #E8EFF8', boxShadow: '0 1px 8px rgba(8,120,239,0.06)' }}
       >
-        <ShifaBrand variant="compact" />
         <div className="flex items-center gap-2">
-          <LanguageSelector compact />
-          <Link
-            href="/support-center"
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors hover:bg-muted"
-            style={{ color: 'var(--shifa-gray)' }}
-            aria-label="Aide"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
-              <path strokeLinecap="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+          <ShifaBrand variant="compact" />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ backgroundColor: '#F0F4FA' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5" style={{ color: '#5F7A9B' }}>
+              <path strokeLinecap="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
             </svg>
+            <span className="text-xs font-medium" style={{ color: '#5F7A9B' }}>Moroni, Comores</span>
+          </div>
+          <Link
+            href="/patient-notifications"
+            className="w-9 h-9 rounded-xl flex items-center justify-center relative"
+            style={{ backgroundColor: '#F0F4FA' }}
+            aria-label="Notifications"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5" style={{ color: '#5F7A9B' }}>
+              <path strokeLinecap="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ backgroundColor: '#EF4444' }} />
           </Link>
         </div>
       </header>
-
-      <div className="px-4 pt-6 pb-28 max-w-2xl mx-auto">
-        {/* Hero */}
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold leading-tight mb-2" style={{ color: 'var(--shifa-dark)' }}>
-            {h.title}
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--shifa-gray)' }}>{h.sub}</p>
-        </div>
-
+      <div className="px-4 pt-5 pb-28 max-w-2xl mx-auto">
         {/* Search bar */}
         <div className="relative mb-6">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--shifa-gray)' }}>
+          <div className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#9AAAC0' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
               <circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="m21 21-4.35-4.35" />
             </svg>
@@ -164,105 +168,120 @@ export default function DecouvrirContent() {
           <input
             type="search"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Médecin, spécialité, établissement..."
-            className="w-full pl-12 pr-4 py-3.5 rounded-2xl text-sm border-0 focus:outline-none focus:ring-2"
+            onChange={(e) => setSearchQuery(e?.target?.value)}
+            placeholder="Rechercher un professionnel, spécialité, établissement..."
+            className="w-full pl-12 pr-4 py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 bg-white"
             style={{
-              backgroundColor: 'var(--card)',
-              color: 'var(--foreground)',
-              boxShadow: '0 2px 16px rgba(26,115,232,0.10)',
-              focusRingColor: 'var(--shifa-blue)',
+              color: '#123B86',
+              boxShadow: '0 2px 12px rgba(8,120,239,0.10)',
+              border: '1.5px solid #E8EFF8',
             }}
             aria-label="Rechercher un professionnel ou service de santé"
           />
         </div>
 
-        {/* Quick actions */}
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <Link
-            href="/patient-explorer"
-            className="flex items-center gap-3 p-4 rounded-2xl transition-all active:scale-95"
-            style={{ backgroundColor: 'var(--shifa-blue)', color: 'white', boxShadow: '0 4px 16px rgba(26,115,232,0.25)' }}
-          >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-                <path strokeLinecap="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold leading-tight">Trouver un professionnel</p>
-              <p className="text-xs opacity-80 mt-0.5">Près de chez vous</p>
-            </div>
-          </Link>
-          <Link
-            href="/appointment-booking"
-            className="flex items-center gap-3 p-4 rounded-2xl transition-all active:scale-95"
-            style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)', boxShadow: '0 2px 8px rgba(26,115,232,0.06)' }}
-          >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--secondary)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5" style={{ color: 'var(--shifa-blue)' }}>
-                <rect x="3" y="4" width="18" height="18" rx="2" /><path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--shifa-dark)' }}>Planifier</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-gray)' }}>Prendre rendez-vous</p>
-            </div>
-          </Link>
-        </div>
-
-        {/* Services */}
-        <section className="mb-8" aria-labelledby="services-heading">
-          <h2 id="services-heading" className="text-base font-bold mb-3" style={{ color: 'var(--shifa-dark)' }}>
-            Services SHIFA
-          </h2>
-          <div className="grid grid-cols-1 gap-3">
-            {services.map((service) => (
+        {/* Services populaires */}
+        <section className="mb-7">
+          <h2 className="text-sm font-bold mb-4" style={{ color: '#123B86' }}>Services populaires</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {quickServices?.map((s) => (
               <Link
-                key={service.label}
-                href={service.href}
-                className="flex items-center gap-4 p-4 rounded-2xl transition-all active:scale-[0.98]"
-                style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 6px rgba(26,115,232,0.05)' }}
+                key={s?.key}
+                href={s?.href}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white border transition-all active:scale-95"
+                style={{ borderColor: '#E8EFF8', boxShadow: '0 1px 6px rgba(8,120,239,0.05)' }}
               >
                 <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: service.bg, color: service.color }}
+                  className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: s?.bg, color: s?.color }}
                 >
-                  {service.icon}
+                  {s?.icon}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--shifa-dark)' }}>{service.label}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-gray)' }}>{service.desc}</p>
-                </div>
-                {!service.available && (
-                  <span className="badge-preparation shrink-0">En préparation</span>
-                )}
-                {service.available && (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" style={{ color: 'var(--shifa-gray)' }}>
-                    <path strokeLinecap="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                )}
+                <p className="text-xs text-center font-medium leading-tight" style={{ color: '#5F7A9B' }}>{s?.label}</p>
               </Link>
             ))}
           </div>
         </section>
 
-        {/* Specialties */}
-        <section aria-labelledby="specialties-heading">
-          <h2 id="specialties-heading" className="text-base font-bold mb-3" style={{ color: 'var(--shifa-dark)' }}>
-            Spécialités médicales
-          </h2>
-          <div className="grid grid-cols-3 gap-2.5">
-            {specialties.map((spec) => (
+        {/* Accès Carte SHIFA */}
+        <section className="mb-7">
+          <div
+            className="relative rounded-2xl overflow-hidden p-4 flex items-center gap-4"
+            style={{ background: 'linear-gradient(135deg, #0F2A6B 0%, #0878EF 100%)', boxShadow: '0 8px 24px rgba(8,120,239,0.25)' }}
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.05)', transform: 'translate(30%,-30%)' }} />
+            <div
+              className="relative z-10 rounded-xl p-3 shrink-0"
+              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.5} className="w-8 h-8">
+                <path strokeLinecap="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+              </svg>
+            </div>
+            <div className="relative z-10 flex-1">
+              <p className="text-white font-bold text-sm">{shifaCardData?.name}</p>
+              <p className="text-xs mt-0.5 font-mono" style={{ color: 'rgba(255,255,255,0.7)' }}>ID : {shifaCardData?.id}</p>
+            </div>
+            <Link
+              href="/shifa-card"
+              className="relative z-10 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0"
+              style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
+            >
+              Voir
+            </Link>
+          </div>
+          <Link
+            href="/shifa-card"
+            className="mt-3 w-full flex items-center justify-center py-3 rounded-2xl text-sm font-semibold border-2 bg-white"
+            style={{ borderColor: '#0878EF', color: '#0878EF' }}
+          >
+            Demander ma carte
+          </Link>
+        </section>
+
+        {/* À proximité */}
+        <section className="mb-7">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold" style={{ color: '#123B86' }}>À proximité</h2>
+            <Link href="/patient-explorer" className="text-xs font-semibold" style={{ color: '#0878EF' }}>Voir tout</Link>
+          </div>
+          <div className="flex flex-col gap-3">
+            {nearbyPros?.map((pro) => (
               <Link
-                key={spec.label}
-                href={spec.href}
-                className="flex flex-col items-center gap-2 p-3 rounded-2xl text-center transition-all active:scale-95"
-                style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
+                key={pro?.key}
+                href="/appointment-booking"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-white border transition-all active:scale-[0.98]"
+                style={{ borderColor: '#E8EFF8', boxShadow: '0 1px 6px rgba(8,120,239,0.05)' }}
               >
-                <span className="text-2xl" role="img" aria-hidden="true">{spec.icon}</span>
-                <span className="text-xs font-medium leading-tight" style={{ color: 'var(--shifa-dark)' }}>{spec.label}</span>
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0"
+                  style={{ backgroundColor: pro?.color }}
+                >
+                  {pro?.avatar}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: '#123B86' }}>{pro?.name}</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#5F7A9B' }}>{pro?.specialty}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3" style={{ color: '#F59E0B' }}>
+                        <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs font-semibold" style={{ color: '#123B86' }}>{pro?.rating}</span>
+                    </div>
+                    <span className="text-xs" style={{ color: '#9AAAC0' }}>({pro?.reviews} avis)</span>
+                    <span className="text-xs" style={{ color: '#9AAAC0' }}>·</span>
+                    <span className="text-xs" style={{ color: '#5F7A9B' }}>{pro?.distance}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  {pro?.available && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: '#ECFDF5', color: '#059669' }}>
+                      Disponible
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold" style={{ color: '#0878EF' }}>Consulter</span>
+                </div>
               </Link>
             ))}
           </div>
