@@ -296,7 +296,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{s.passwordLabel}</label>
-            <a href="/forgot-password" className="text-xs font-semibold transition-colors" style={{ color: 'var(--shifa-blue)' }}>
+            <a href="/forgot-password" className="text-xs font-semibold transition-colors" style={{ color: '#0550A8' }}>
               {s.forgotPassword}
             </a>
           </div>

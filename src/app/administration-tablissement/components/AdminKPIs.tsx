@@ -12,8 +12,9 @@ const kpis = [
     value: '256',
     sub: '+12 ce mois',
     icon: 'UsersIcon',
-    color: 'var(--shifa-blue)',
-    bg: 'rgba(0, 102, 255, 0.06)',
+    color: '#0878EF',
+    gradientFrom: '#0878EF',
+    gradientTo: '#38B6FF',
     trend: '+4.9%',
     trendUp: true,
   },
@@ -23,8 +24,9 @@ const kpis = [
     value: '48',
     sub: '3 invitations en attente',
     icon: 'UserGroupIcon',
-    color: 'var(--shifa-green)',
-    bg: 'rgba(16, 185, 129, 0.06)',
+    color: '#059669',
+    gradientFrom: '#059669',
+    gradientTo: '#34D399',
     trend: '+3 ce mois',
     trendUp: true,
   },
@@ -34,8 +36,9 @@ const kpis = [
     value: '1 847',
     sub: '+18% vs mois dernier',
     icon: 'ClipboardDocumentListIcon',
-    color: 'var(--shifa-purple)',
-    bg: 'rgba(123, 94, 167, 0.06)',
+    color: '#7C3AED',
+    gradientFrom: '#7C3AED',
+    gradientTo: '#A78BFA',
     trend: '+18%',
     trendUp: true,
   },
@@ -45,19 +48,21 @@ const kpis = [
     value: '124',
     sub: 'En cours: 18 · Sorties: 12',
     icon: 'BuildingOffice2Icon',
-    color: 'var(--shifa-amber)',
-    bg: 'rgba(245, 158, 11, 0.06)',
+    color: '#D97706',
+    gradientFrom: '#D97706',
+    gradientTo: '#FCD34D',
     trend: '+8',
     trendUp: true,
   },
   {
     key: 'akpi-taux',
-    label: 'Taux d\'occupation',
+    label: "Taux d\'occupation",
     value: '86%',
-    sub: 'Seuil d\'alerte: 90%',
+    sub: "Seuil d\'alerte: 90%",
     icon: 'ChartBarIcon',
-    color: 'var(--shifa-red)',
-    bg: 'rgba(239, 68, 68, 0.08)',
+    color: '#EF4444',
+    gradientFrom: '#EF4444',
+    gradientTo: '#FCA5A5',
     trend: '+5% vs sem.',
     trendUp: false,
     alert: true,
@@ -68,8 +73,9 @@ const kpis = [
     value: '12',
     sub: '3 modules disponibles',
     icon: 'PuzzlePieceIcon',
-    color: 'var(--shifa-cyan)',
-    bg: 'rgba(0, 242, 195, 0.06)',
+    color: '#0EA5E9',
+    gradientFrom: '#0EA5E9',
+    gradientTo: '#7DD3FC',
     trend: 'Sur 15 total',
     trendUp: true,
   },
@@ -78,41 +84,84 @@ const kpis = [
 export default function AdminKPIs() {
   return (
     <div className="mt-6">
-      {/* Grid: 6 cards → 3x2 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 2xl:grid-cols-6 gap-4">
+      {/* Premium KPI Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {kpis.map((kpi) => (
           <div
             key={kpi.key}
-            className="card-base flex flex-col gap-3 relative overflow-hidden"
+            className="relative overflow-hidden rounded-2xl p-4 flex flex-col gap-3 group transition-all duration-200 hover:-translate-y-0.5"
             style={{
-              backgroundColor: kpi.bg,
-              border: (kpi as any).alert ? `1.5px solid ${kpi.color}40` : '1px solid var(--border)',
+              background: 'var(--card)',
+              border: kpi.alert ? `1.5px solid ${kpi.color}50` : '1px solid var(--border)',
+              boxShadow: kpi.alert
+                ? `0 4px 20px ${kpi.color}20, 0 1px 4px rgba(0,0,0,0.04)`
+                : '0 2px 12px rgba(8,120,239,0.06), 0 1px 3px rgba(0,0,0,0.03)',
             }}
           >
-            {(kpi as any).alert && (
-              <div className="absolute top-0 right-0 w-0 h-0" style={{
-                borderLeft: '18px solid transparent',
-                borderTop: `18px solid ${kpi.color}`,
-              }} />
+            {/* Gradient accent bar at top */}
+            <div
+              className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
+              style={{ background: `linear-gradient(90deg, ${kpi.gradientFrom}, ${kpi.gradientTo})` }}
+            />
+
+            {/* Alert corner indicator */}
+            {kpi.alert && (
+              <div
+                className="absolute top-2 right-2 w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: kpi.color }}
+              />
             )}
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'white', border: `1.5px solid ${kpi.color}25` }}>
-                <Icon name={kpi.icon as any} size={16} style={{ color: kpi.color } as any} className="" />
-              </div>
+
+            {/* Icon with gradient background */}
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: `linear-gradient(135deg, ${kpi.gradientFrom}18, ${kpi.gradientTo}10)`,
+                border: `1.5px solid ${kpi.gradientFrom}20`,
+              }}
+            >
+              <Icon name={kpi.icon as any} size={18} style={{ color: kpi.color } as React.CSSProperties} />
             </div>
-            <div>
-              <p className="text-xl font-extrabold font-tabular" style={{ color: 'var(--foreground)' }}>{kpi.value}</p>
-              <p className="text-xs font-semibold mt-0.5" style={{ color: 'var(--foreground)' }}>{kpi.label}</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}>{kpi.sub}</p>
+
+            {/* Value + label */}
+            <div className="flex-1">
+              <p
+                className="text-2xl font-extrabold font-tabular leading-none"
+                style={{ color: 'var(--foreground)', fontFamily: 'var(--font-heading)' }}
+              >
+                {kpi.value}
+              </p>
+              <p
+                className="text-xs font-semibold mt-1 leading-tight"
+                style={{ color: 'var(--foreground)' }}
+              >
+                {kpi.label}
+              </p>
+              <p
+                className="text-xs mt-0.5 leading-tight"
+                style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}
+              >
+                {kpi.sub}
+              </p>
             </div>
-            <div className="flex items-center gap-1">
+
+            {/* Trend badge */}
+            <div
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full self-start"
+              style={{
+                backgroundColor: kpi.trendUp ? 'rgba(5,150,105,0.1)' : `${kpi.color}15`,
+                border: `1px solid ${kpi.trendUp ? 'rgba(5,150,105,0.2)' : kpi.color + '25'}`,
+              }}
+            >
               <Icon
                 name={kpi.trendUp ? 'ArrowTrendingUpIcon' : 'ArrowTrendingDownIcon'}
-                size={11}
-                style={{ color: kpi.trendUp ? 'var(--shifa-green)' : (kpi as any).alert ? kpi.color : 'var(--shifa-amber)' } as any}
-                className=""
+                size={10}
+                style={{ color: kpi.trendUp ? '#059669' : kpi.color } as React.CSSProperties}
               />
-              <span className="text-xs" style={{ color: kpi.trendUp ? 'var(--shifa-green)' : (kpi as any).alert ? kpi.color : 'var(--shifa-amber)', fontSize: '10px' }}>
+              <span
+                className="font-semibold"
+                style={{ color: kpi.trendUp ? '#059669' : kpi.color, fontSize: '10px' }}
+              >
                 {kpi.trend}
               </span>
             </div>
@@ -121,9 +170,24 @@ export default function AdminKPIs() {
       </div>
 
       {/* Activity chart */}
-      <div className="card-base mt-4">
+      <div
+        className="mt-4 rounded-2xl p-5"
+        style={{
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: '0 2px 12px rgba(8,120,239,0.06)',
+        }}
+      >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Activité de l'établissement — 4 semaines</h3>
+          <div>
+            <h3
+              className="text-sm font-bold"
+              style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}
+            >
+              Activité de l'établissement
+            </h3>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>4 dernières semaines</p>
+          </div>
           <div className="flex items-center gap-4">
             {[
               { key: 'leg-consult', color: 'var(--shifa-blue)', label: 'Consultations' },

@@ -19,7 +19,8 @@
   --input: #E8EEF8;
   --ring: #0878EF;
   --radius: 12px;
-  --font-sans: var(--font-plus-jakarta-sans), sans-serif;
+  --font-sans: var(--font-inter), 'Inter', sans-serif;
+  --font-heading: var(--font-poppins), 'Poppins', sans-serif;
 
   --shifa-dark: #123B86;
   --shifa-blue: #0878EF;
@@ -59,7 +60,13 @@
     scroll-behavior: smooth;
   }
 
-  h1, h2, h3, h4, h5, h6, p {
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+
+  p {
     margin: 0;
   }
 
@@ -204,7 +211,7 @@
 
   /* Premium button */
   .btn-primary {
-    background: var(--primary);
+    background: #0660C8;
     color: white;
     border-radius: 10px;
     padding: 0.8125rem 1.5rem;
@@ -212,15 +219,15 @@
     font-weight: 600;
     letter-spacing: -0.01em;
     transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-    box-shadow: 0 2px 8px rgba(21, 88, 214, 0.28);
+    box-shadow: 0 2px 8px rgba(6, 96, 200, 0.30);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
   }
   .btn-primary:hover {
-    background: var(--shifa-blue-deep);
-    box-shadow: 0 4px 16px rgba(21, 88, 214, 0.36);
+    background: #0550A8;
+    box-shadow: 0 4px 16px rgba(6, 96, 200, 0.38);
   }
   .btn-primary:active {
     transform: scale(0.98);
