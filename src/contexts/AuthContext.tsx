@@ -41,16 +41,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchRole = async (userId: string) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles')
         .select('role')
         .eq('id', userId)
         .maybeSingle();
       if (mountedRef.current) {
+        // Only fall back to 'patient' if no profile exists yet
+        // If there's a DB error, keep the current role to avoid downgrading
+        if (error) {
+          console.warn('fetchRole error:', error.message);
+          // Don't override existing role on error
+          return;
+        }
         setRole(data?.role ?? 'patient');
       }
-    } catch {
-      if (mountedRef.current) setRole('patient');
+    } catch (err) {
+      console.warn('fetchRole exception:', err);
+      // Don't override existing role on exception
     }
   };
 
