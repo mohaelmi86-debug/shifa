@@ -25,29 +25,42 @@ function getRoleRedirect(role: string | null | undefined): string {
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/patient-home';
+  const next = searchParams.get('next') ?? '';
+  const redirectTo = searchParams.get('redirectTo') ?? '';
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      // Fetch user profile to redirect to the correct dashboard
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (user) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
+        // Use metadata role first (always reliable), fallback to DB
+        const metaRole = user.user_metadata?.role || user.app_metadata?.role;
+        let roleBasedPath = '/patient-home';
 
-        const redirectPath = profile?.role ? getRoleRedirect(profile.role) : next;
-        return NextResponse.redirect(`${origin}${redirectPath}`);
+        if (metaRole) {
+          roleBasedPath = getRoleRedirect(metaRole);
+        } else {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+          roleBasedPath = getRoleRedirect(profile?.role);
+        }
+
+        // Respect original destination if provided
+        const finalPath = (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('/sign-up-login-screen'))
+          ? redirectTo
+          : (next && next.startsWith('/') ? next : roleBasedPath);
+
+        return NextResponse.redirect(`${origin}${finalPath}`);
       }
 
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${origin}/patient-home`);
     }
   }
 

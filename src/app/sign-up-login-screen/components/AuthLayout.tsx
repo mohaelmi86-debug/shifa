@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import Link from 'next/link';
+
 import ShifaBrand from '@/components/ui/ShifaBrand';
 import LanguageSelector from '@/components/ui/LanguageSelector';
 
@@ -10,7 +10,7 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: '#F8FAFF' }}>
+    <div className="min-h-screen flex" style={{ backgroundColor: '#EEF3FB' }}>
       {/* Left panel — branding (hidden on mobile) */}
       <div
         className="hidden lg:flex flex-col justify-between w-[420px] xl:w-[480px] shrink-0 p-10 relative overflow-hidden"
@@ -73,22 +73,19 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
       </div>
 
       {/* Right panel — form */}
-      <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto">
-        {/* Mobile top bar */}
-        <div className="w-full px-5 pt-5 pb-0 flex items-center justify-between lg:hidden">
-          <Link href="/">
-            <ShifaBrand variant="compact" />
-          </Link>
+      <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto" style={{ backgroundColor: '#EEF3FB' }}>
+        {/* Mobile top bar — language selector only, no logo */}
+        <div className="w-full px-5 pt-5 pb-0 flex items-center justify-end lg:hidden">
           <LanguageSelector compact />
         </div>
 
         {/* Mobile logo card — clean centered */}
-        <div className="lg:hidden w-full px-5 mt-6 mb-2">
+        <div className="lg:hidden w-full px-5 mt-4 mb-2">
           <div
-            className="w-full rounded-2xl overflow-hidden relative flex flex-col items-center justify-center py-8"
+            className="w-full rounded-2xl overflow-hidden relative flex flex-col items-center justify-center py-7"
             style={{
               background: 'linear-gradient(145deg, #0878EF 0%, #0A1E4A 100%)',
-              minHeight: '140px',
+              minHeight: '130px',
             }}
           >
             <div className="absolute top-0 right-0 w-40 h-40 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.04)', transform: 'translate(30%, -30%)' }} />
@@ -96,7 +93,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             <div className="relative z-10 flex flex-col items-center gap-3">
               <div
                 className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.95)', padding: '12px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+                style={{ background: 'rgba(255,255,255,0.95)', padding: '10px 18px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
               >
                 <ShifaBrand variant="auth" />
               </div>
@@ -104,8 +101,13 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           </div>
         </div>
 
+        {/* Desktop language selector */}
+        <div className="hidden lg:flex w-full max-w-md px-10 pt-8 justify-end">
+          <LanguageSelector compact={false} />
+        </div>
+
         {/* Form content */}
-        <div className="w-full max-w-md px-5 py-6 lg:px-10 lg:py-10">
+        <div className="w-full max-w-md px-5 py-5 lg:px-10 lg:py-6">
           {children}
         </div>
       </div>

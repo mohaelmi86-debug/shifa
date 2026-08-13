@@ -25,6 +25,7 @@ const PUBLIC_PATHS = [
   '/support-center',
   '/local-health-services',
   '/forgot-password',
+  '/decouvrir',
 ];
 
 // ─── Role-based route guards ──────────────────────────────────────────────────
@@ -336,27 +337,38 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── Role & org context lookup ────────────────────────────────────────────
-  const { data: profile, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('role, organization_id, professional_id')
-    .eq('id', user.id)
-    .maybeSingle();
+  // PRIMARY: use user_metadata.role (set at registration, always reliable)
+  // FALLBACK: DB profile (may fail due to RLS or network)
+  let userRole: string = user.user_metadata?.role || user.app_metadata?.role || '';
 
-  // Fallback chain: DB profile → user metadata → allow through without blocking
-  let userRole: string;
-  if (profile?.role) {
-    userRole = profile.role;
-  } else if (user.user_metadata?.role) {
-    userRole = user.user_metadata.role;
-  } else if (user.app_metadata?.role) {
-    userRole = user.app_metadata.role;
+  // Only query DB if metadata role is missing
+  let orgId: string | null = null;
+  if (!userRole) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role, organization_id, professional_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile?.role) {
+      userRole = profile.role;
+    }
+    orgId = profile?.organization_id ?? null;
   } else {
-    // Cannot determine role — allow the request through without redirecting
-    // This prevents incorrectly blocking admin/org users due to a DB fetch failure
-    userRole = '__unknown__';
+    // Still fetch org_id for header injection (non-blocking)
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .maybeSingle();
+    orgId = profile?.organization_id ?? null;
   }
 
-  const orgId: string | null = profile?.organization_id ?? null;
+  // If role still unknown after both sources, allow through without blocking
+  // This prevents incorrectly redirecting users when auth metadata is missing
+  if (!userRole) {
+    userRole = '__unknown__';
+  }
 
   // ─── Role-based access control ────────────────────────────────────────────
   const matchedGuard = Object.entries(ROLE_GUARDS).find(([prefix]) =>

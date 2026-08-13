@@ -52,15 +52,30 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     setIsLoading(true);
     setLoginError('');
     try {
-      await signIn(data.email, data.password);
+      const result = await signIn(data.email, data.password);
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
+
+      // Check for redirectTo param first (preserves original destination)
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirectTo');
+
       let redirectPath = '/patient-home';
       if (user) {
-        const { data: profile } = await supabase
-          .from('user_profiles').select('role').eq('id', user.id).maybeSingle();
-        const role = profile?.role || 'patient';
+        // Use metadata role first (always reliable), fallback to DB
+        const metaRole = user.user_metadata?.role || user.app_metadata?.role;
+        let role = metaRole;
+        if (!role) {
+          const { data: profile } = await supabase
+            .from('user_profiles').select('role').eq('id', user.id).maybeSingle();
+          role = profile?.role || 'patient';
+        }
         redirectPath = getRoleRedirect(role);
+
+        // If there's a valid redirectTo and the user's role can access it, use it
+        if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('/sign-up-login-screen')) {
+          redirectPath = redirectTo;
+        }
       }
       window.location.href = redirectPath;
     } catch (err: any) {
