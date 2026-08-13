@@ -1,6 +1,7 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import SHIFAFooter, { type FooterContext } from './SHIFAFooter';
+import MobileBottomNav from '@/components/MobileBottomNav';
 
 type AppRole = 'patient' | 'professional' | 'admin' | 'org_admin' | 'institution' | 'ambassador' | 'platform_admin' | 'ministry' | 'public_health' | 'insurance' | 'university' | 'ngo' | 'researcher' | 'developer' | 'vendor';
 
@@ -32,11 +33,15 @@ export default function AppLayout({ children, role = 'patient', activeRoute = ''
       <main className="flex-1 overflow-y-auto scrollbar-thin pl-0 lg:pl-0 flex flex-col">
         {/* Mobile top padding to account for hamburger button */}
         <div className="lg:hidden h-14" />
-        <div className="flex-1">
+        <div className="flex-1 pb-mobile-nav lg:pb-0">
           {children}
         </div>
         <SHIFAFooter context={footerContext} />
       </main>
+      {/* Mobile bottom navigation — only for patient/professional roles */}
+      {(role === 'patient' || role === 'professional') && (
+        <MobileBottomNav />
+      )}
     </div>
   );
 }

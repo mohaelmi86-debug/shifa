@@ -39,9 +39,12 @@ module.exports = {
         shifa: {
           dark: 'var(--shifa-dark)',
           blue: 'var(--shifa-blue)',
+          'blue-light': 'var(--shifa-blue-light)',
+          'blue-deep': 'var(--shifa-blue-deep)',
           cyan: 'var(--shifa-cyan)',
           mid: 'var(--shifa-mid)',
           light: 'var(--shifa-light)',
+          surface: 'var(--shifa-surface)',
           purple: 'var(--shifa-purple)',
           green: 'var(--shifa-green)',
           amber: 'var(--shifa-amber)',
