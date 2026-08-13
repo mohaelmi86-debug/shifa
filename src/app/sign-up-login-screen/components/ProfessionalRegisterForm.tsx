@@ -27,6 +27,7 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
   const [registerError, setRegisterError] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
   const [showVerification, setShowVerification] = useState(false);
+  const [proType, setProType] = useState<'liberal' | 'salarie'>('liberal');
   const { signUp } = useAuth();
   const router = useRouter();
   const { register, handleSubmit, watch, formState: { errors } } = useForm<ProFormData>();
@@ -57,12 +58,10 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
     }
   };
 
-  const handleVerified = () => {
-    router.push('/workspace-professionnel');
-  };
+  const handleVerified = () => { router.push('/workspace-professionnel'); };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-slide-up">
       {showVerification && (
         <EmailVerificationModal
           email={pendingEmail}
@@ -70,62 +69,81 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
           onCancel={() => setShowVerification(false)}
         />
       )}
-      <button onClick={onSwitchToLogin} className="flex items-center gap-1.5 text-sm font-medium mb-6 transition-colors hover:text-primary" style={{ color: 'var(--muted-foreground)' }}>
+
+      {/* Back button */}
+      <button
+        onClick={onSwitchToLogin}
+        className="flex items-center gap-1.5 text-sm font-medium mb-5 transition-colors"
+        style={{ color: 'var(--muted-foreground)' }}
+      >
         <Icon name="ArrowLeftIcon" size={15} />
         Retour à la connexion
       </button>
 
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #5B2D8E, #7B5EA7)' }}>
-            <Icon name="UserGroupIcon" size={16} className="text-white" />
+      {/* Title */}
+      <div className="mb-5">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'linear-gradient(135deg, #5B2D8E, #6D4FC2)' }}
+          >
+            <Icon name="UserGroupIcon" size={17} className="text-white" />
           </div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--shifa-dark)' }}>Espace Professionnel</h1>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--shifa-dark)', letterSpacing: '-0.02em' }}>
+            Espace Professionnel
+          </h1>
         </div>
 
-        {/* Professional type selector */}
-        <div className="grid grid-cols-2 gap-2 mt-4">
+        {/* Professional type toggle */}
+        <div className="grid grid-cols-2 gap-2">
           {[
-            { key: 'type-liberal', value: 'liberal', label: 'Libéral', sub: 'Inscription directe', color: 'var(--shifa-green)' },
-            { key: 'type-salarie', value: 'salarie', label: 'Salarié / Rattaché', sub: 'Sur invitation', color: 'var(--shifa-purple)' },
+            { value: 'liberal' as const, label: 'Libéral', sub: 'Inscription directe', color: '#0D9E6E' },
+            { value: 'salarie' as const, label: 'Salarié / Rattaché', sub: 'Sur invitation', color: '#6D4FC2' },
           ].map((type) => (
-            <label key={type.key} className="cursor-pointer">
-              <input type="radio" value={type.value} className="sr-only" {...register('professionalType', { required: true })} defaultChecked={type.value === 'liberal'} />
-              <div className="p-3 rounded-xl border-2 transition-all" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
-                <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{type.label}</p>
-                <span className="badge-base text-xs mt-1" style={{ backgroundColor: `${type.color}15`, color: type.color, border: `1px solid ${type.color}30` }}>
-                  {type.sub}
-                </span>
-              </div>
-            </label>
+            <button
+              key={type.value}
+              type="button"
+              onClick={() => setProType(type.value)}
+              className="p-3 rounded-xl border-2 text-left transition-all"
+              style={{
+                borderColor: proType === type.value ? type.color : 'var(--border)',
+                backgroundColor: proType === type.value ? type.color + '08' : '#FFFFFF',
+              }}
+            >
+              <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{type.label}</p>
+              <p className="text-xs mt-0.5 font-medium" style={{ color: type.color }}>{type.sub}</p>
+            </button>
           ))}
         </div>
       </div>
 
+      {/* Error */}
       {registerError && (
-        <div className="flex items-start gap-3 p-4 rounded-xl mb-4 border" style={{ backgroundColor: 'rgba(239, 68, 68, 0.06)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
-          <Icon name="ExclamationCircleIcon" size={18} style={{ color: 'var(--shifa-red)', flexShrink: 0 } as any} className="" />
-          <p className="text-sm" style={{ color: 'var(--shifa-red)' }}>{registerError}</p>
+        <div className="flex items-start gap-3 p-3.5 rounded-xl mb-4 border" style={{ backgroundColor: 'rgba(217,48,37,0.05)', borderColor: 'rgba(217,48,37,0.18)' }}>
+          <Icon name="ExclamationCircleIcon" size={17} style={{ color: '#D93025', flexShrink: 0, marginTop: 1 } as any} />
+          <p className="text-sm" style={{ color: '#D93025' }}>{registerError}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3.5">
+        {/* Name row */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Prénom *</label>
-            <input type="text" className="input-field" placeholder="Mohamed" {...register('firstName', { required: 'Requis' })} />
-            {errors.firstName && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.firstName.message}</p>}
+            <input type="text" className="input-premium" placeholder="Mohamed" {...register('firstName', { required: 'Requis' })} />
+            {errors.firstName && <p className="mt-1 text-xs" style={{ color: '#D93025' }}>{errors.firstName.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Nom *</label>
-            <input type="text" className="input-field" placeholder="Sy" {...register('lastName', { required: 'Requis' })} />
-            {errors.lastName && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.lastName.message}</p>}
+            <input type="text" className="input-premium" placeholder="Sy" {...register('lastName', { required: 'Requis' })} />
+            {errors.lastName && <p className="mt-1 text-xs" style={{ color: '#D93025' }}>{errors.lastName.message}</p>}
           </div>
         </div>
 
+        {/* Profession */}
         <div>
           <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Profession *</label>
-          <select className="input-field" {...register('profession', { required: 'Requis' })}>
+          <select className="input-premium" style={{ appearance: 'auto' }} {...register('profession', { required: 'Requis' })}>
             <option value="">Sélectionner</option>
             <option value="medecin">Médecin</option>
             <option value="infirmier">Infirmier(ère)</option>
@@ -136,25 +154,37 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
             <option value="psychologue">Psychologue</option>
             <option value="laborantin">Biologiste / Laborantin</option>
           </select>
-          {errors.profession && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.profession.message}</p>}
+          {errors.profession && <p className="mt-1 text-xs" style={{ color: '#D93025' }}>{errors.profession.message}</p>}
         </div>
 
+        {/* Specialty */}
         <div>
           <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Spécialité</label>
-          <input type="text" className="input-field" placeholder="Médecine générale, Cardiologie..." {...register('specialty')} />
+          <input type="text" className="input-premium" placeholder="Médecine générale, Cardiologie..." {...register('specialty')} />
         </div>
 
+        {/* License */}
         <div>
-          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>N° d'ordre / Licence professionnelle *</label>
-          <p className="text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>Sera vérifié auprès de votre ordre professionnel national.</p>
-          <input type="text" className="input-field font-mono" placeholder="ADELI / RPPS / N° d'ordre" {...register('licenseNumber', { required: 'Le numéro professionnel est requis' })} />
-          {errors.licenseNumber && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.licenseNumber.message}</p>}
+          <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
+            N° d'ordre / Licence professionnelle *
+          </label>
+          <p className="text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
+            Sera vérifié auprès de votre ordre professionnel national.
+          </p>
+          <input
+            type="text"
+            className="input-premium font-mono"
+            placeholder="ADELI / RPPS / N° d'ordre"
+            {...register('licenseNumber', { required: 'Le numéro professionnel est requis' })}
+          />
+          {errors.licenseNumber && <p className="mt-1 text-xs" style={{ color: '#D93025' }}>{errors.licenseNumber.message}</p>}
         </div>
 
+        {/* Country + Phone */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Pays *</label>
-            <select className="input-field" {...register('country', { required: 'Requis' })}>
+            <select className="input-premium" style={{ appearance: 'auto' }} {...register('country', { required: 'Requis' })}>
               <option value="">Pays</option>
               <option value="FR">France</option>
               <option value="SN">Sénégal</option>
@@ -164,48 +194,81 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
           </div>
           <div>
             <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Téléphone *</label>
-            <input type="tel" className="input-field" placeholder="+33 6..." {...register('phone', { required: 'Requis' })} />
+            <input type="tel" className="input-premium" placeholder="+33 6..." {...register('phone', { required: 'Requis' })} />
           </div>
         </div>
 
+        {/* Email */}
         <div>
           <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>E-mail professionnel *</label>
-          <input type="email" className="input-field" placeholder="dr.sy@cabinet.com" {...register('email', { required: 'Requis' })} />
-          {errors.email && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.email.message}</p>}
+          <input type="email" className="input-premium" placeholder="dr.sy@cabinet.com" {...register('email', { required: 'Requis' })} />
+          {errors.email && <p className="mt-1 text-xs" style={{ color: '#D93025' }}>{errors.email.message}</p>}
         </div>
 
+        {/* Password */}
         <div>
           <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Mot de passe *</label>
           <div className="relative">
-            <input type={showPassword ? 'text' : 'password'} className="input-field pr-11" placeholder="••••••••" {...register('password', {
-              required: 'Requis',
-              minLength: { value: 8, message: 'Minimum 8 caractères' },
-            })} />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Icon name={showPassword ? 'EyeSlashIcon' : 'EyeIcon'} size={16} className="text-muted-foreground" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              className="input-premium"
+              style={{ paddingRight: '2.75rem' }}
+              placeholder="••••••••"
+              {...register('password', { required: 'Requis', minLength: { value: 8, message: 'Minimum 8 caractères' } })}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              <Icon name={showPassword ? 'EyeSlashIcon' : 'EyeIcon'} size={17} />
             </button>
           </div>
-          {errors.password && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.password.message}</p>}
+          {errors.password && <p className="mt-1 text-xs" style={{ color: '#D93025' }}>{errors.password.message}</p>}
         </div>
 
+        {/* Confirm password */}
         <div>
           <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Confirmer *</label>
-          <input type="password" className="input-field" placeholder="••••••••" {...register('confirmPassword', {
-            required: 'Requis',
-            validate: val => val === password || 'Les mots de passe ne correspondent pas',
-          })} />
-          {errors.confirmPassword && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.confirmPassword.message}</p>}
+          <input
+            type="password"
+            className="input-premium"
+            placeholder="••••••••"
+            {...register('confirmPassword', {
+              required: 'Requis',
+              validate: val => val === password || 'Les mots de passe ne correspondent pas',
+            })}
+          />
+          {errors.confirmPassword && <p className="mt-1 text-xs" style={{ color: '#D93025' }}>{errors.confirmPassword.message}</p>}
         </div>
 
+        {/* Terms */}
         <div className="flex items-start gap-2.5">
-          <input type="checkbox" id="proTerms" className="w-4 h-4 mt-0.5 rounded accent-primary cursor-pointer" {...register('acceptTerms', { required: 'Requis' })} />
-          <label htmlFor="proTerms" className="text-xs cursor-pointer" style={{ color: 'var(--muted-foreground)' }}>
-            J'accepte les <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions</a> et la <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Politique de confidentialité</a>.
+          <input
+            type="checkbox"
+            id="proTerms"
+            className="w-4 h-4 mt-0.5 rounded cursor-pointer"
+            style={{ accentColor: 'var(--primary)' }}
+            {...register('acceptTerms', { required: 'Requis' })}
+          />
+          <label htmlFor="proTerms" className="text-xs cursor-pointer select-none" style={{ color: 'var(--muted-foreground)' }}>
+            J'accepte les{' '}
+            <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions</a>
+            {' '}et la{' '}
+            <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Politique de confidentialité</a>.
           </label>
         </div>
 
-        <button type="submit" disabled={isLoading} className="btn-primary w-full py-3 mt-2 disabled:opacity-60" style={{ minHeight: '44px' }}>
-          {isLoading ? <Icon name="ArrowPathIcon" size={18} className="animate-spin" /> : (
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="btn-primary w-full mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isLoading ? (
+            <Icon name="ArrowPathIcon" size={18} className="animate-spin" />
+          ) : (
             <>
               <Icon name="CheckCircleIcon" size={16} />
               Créer mon espace professionnel
