@@ -5,6 +5,8 @@ import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import EmailVerificationModal from './EmailVerificationModal';
+import { useLanguage } from '@/contexts/LanguageContext';
+
 
 interface LoginFormData {
   email: string;
@@ -35,6 +37,142 @@ function getRoleRedirect(role: string): string {
   }
 }
 
+// Per-language auth strings not covered by the global i18n keys
+const AUTH_STRINGS: Record<string, Record<string, string>> = {
+  fr: {
+    title: 'Se connecter',
+    subtitle: 'Bienvenue sur SHIFA Health OS',
+    emailLabel: 'Adresse e-mail ou numéro de téléphone',
+    emailPlaceholder: 'votre@email.com ou +33 6 00 00 00 00',
+    passwordLabel: 'Mot de passe',
+    passwordPlaceholder: '••••••••',
+    forgotPassword: 'Mot de passe oublié ?',
+    rememberMe: 'Se souvenir de moi pendant 30 jours',
+    signIn: 'Se connecter',
+    orContinueWith: 'ou continuer avec',
+    noAccount: 'Pas encore de compte ?',
+    rolePatient: 'Patient',
+    rolePro: 'Professionnel',
+    roleEtab: 'Établissement',
+    errorInvalidCredentials: 'Identifiants invalides. Vérifiez votre adresse e-mail et votre mot de passe.',
+    errorGeneric: 'Une erreur est survenue. Veuillez réessayer.',
+    emailRequired: "L'adresse e-mail est requise",
+    passwordRequired: 'Le mot de passe est requis',
+    hidePassword: 'Masquer',
+    showPassword: 'Afficher',
+  },
+  en: {
+    title: 'Sign in',
+    subtitle: 'Welcome to SHIFA Health OS',
+    emailLabel: 'Email address or phone number',
+    emailPlaceholder: 'your@email.com or +44 7700 000000',
+    passwordLabel: 'Password',
+    passwordPlaceholder: '••••••••',
+    forgotPassword: 'Forgot password?',
+    rememberMe: 'Remember me for 30 days',
+    signIn: 'Sign in',
+    orContinueWith: 'or continue with',
+    noAccount: 'No account yet?',
+    rolePatient: 'Patient',
+    rolePro: 'Professional',
+    roleEtab: 'Institution',
+    errorInvalidCredentials: 'Invalid credentials. Please check your email and password.',
+    errorGeneric: 'An error occurred. Please try again.',
+    emailRequired: 'Email address is required',
+    passwordRequired: 'Password is required',
+    hidePassword: 'Hide',
+    showPassword: 'Show',
+  },
+  es: {
+    title: 'Iniciar sesión',
+    subtitle: 'Bienvenido a SHIFA Health OS',
+    emailLabel: 'Correo electrónico o número de teléfono',
+    emailPlaceholder: 'tu@email.com o +34 600 000 000',
+    passwordLabel: 'Contraseña',
+    passwordPlaceholder: '••••••••',
+    forgotPassword: '¿Olvidaste tu contraseña?',
+    rememberMe: 'Recordarme durante 30 días',
+    signIn: 'Iniciar sesión',
+    orContinueWith: 'o continuar con',
+    noAccount: '¿Aún no tienes cuenta?',
+    rolePatient: 'Paciente',
+    rolePro: 'Profesional',
+    roleEtab: 'Institución',
+    errorInvalidCredentials: 'Credenciales inválidas. Verifica tu correo y contraseña.',
+    errorGeneric: 'Ocurrió un error. Por favor, inténtalo de nuevo.',
+    emailRequired: 'El correo electrónico es obligatorio',
+    passwordRequired: 'La contraseña es obligatoria',
+    hidePassword: 'Ocultar',
+    showPassword: 'Mostrar',
+  },
+  pt: {
+    title: 'Entrar',
+    subtitle: 'Bem-vindo ao SHIFA Health OS',
+    emailLabel: 'E-mail ou número de telefone',
+    emailPlaceholder: 'seu@email.com ou +55 11 90000-0000',
+    passwordLabel: 'Senha',
+    passwordPlaceholder: '••••••••',
+    forgotPassword: 'Esqueceu a senha?',
+    rememberMe: 'Lembrar por 30 dias',
+    signIn: 'Entrar',
+    orContinueWith: 'ou continuar com',
+    noAccount: 'Ainda não tem conta?',
+    rolePatient: 'Paciente',
+    rolePro: 'Profissional',
+    roleEtab: 'Instituição',
+    errorInvalidCredentials: 'Credenciais inválidas. Verifique seu e-mail e senha.',
+    errorGeneric: 'Ocorreu um erro. Por favor, tente novamente.',
+    emailRequired: 'O e-mail é obrigatório',
+    passwordRequired: 'A senha é obrigatória',
+    hidePassword: 'Ocultar',
+    showPassword: 'Mostrar',
+  },
+  ar: {
+    title: 'تسجيل الدخول',
+    subtitle: 'مرحباً بك في SHIFA Health OS',
+    emailLabel: 'البريد الإلكتروني أو رقم الهاتف',
+    emailPlaceholder: 'بريدك@email.com أو +966 50 000 0000',
+    passwordLabel: 'كلمة المرور',
+    passwordPlaceholder: '••••••••',
+    forgotPassword: 'نسيت كلمة المرور؟',
+    rememberMe: 'تذكرني لمدة 30 يوماً',
+    signIn: 'تسجيل الدخول',
+    orContinueWith: 'أو المتابعة باستخدام',
+    noAccount: 'ليس لديك حساب بعد؟',
+    rolePatient: 'مريض',
+    rolePro: 'محترف',
+    roleEtab: 'مؤسسة',
+    errorInvalidCredentials: 'بيانات الاعتماد غير صالحة. تحقق من بريدك الإلكتروني وكلمة المرور.',
+    errorGeneric: 'حدث خطأ. يرجى المحاولة مرة أخرى.',
+    emailRequired: 'البريد الإلكتروني مطلوب',
+    passwordRequired: 'كلمة المرور مطلوبة',
+    hidePassword: 'إخفاء',
+    showPassword: 'إظهار',
+  },
+  zh: {
+    title: '登录',
+    subtitle: '欢迎使用 SHIFA Health OS',
+    emailLabel: '电子邮件或手机号码',
+    emailPlaceholder: 'your@email.com 或 +86 138 0000 0000',
+    passwordLabel: '密码',
+    passwordPlaceholder: '••••••••',
+    forgotPassword: '忘记密码？',
+    rememberMe: '记住我 30 天',
+    signIn: '登录',
+    orContinueWith: '或使用以下方式继续',
+    noAccount: '还没有账号？',
+    rolePatient: '患者',
+    rolePro: '专业人员',
+    roleEtab: '机构',
+    errorInvalidCredentials: '凭据无效。请检查您的电子邮件和密码。',
+    errorGeneric: '发生错误，请重试。',
+    emailRequired: '电子邮件地址为必填项',
+    passwordRequired: '密码为必填项',
+    hidePassword: '隐藏',
+    showPassword: '显示',
+  },
+};
+
 export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +181,9 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const [showVerification, setShowVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
   const { signIn } = useAuth();
+  const { language } = useLanguage();
+
+  const s = AUTH_STRINGS[language] || AUTH_STRINGS['fr'];
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     defaultValues: { remember: false },
@@ -81,12 +222,12 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
-        setLoginError('Identifiants invalides. Vérifiez votre adresse e-mail et votre mot de passe.');
+        setLoginError(s.errorInvalidCredentials);
       } else if (msg.includes('Email not confirmed')) {
         setPendingEmail(data.email);
         setShowVerification(true);
       } else {
-        setLoginError('Une erreur est survenue. Veuillez réessayer.');
+        setLoginError(s.errorGeneric);
       }
       setIsLoading(false);
     }
@@ -103,7 +244,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
       });
       if (error) throw error;
     } catch (err: any) {
-      setLoginError(err?.message || 'Erreur lors de la connexion OAuth. Veuillez réessayer.');
+      setLoginError(err?.message || s.errorGeneric);
       setOauthLoading(null);
     }
   };
@@ -123,9 +264,9 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
       {/* Title */}
       <div className="mb-7">
         <h1 className="text-[1.625rem] font-bold mb-1" style={{ color: 'var(--shifa-dark)', letterSpacing: '-0.02em' }}>
-          Se connecter
+          {s.title}
         </h1>
-        <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Bienvenue sur SHIFA Health OS</p>
+        <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{s.subtitle}</p>
       </div>
 
       {/* Error */}
@@ -140,13 +281,13 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         {/* Email */}
         <div>
           <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
-            Adresse e-mail ou numéro de téléphone
+            {s.emailLabel}
           </label>
           <input
             type="text"
             className="input-premium"
-            placeholder="votre@email.com ou +33 6 00 00 00 00"
-            {...register('email', { required: "L'adresse e-mail est requise" })}
+            placeholder={s.emailPlaceholder}
+            {...register('email', { required: s.emailRequired })}
           />
           {errors.email && <p className="mt-1.5 text-xs font-medium" style={{ color: '#D93025' }}>{errors.email.message}</p>}
         </div>
@@ -154,9 +295,9 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         {/* Password */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Mot de passe</label>
+            <label className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{s.passwordLabel}</label>
             <a href="/forgot-password" className="text-xs font-semibold transition-colors" style={{ color: 'var(--shifa-blue)' }}>
-              Mot de passe oublié ?
+              {s.forgotPassword}
             </a>
           </div>
           <div className="relative">
@@ -164,15 +305,15 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
               type={showPassword ? 'text' : 'password'}
               className="input-premium"
               style={{ paddingRight: '2.75rem' }}
-              placeholder="••••••••"
-              {...register('password', { required: 'Le mot de passe est requis' })}
+              placeholder={s.passwordPlaceholder}
+              {...register('password', { required: s.passwordRequired })}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors"
               style={{ color: 'var(--muted-foreground)' }}
-              aria-label={showPassword ? 'Masquer' : 'Afficher'}
+              aria-label={showPassword ? s.hidePassword : s.showPassword}
             >
               <Icon name={showPassword ? 'EyeSlashIcon' : 'EyeIcon'} size={17} />
             </button>
@@ -190,7 +331,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
             {...register('remember')}
           />
           <label htmlFor="remember" className="text-sm cursor-pointer select-none" style={{ color: 'var(--muted-foreground)' }}>
-            Se souvenir de moi pendant 30 jours
+            {s.rememberMe}
           </label>
         </div>
 
@@ -205,7 +346,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           ) : (
             <>
               <Icon name="LockClosedIcon" size={16} />
-              Se connecter
+              {s.signIn}
             </>
           )}
         </button>
@@ -213,7 +354,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         {/* Divider */}
         <div className="relative flex items-center gap-3 my-1">
           <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border)' }} />
-          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>ou continuer avec</span>
+          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.orContinueWith}</span>
           <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border)' }} />
         </div>
 
@@ -246,7 +387,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
               onClick={() => handleOAuthSignIn(item.provider)}
               disabled={oauthLoading !== null}
               className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all hover:shadow-card active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{ backgroundColor: '#FFFFFF', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+              style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
             >
               {oauthLoading === item.provider ? <Icon name="ArrowPathIcon" size={16} className="animate-spin" /> : item.icon}
               {item.label}
@@ -257,12 +398,12 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
 
       {/* Register section */}
       <div className="mt-6 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-        <p className="text-center text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>Pas encore de compte ?</p>
+        <p className="text-center text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>{s.noAccount}</p>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { key: 'reg-patient', label: 'Patient', icon: 'UserCircleIcon', role: 'patient' as const },
-            { key: 'reg-pro', label: 'Professionnel', icon: 'UserGroupIcon', role: 'professional' as const },
-            { key: 'reg-etab', label: 'Établissement', icon: 'BuildingOffice2Icon', role: 'institution' as const },
+            { key: 'reg-patient', label: s.rolePatient, icon: 'UserCircleIcon', role: 'patient' as const },
+            { key: 'reg-pro', label: s.rolePro, icon: 'UserGroupIcon', role: 'professional' as const },
+            { key: 'reg-etab', label: s.roleEtab, icon: 'BuildingOffice2Icon', role: 'institution' as const },
           ].map((item) => (
             <button
               key={item.key}

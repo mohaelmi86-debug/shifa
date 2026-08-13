@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #EDF1F9;
+  --background: #E8EEF8;
   --foreground: #0F2A5E;
   --primary: #0878EF;
   --primary-foreground: #FFFFFF;
@@ -11,12 +11,12 @@
   --secondary-foreground: #0660C8;
   --accent: #38B6FF;
   --accent-foreground: #FFFFFF;
-  --muted: #E4EAF5;
+  --muted: #DCE5F5;
   --muted-foreground: #4A6080;
-  --card: #F7F9FE;
+  --card: #F0F5FC;
   --card-foreground: #0F2A5E;
-  --border: #D4DFEF;
-  --input: #EDF1F9;
+  --border: #C8D8EC;
+  --input: #E8EEF8;
   --ring: #0878EF;
   --radius: 12px;
   --font-sans: var(--font-plus-jakarta-sans), sans-serif;
@@ -27,8 +27,8 @@
   --shifa-blue-deep: #0660C8;
   --shifa-cyan: #0EA5E9;
   --shifa-mid: #0A5ED4;
-  --shifa-light: #F8FAFF;
-  --shifa-surface: #FFFFFF;
+  --shifa-light: #EEF3FB;
+  --shifa-surface: #F4F8FE;
   --shifa-purple: #7C3AED;
   --shifa-green: #059669;
   --shifa-amber: #D97706;
@@ -185,7 +185,7 @@
 
   /* Premium input style */
   .input-premium {
-    background: #FFFFFF;
+    background: var(--shifa-surface);
     border: 1.5px solid var(--border);
     border-radius: 10px;
     padding: 0.75rem 1rem;
@@ -199,7 +199,7 @@
     box-shadow: 0 0 0 3px rgba(21, 88, 214, 0.12);
   }
   .input-premium::placeholder {
-    color: #A8B5CC;
+    color: #8FA3BE;
   }
 
   /* Premium button */
@@ -228,7 +228,7 @@
 
   /* Legacy input-field alias */
   .input-field {
-    background: #FFFFFF;
+    background: var(--shifa-surface);
     border: 1.5px solid var(--border);
     border-radius: 10px;
     padding: 0.75rem 1rem;
@@ -242,7 +242,7 @@
     box-shadow: 0 0 0 3px rgba(21, 88, 214, 0.12);
   }
   .input-field::placeholder {
-    color: #A8B5CC;
+    color: #8FA3BE;
   }
   select.input-field {
     appearance: auto;
@@ -250,7 +250,7 @@
 
   /* Premium card */
   .card-premium {
-    background: #FFFFFF;
+    background: var(--shifa-surface);
     border: 1px solid var(--border);
     border-radius: 14px;
     box-shadow: 0 1px 6px rgba(21, 88, 214, 0.06), 0 1px 2px rgba(0,0,0,0.03);

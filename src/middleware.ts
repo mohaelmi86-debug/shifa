@@ -272,6 +272,26 @@ const ROLE_GUARDS: Record<string, string[]> = {
   '/shifa-desktop': ['professional', 'org_admin', 'platform_admin'],
 };
 
+// ─── Role → home page mapping ─────────────────────────────────────────────────
+function getRoleHome(role: string): string {
+  switch (role) {
+    case 'platform_admin': return '/platform-admin';
+    case 'org_admin': return '/administration-tablissement';
+    case 'professional': return '/workspace-professionnel';
+    case 'ambassador': return '/ambassador-workspace';
+    case 'ministry': return '/espace-ministere';
+    case 'public_health': return '/espace-sante-publique';
+    case 'insurance': return '/espace-assurance';
+    case 'university': return '/espace-universite';
+    case 'ngo': return '/espace-ong';
+    case 'researcher': return '/research-workspace';
+    case 'developer': return '/api-developer-dashboard';
+    case 'vendor': return '/marketplace-vendor';
+    case 'patient':
+    default: return '/patient-home';
+  }
+}
+
 export async function middleware(request: NextRequest) {
   injectTokenFromHeader(request);
 
@@ -371,9 +391,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── Role-based access control ────────────────────────────────────────────
-  const matchedGuard = Object.entries(ROLE_GUARDS).find(([prefix]) =>
-    pathname.startsWith(prefix)
-  );
+  // Use longest-prefix match to avoid /admin matching /admin-modules etc.
+  const matchedGuard = Object.entries(ROLE_GUARDS)
+    .filter(([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/'))
+    .sort((a, b) => b[0].length - a[0].length)[0];
 
   if (matchedGuard) {
     const [, allowedRoles] = matchedGuard;
@@ -382,33 +403,7 @@ export async function middleware(request: NextRequest) {
     if (allowedRoles.length > 0 && userRole !== '__unknown__' && !allowedRoles.includes(userRole)) {
       // Redirect to the appropriate home for the user's actual role
       const url = request.nextUrl.clone();
-      if (userRole === 'professional') {
-        url.pathname = '/workspace-professionnel';
-      } else if (userRole === 'org_admin') {
-        url.pathname = '/administration-tablissement';
-      } else if (userRole === 'platform_admin') {
-        url.pathname = '/platform-admin';
-      } else if (userRole === 'ambassador') {
-        url.pathname = '/ambassador-workspace';
-      } else if (userRole === 'ministry') {
-        url.pathname = '/espace-ministere';
-      } else if (userRole === 'public_health') {
-        url.pathname = '/espace-sante-publique';
-      } else if (userRole === 'insurance') {
-        url.pathname = '/espace-assurance';
-      } else if (userRole === 'university') {
-        url.pathname = '/espace-universite';
-      } else if (userRole === 'ngo') {
-        url.pathname = '/espace-ong';
-      } else if (userRole === 'researcher') {
-        url.pathname = '/research-workspace';
-      } else if (userRole === 'developer') {
-        url.pathname = '/api-developer-dashboard';
-      } else if (userRole === 'vendor') {
-        url.pathname = '/marketplace-vendor';
-      } else {
-        url.pathname = '/patient-home';
-      }
+      url.pathname = getRoleHome(userRole);
       url.searchParams.delete('error');
       return NextResponse.redirect(url);
     }

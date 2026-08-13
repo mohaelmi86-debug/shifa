@@ -1,16 +1,70 @@
 'use client';
 import React from 'react';
-
 import ShifaBrand from '@/components/ui/ShifaBrand';
 import LanguageSelector from '@/components/ui/LanguageSelector';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
 }
 
+const AUTH_LAYOUT_STRINGS: Record<string, {
+  headline: string;
+  subline: string;
+  tags: string[];
+  stats: { value: string; label: string }[];
+  footer: string;
+}> = {
+  fr: {
+    headline: 'Votre santé,\nau même endroit.',
+    subline: 'Dossier médical, rendez-vous, téléconsultation, échanges sécurisés et bien plus encore.',
+    tags: ['RGPD', 'ISO 27001', 'FHIR-ready', 'IA médicale', '+190 pays'],
+    stats: [{ value: '14', label: 'Rôles' }, { value: '100+', label: 'Modules' }, { value: '+190', label: 'Pays' }],
+    footer: '© 2026 SHIFA Health OS · Plateforme de santé numérique',
+  },
+  en: {
+    headline: 'Your health,\nin one place.',
+    subline: 'Medical records, appointments, teleconsultation, secure messaging and much more.',
+    tags: ['GDPR', 'ISO 27001', 'FHIR-ready', 'Medical AI', '+190 countries'],
+    stats: [{ value: '14', label: 'Roles' }, { value: '100+', label: 'Modules' }, { value: '+190', label: 'Countries' }],
+    footer: '© 2026 SHIFA Health OS · Digital Health Platform',
+  },
+  es: {
+    headline: 'Tu salud,\nen un solo lugar.',
+    subline: 'Historial médico, citas, teleconsulta, mensajería segura y mucho más.',
+    tags: ['RGPD', 'ISO 27001', 'FHIR-ready', 'IA médica', '+190 países'],
+    stats: [{ value: '14', label: 'Roles' }, { value: '100+', label: 'Módulos' }, { value: '+190', label: 'Países' }],
+    footer: '© 2026 SHIFA Health OS · Plataforma de salud digital',
+  },
+  pt: {
+    headline: 'Sua saúde,\nem um só lugar.',
+    subline: 'Prontuário médico, consultas, teleconsulta, mensagens seguras e muito mais.',
+    tags: ['LGPD', 'ISO 27001', 'FHIR-ready', 'IA médica', '+190 países'],
+    stats: [{ value: '14', label: 'Funções' }, { value: '100+', label: 'Módulos' }, { value: '+190', label: 'Países' }],
+    footer: '© 2026 SHIFA Health OS · Plataforma de saúde digital',
+  },
+  ar: {
+    headline: 'صحتك،\nفي مكان واحد.',
+    subline: 'السجل الطبي، المواعيد، الاستشارة عن بُعد، المراسلة الآمنة والمزيد.',
+    tags: ['RGPD', 'ISO 27001', 'FHIR', 'ذكاء اصطناعي طبي', '+190 دولة'],
+    stats: [{ value: '14', label: 'أدوار' }, { value: '100+', label: 'وحدات' }, { value: '+190', label: 'دولة' }],
+    footer: '© 2026 SHIFA Health OS · منصة الصحة الرقمية',
+  },
+  zh: {
+    headline: '您的健康，\n尽在一处。',
+    subline: '病历、预约、远程问诊、安全通讯及更多功能。',
+    tags: ['GDPR', 'ISO 27001', 'FHIR', '医疗AI', '+190国'],
+    stats: [{ value: '14', label: '角色' }, { value: '100+', label: '模块' }, { value: '+190', label: '国家' }],
+    footer: '© 2026 SHIFA Health OS · 数字健康平台',
+  },
+};
+
 export default function AuthLayout({ children }: AuthLayoutProps) {
+  const { language } = useLanguage();
+  const ls = AUTH_LAYOUT_STRINGS[language] || AUTH_LAYOUT_STRINGS['fr'];
+
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: '#EEF3FB' }}>
+    <div className="min-h-screen flex" style={{ backgroundColor: '#E8EEF8' }}>
       {/* Left panel — branding (hidden on mobile) */}
       <div
         className="hidden lg:flex flex-col justify-between w-[420px] xl:w-[480px] shrink-0 p-10 relative overflow-hidden"
@@ -31,16 +85,17 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         {/* Center content */}
         <div className="relative z-10">
           <h2 className="text-3xl font-bold text-white leading-tight mb-4" style={{ letterSpacing: '-0.02em' }}>
-            Votre santé,<br />
-            au même endroit.
+            {ls.headline.split('\n').map((line, i) => (
+              <React.Fragment key={i}>{line}{i < ls.headline.split('\n').length - 1 && <br />}</React.Fragment>
+            ))}
           </h2>
           <p className="text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.72)' }}>
-            Dossier médical, rendez-vous, téléconsultation, échanges sécurisés et bien plus encore.
+            {ls.subline}
           </p>
 
           {/* Trust indicators */}
           <div className="flex flex-wrap gap-2 mt-6">
-            {['RGPD', 'ISO 27001', 'FHIR-ready', 'IA médicale', '+190 pays'].map((tag) => (
+            {ls.tags.map((tag) => (
               <span
                 key={tag}
                 className="px-3 py-1 rounded-full text-xs font-semibold"
@@ -53,11 +108,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.12)' }}>
-            {[
-              { value: '14', label: 'Rôles' },
-              { value: '100+', label: 'Modules' },
-              { value: '+190', label: 'Pays' },
-            ].map((stat) => (
+            {ls.stats.map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-2xl font-bold text-white" style={{ letterSpacing: '-0.02em' }}>{stat.value}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>{stat.label}</p>
@@ -68,12 +119,12 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
         {/* Footer */}
         <p className="text-xs relative z-10" style={{ color: 'rgba(255,255,255,0.35)' }}>
-          © 2026 SHIFA Health OS · Plateforme de santé numérique
+          {ls.footer}
         </p>
       </div>
 
       {/* Right panel — form */}
-      <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto" style={{ backgroundColor: '#EEF3FB' }}>
+      <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto" style={{ backgroundColor: '#E8EEF8' }}>
         {/* Mobile top bar — language selector only, no logo */}
         <div className="w-full px-5 pt-5 pb-0 flex items-center justify-end lg:hidden">
           <LanguageSelector compact />
