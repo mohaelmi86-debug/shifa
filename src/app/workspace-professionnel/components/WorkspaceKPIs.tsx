@@ -1,9 +1,8 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import dynamic from 'next/dynamic';
 import Icon from '@/components/ui/AppIcon';
 import { useSupabaseRealtime, useSupabaseCount } from '@/lib/hooks/useSupabaseRealtime';
-import { useAuth } from '@/contexts/AuthContext';
 
 const ConsultChart = dynamic(() => import('./ConsultChart'), { ssr: false });
 
@@ -11,9 +10,23 @@ function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-muted ${className}`} />;
 }
 
-export default function WorkspaceKPIs() {
-  const { user } = useAuth();
+interface KPI {
+  key: string;
+  label: string;
+  value: string;
+  sub: string;
+  icon: string;
+  color: string;
+  gradientFrom: string;
+  gradientTo: string;
+  trend: string;
+  trendUp: boolean;
+  loading: boolean;
+  liveIndicator?: boolean;
+  alert?: boolean;
+}
 
+export default function WorkspaceKPIs() {
   const { data: todayAppts, loading: l1 } = useSupabaseRealtime({
     table: 'appointments',
     orderBy: { column: 'scheduled_at', ascending: true },
@@ -36,15 +49,15 @@ export default function WorkspaceKPIs() {
   const totalToday = todayAppts.length;
   const pendingConsultations = todayAppts.filter((a: any) => ['scheduled', 'confirmed', 'waiting'].includes(a.status)).length;
 
-  const kpis = [
+  const kpis: KPI[] = [
     {
       key: 'kpi-patients-today',
-      label: "Patients aujourd\'hui",
+      label: "Patients aujourd'hui",
       value: l1 ? '—' : String(totalToday || 0),
       sub: l1 ? 'Chargement...' : `${completedToday} terminés · ${upcomingToday} à venir`,
       icon: 'UsersIcon',
-      color: '#0878EF',
-      gradientFrom: '#0878EF',
+      color: '#1565D8',
+      gradientFrom: '#1565D8',
       gradientTo: '#38B6FF',
       trend: inProgress > 0 ? `${inProgress} en cours` : 'Aucun en cours',
       trendUp: inProgress > 0,
@@ -101,7 +114,7 @@ export default function WorkspaceKPIs() {
       gradientFrom: '#EF4444',
       gradientTo: '#FCA5A5',
       trend: pendingRecords.length > 0 ? 'À examiner' : 'Tout à jour',
-      trendUp: false,
+      trendUp: pendingRecords.length === 0,
       alert: pendingRecords.length > 0,
       loading: l2,
     },
@@ -114,36 +127,36 @@ export default function WorkspaceKPIs() {
         {kpis.map((kpi) => (
           <div
             key={kpi.key}
-            className="relative overflow-hidden rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200 hover:-translate-y-0.5"
+            className="relative overflow-hidden rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
             style={{
               background: 'var(--card)',
-              border: kpi.alert ? `1.5px solid ${kpi.color}50` : '1px solid var(--border)',
+              border: kpi.alert ? `1.5px solid ${kpi.color}40` : '1px solid var(--border)',
               boxShadow: kpi.alert
-                ? `0 4px 20px ${kpi.color}20, 0 1px 4px rgba(0,0,0,0.04)`
-                : '0 2px 12px rgba(8,120,239,0.06), 0 1px 3px rgba(0,0,0,0.03)',
+                ? `0 4px 20px ${kpi.color}18, 0 1px 4px rgba(0,0,0,0.04)`
+                : '0 2px 12px rgba(21,101,216,0.05), 0 1px 3px rgba(0,0,0,0.03)',
             }}
           >
-            {/* Gradient accent bar */}
+            {/* Gradient accent bar top */}
             <div
               className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
               style={{ background: `linear-gradient(90deg, ${kpi.gradientFrom}, ${kpi.gradientTo})` }}
             />
 
-            {/* Alert pulse */}
+            {/* Alert pulse dot */}
             {kpi.alert && (
               <div
-                className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full animate-pulse"
+                className="absolute top-3 right-3 w-2 h-2 rounded-full animate-pulse"
                 style={{ backgroundColor: kpi.color }}
               />
             )}
 
-            {/* Header row: icon + live badge */}
+            {/* Icon + live badge row */}
             <div className="flex items-center justify-between">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{
                   background: `linear-gradient(135deg, ${kpi.gradientFrom}18, ${kpi.gradientTo}10)`,
-                  border: `1.5px solid ${kpi.gradientFrom}20`,
+                  border: `1.5px solid ${kpi.gradientFrom}22`,
                 }}
               >
                 <Icon name={kpi.icon as any} size={18} style={{ color: kpi.color } as React.CSSProperties} />
@@ -151,24 +164,24 @@ export default function WorkspaceKPIs() {
               {kpi.liveIndicator && (
                 <div className="flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs font-medium" style={{ color: '#059669', fontSize: '10px' }}>Live</span>
+                  <span className="font-semibold" style={{ color: '#059669', fontSize: '10px' }}>Live</span>
                 </div>
               )}
             </div>
 
-            {/* Value */}
+            {/* Value + label */}
             <div>
               {kpi.loading ? (
                 <Skeleton className="h-7 w-16 mb-1" />
               ) : (
                 <p
-                  className="text-2xl font-extrabold font-tabular leading-none"
+                  className="text-2xl font-extrabold leading-none"
                   style={{ color: 'var(--foreground)', fontFamily: 'var(--font-heading)' }}
                 >
                   {kpi.value}
                 </p>
               )}
-              <p className="text-xs font-semibold mt-1" style={{ color: 'var(--foreground)' }}>{kpi.label}</p>
+              <p className="text-xs font-semibold mt-1.5" style={{ color: 'var(--foreground)' }}>{kpi.label}</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}>{kpi.sub}</p>
             </div>
 
@@ -176,8 +189,8 @@ export default function WorkspaceKPIs() {
             <div
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full self-start"
               style={{
-                backgroundColor: kpi.trendUp ? 'rgba(5,150,105,0.1)' : `${kpi.color}15`,
-                border: `1px solid ${kpi.trendUp ? 'rgba(5,150,105,0.2)' : kpi.color + '25'}`,
+                backgroundColor: kpi.trendUp ? 'rgba(5,150,105,0.1)' : `${kpi.color}14`,
+                border: `1px solid ${kpi.trendUp ? 'rgba(5,150,105,0.2)' : kpi.color + '22'}`,
               }}
             >
               <Icon
@@ -196,13 +209,13 @@ export default function WorkspaceKPIs() {
         ))}
       </div>
 
-      {/* Activity chart */}
+      {/* Activity chart card */}
       <div
         className="mt-4 rounded-2xl p-5"
         style={{
           background: 'var(--card)',
           border: '1px solid var(--border)',
-          boxShadow: '0 2px 12px rgba(8,120,239,0.06)',
+          boxShadow: '0 2px 12px rgba(21,101,216,0.05)',
         }}
       >
         <div className="flex items-center justify-between mb-4">
