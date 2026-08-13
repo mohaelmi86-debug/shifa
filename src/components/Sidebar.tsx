@@ -20,31 +20,30 @@ interface NavItem {
 }
 
 const patientNav: NavItem[] = [
-  { key: 'nav-accueil', label: 'Accueil', icon: 'HomeIcon', href: '/patient-home', group: 'principal' },
+  { key: 'nav-accueil', label: 'Vue d\'ensemble', icon: 'HomeIcon', href: '/patient-home', group: 'principal' },
   { key: 'nav-explorer', label: 'Explorer', icon: 'MagnifyingGlassIcon', href: '/patient-explorer', group: 'principal' },
   { key: 'nav-rdv', label: 'Rendez-vous', icon: 'CalendarDaysIcon', href: '/appointment-booking', badge: 2, group: 'principal' },
-  { key: 'nav-rdv-history', label: 'Historique RDV', icon: 'ClockIcon', href: '/appointment-history', group: 'principal' },
-  { key: 'nav-sante', label: 'Ma Santé', icon: 'HeartIcon', href: '/dossier-de-sant', group: 'principal' },
-  { key: 'nav-messages', label: 'Messages', icon: 'ChatBubbleLeftRightIcon', href: '/patient-messages', badge: 3, group: 'principal' },
-  { key: 'nav-community-hub-pat', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'principal' },
-  { key: 'nav-shifa-share-pat', label: 'SHIFA Share', icon: 'ShareIcon', href: '/shifa-share', group: 'principal' },
-  { key: 'nav-documents', label: 'Documents', icon: 'DocumentTextIcon', href: '/patient-documents', group: 'sante' },
-  { key: 'nav-consultations', label: 'Consultations', icon: 'ClipboardDocumentListIcon', href: '/patient-consultations', group: 'sante' },
-  { key: 'nav-results', label: 'Résultats', icon: 'BeakerIcon', href: '/patient-results', group: 'sante' },
-  { key: 'nav-follow-up', label: 'Suivi & Soins', icon: 'ChartBarIcon', href: '/patient-follow-up', group: 'sante' },
-  { key: 'nav-vaccination', label: 'Vaccination', icon: 'ShieldCheckIcon', href: '/patient-vaccination', group: 'sante' },
-  { key: 'nav-pat-health-programs', label: 'Programmes de santé', icon: 'ShieldCheckIcon', href: '/patient-health-programs', group: 'sante' },
-  { key: 'nav-pat-chronic-disease', label: 'Maladies chroniques', icon: 'HeartIcon', href: '/patient-chronic-disease', group: 'sante' },
-  { key: 'nav-prevention', label: 'Prévention', icon: 'SparklesIcon', href: '/patient-prevention', group: 'sante' },
-  { key: 'nav-urgences', label: 'Urgences', icon: 'ExclamationTriangleIcon', href: '/patient-emergency', group: 'sante' },
-  { key: 'nav-urgences-contacts', label: 'Contacts d\'urgence', icon: 'PhoneIcon', href: '/patient-emergency-contacts', group: 'sante' },
-  { key: 'nav-map', label: 'Carte de santé', icon: 'MapPinIcon', href: '/patient-map', group: 'sante' },
-  { key: 'nav-family', label: 'Famille & Dépendants', icon: 'UsersIcon', href: '/patient-family', group: 'sante' },
-  { key: 'nav-maternal-child', label: 'Santé Maternelle & Infantile', icon: 'HeartIcon', href: '/patient-maternal-child', group: 'sante' },
-  { key: 'nav-pat-rehabilitation', label: 'Rééducation & Réhabilitation', icon: 'BoltIcon', href: '/patient-rehabilitation', group: 'sante' },
-  { key: 'nav-pat-teleconsult', label: 'Mes téléconsultations', icon: 'VideoCameraIcon', href: '/patient-teleconsultation', badge: 1, group: 'teleconsult' },
-  { key: 'nav-pat-precall', label: 'Préparer la session', icon: 'HeartIcon', href: '/patient-precall-vitals', group: 'teleconsult' },
-  { key: 'nav-pat-ordonnance', label: 'Ordonnances reçues', icon: 'DocumentCheckIcon', href: '/patient-prescription-receipt', group: 'teleconsult' },
+  { key: 'nav-rdv-history', label: 'Mon historique', icon: 'ClockIcon', href: '/appointment-history', group: 'principal' },
+  { key: 'nav-sante', label: 'Mon espace santé', icon: 'HeartIcon', href: '/dossier-de-sant', group: 'masante' },
+  { key: 'nav-documents', label: 'Documents', icon: 'DocumentTextIcon', href: '/patient-documents', group: 'masante' },
+  { key: 'nav-consultations', label: 'Consultations', icon: 'ClipboardDocumentListIcon', href: '/patient-consultations', group: 'masante' },
+  { key: 'nav-results', label: 'Résultats', icon: 'BeakerIcon', href: '/patient-results', group: 'masante' },
+  { key: 'nav-follow-up', label: 'Suivi & Soins', icon: 'ChartBarIcon', href: '/patient-follow-up', group: 'masante' },
+  { key: 'nav-vaccination', label: 'Vaccinations', icon: 'ShieldCheckIcon', href: '/patient-vaccination', group: 'prevention' },
+  { key: 'nav-pat-health-programs', label: 'Programmes de santé', icon: 'SparklesIcon', href: '/patient-health-programs', group: 'prevention' },
+  { key: 'nav-prevention', label: 'Prévention', icon: 'ShieldCheckIcon', href: '/patient-prevention', group: 'prevention' },
+  { key: 'nav-pat-chronic-disease', label: 'Maladies chroniques', icon: 'HeartIcon', href: '/patient-chronic-disease', group: 'prevention' },
+  { key: 'nav-messages', label: 'Messages', icon: 'ChatBubbleLeftRightIcon', href: '/patient-messages', badge: 3, group: 'communication' },
+  { key: 'nav-community-hub-pat', label: 'Communauté', icon: 'GlobeAltIcon', href: '/community-hub', group: 'communication' },
+  { key: 'nav-shifa-share-pat', label: 'SHIFA Share', icon: 'ShareIcon', href: '/shifa-share', group: 'communication' },
+  { key: 'nav-pat-teleconsult', label: 'Téléconsultations', icon: 'VideoCameraIcon', href: '/patient-teleconsultation', badge: 1, group: 'communication' },
+  { key: 'nav-urgences', label: 'Urgences', icon: 'ExclamationTriangleIcon', href: '/patient-emergency', group: 'communication' },
+  { key: 'nav-map', label: 'Carte de santé', icon: 'MapPinIcon', href: '/patient-map', group: 'communication' },
+  { key: 'nav-family', label: 'Famille & Dépendants', icon: 'UsersIcon', href: '/patient-family', group: 'communication' },
+  { key: 'nav-maternal-child', label: 'Santé Maternelle & Infantile', icon: 'HeartIcon', href: '/patient-maternal-child', group: 'communication' },
+  { key: 'nav-pat-rehabilitation', label: 'Rééducation', icon: 'BoltIcon', href: '/patient-rehabilitation', group: 'communication' },
+  { key: 'nav-pat-precall', label: 'Préparer la session', icon: 'HeartIcon', href: '/patient-precall-vitals', group: 'communication' },
+  { key: 'nav-pat-ordonnance', label: 'Ordonnances reçues', icon: 'DocumentCheckIcon', href: '/patient-prescription-receipt', group: 'communication' },
   { key: 'nav-carte', label: 'Carte SHIFA', icon: 'CreditCardIcon', href: '/shifa-card', group: 'compte' },
   { key: 'nav-shifa-id', label: 'Mon SHIFA ID', icon: 'IdentificationIcon', href: '/patient-shifa-id', group: 'compte' },
   { key: 'nav-carte-gestion', label: 'Gestion Carte SHIFA', icon: 'IdentificationIcon', href: '/shifa-card-management', group: 'compte' },
@@ -59,6 +58,7 @@ const patientNav: NavItem[] = [
   { key: 'nav-devices-health', label: 'Santé connectée', icon: 'HeartIcon', href: '/patient-devices-health', group: 'compte' },
   { key: 'nav-shifa-ai-patient', label: 'SHIFA AI', icon: 'CpuChipIcon', href: '/shifa-ai-patient', group: 'compte' },
   { key: 'nav-notifications', label: 'Notifications', icon: 'BellIcon', href: '/patient-notifications', badge: 3, group: 'compte' },
+  { key: 'nav-urgences-contacts', label: 'Contacts d\'urgence', icon: 'PhoneIcon', href: '/patient-emergency-contacts', group: 'compte' },
   { key: 'nav-parametres', label: 'Paramètres', icon: 'Cog6ToothIcon', href: '/patient-settings', group: 'compte' },
 ];
 
@@ -345,6 +345,9 @@ const navByRole = {
 
 const groupLabels: Record<string, string> = {
   principal: 'Principal',
+  masante: 'Ma Santé',
+  prevention: 'Prévention',
+  communication: 'Communication',
   sante: 'Santé & Dossiers',
   teleconsult: 'Téléconsultation',
   clinique: 'Clinique',
@@ -360,6 +363,24 @@ const groupLabels: Record<string, string> = {
   ressources: 'Ressources',
   systeme: 'Système',
   commercial: 'Commercial & Tarification',
+};
+
+const roleLabels: Record<string, string> = {
+  patient: 'Patient',
+  professional: 'Professionnel de santé',
+  admin: 'Administrateur',
+  org_admin: 'Admin Organisation',
+  institution: 'Institution',
+  ministry: 'Ministère',
+  public_health: 'Santé Publique',
+  insurance: 'Assurance',
+  university: 'Université',
+  ngo: 'ONG',
+  researcher: 'Chercheur',
+  developer: 'Développeur',
+  vendor: 'Vendeur',
+  ambassador: 'Ambassadeur',
+  platform_admin: 'Super Admin',
 };
 
 const userInfoByRole: Record<string, { name: string; sub: string; avatar: string }> = {
@@ -420,27 +441,32 @@ const catalogStatusConfig = {
 
 function ModuleCatalogSection({ collapsed }: { collapsed: boolean }) {
   const [open, setOpen] = useState(false);
-
   if (collapsed) return null;
-
   return (
     <div className="mb-4">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg hover:bg-muted transition-colors"
+        className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-colors"
+        style={{ color: 'var(--sidebar-section-label)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
         <p className="section-label text-left">Catalogue Phase 1</p>
-        <Icon name={open ? 'ChevronUpIcon' : 'ChevronDownIcon'} size={14} className="text-muted-foreground shrink-0" />
+        <Icon name={open ? 'ChevronUpIcon' : 'ChevronDownIcon'} size={13} className="shrink-0" style={{ color: 'var(--sidebar-section-label)' } as React.CSSProperties} />
       </button>
       {open && (
         <div className="mt-1 space-y-0.5">
           {phase1Modules.map(mod => {
             const s = catalogStatusConfig[mod.status];
             const inner = (
-              <div className="flex items-center justify-between px-3 py-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                style={{ color: 'var(--sidebar-text)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Icon name={mod.icon as any} size={14} className="text-muted-foreground shrink-0" />
-                  <span className="text-xs truncate" style={{ color: 'var(--foreground)' }}>{mod.name}</span>
+                  <Icon name={mod.icon as any} size={13} style={{ color: 'var(--sidebar-section-label)' } as React.CSSProperties} />
+                  <span className="text-xs truncate">{mod.name}</span>
                 </div>
                 <span className="text-xs px-1.5 py-0.5 rounded-full shrink-0 ml-1" style={{ backgroundColor: s.bg, color: s.text, fontSize: '10px' }}>{s.label}</span>
               </div>
@@ -457,7 +483,9 @@ function ModuleCatalogSection({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?: 'patient' | 'professional' | 'admin' | 'org_admin' | 'institution' | 'ambassador' | 'platform_admin' | 'ministry' | 'public_health' | 'insurance' | 'university' | 'ngo' | 'researcher' | 'developer' | 'vendor'; activeRoute?: string }) {
+type SidebarRole = 'patient' | 'professional' | 'admin' | 'org_admin' | 'institution' | 'ambassador' | 'platform_admin' | 'ministry' | 'public_health' | 'insurance' | 'university' | 'ngo' | 'researcher' | 'developer' | 'vendor';
+
+export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?: SidebarRole; activeRoute?: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -481,12 +509,7 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
         if (!data) return;
         const name = data.full_name || user.email || fallbackInfo.name;
         const sub = data.shifa_id || user.email || fallbackInfo.sub;
-        const initials = name
-          .split(' ')
-          .map((n: string) => n[0])
-          .join('')
-          .toUpperCase()
-          .slice(0, 2);
+        const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
         setRealUserInfo({ name, sub, avatar: initials });
       });
   }, [user]);
@@ -506,42 +529,52 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
 
   const NavContent = () => (
     <>
-      {/* Logo */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b" style={{ borderColor: 'var(--border)', minHeight: '56px' }}>
+      {/* ── Logo Header ─────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between px-3 py-3 shrink-0"
+        style={{ borderBottom: '1px solid var(--sidebar-border)', minHeight: '60px', background: 'var(--sidebar-bg)' }}
+      >
         <div className="flex items-center flex-1 min-w-0">
           {!collapsed ? (
             <ShifaBrand variant="full" />
           ) : (
             <div className="flex justify-center w-full">
-              <ShifaBrand variant="symbol" symbolSize={32} />
+              <ShifaBrand variant="symbol" symbolSize={30} />
             </div>
           )}
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg transition-colors hover:bg-muted ml-2 hidden lg:flex shrink-0"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="p-1.5 rounded-lg transition-colors hidden lg:flex shrink-0 ml-1"
+          style={{ color: 'var(--sidebar-section-label)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          aria-label={collapsed ? 'Développer la sidebar' : 'Réduire la sidebar'}
         >
-          <Icon name={collapsed ? 'ChevronRightIcon' : 'ChevronLeftIcon'} size={16} className="text-muted-foreground" />
+          <Icon name={collapsed ? 'ChevronRightIcon' : 'ChevronLeftIcon'} size={15} />
         </button>
         <button
           onClick={() => setMobileOpen(false)}
-          className="p-1.5 rounded-lg transition-colors hover:bg-muted ml-2 lg:hidden shrink-0"
-          aria-label="Close menu"
+          className="p-1.5 rounded-lg transition-colors lg:hidden shrink-0 ml-1"
+          style={{ color: 'var(--sidebar-section-label)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          aria-label="Fermer le menu"
         >
-          <Icon name="XMarkIcon" size={16} className="text-muted-foreground" />
+          <Icon name="XMarkIcon" size={16} />
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto scrollbar-thin px-2 py-3">
+      {/* ── Navigation ──────────────────────────────────────────── */}
+      <nav className="flex-1 overflow-y-auto scrollbar-thin px-2 py-3" style={{ background: 'var(--sidebar-bg)' }}>
         {groups.map((group) => {
           const items = navItems.filter(i => (i.group || 'principal') === group);
           return (
-            <div key={`group-${group}`} className="mb-4">
+            <div key={`group-${group}`} className="mb-3">
               {!collapsed && (
-                <p className="section-label px-3 mb-1">{groupLabels[group] || group}</p>
+                <p className="section-label px-3 mb-1.5">{groupLabels[group] || group}</p>
               )}
+              {collapsed && <div className="my-2 mx-2 border-t" style={{ borderColor: 'var(--sidebar-border)' }} />}
               {items.map((item) => {
                 const isActive = activeRoute === item.href || (item.href !== '/patient-home' && activeRoute.startsWith(item.href));
                 return (
@@ -549,18 +582,30 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
                     key={item.key}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`nav-item mb-0.5 relative ${isActive ? 'active' : ''}`}
+                    className={`nav-item mb-0.5 ${isActive ? 'active' : ''}`}
                     title={collapsed ? item.label : undefined}
+                    aria-current={isActive ? 'page' : undefined}
+                    style={isActive ? { color: 'var(--sidebar-active-text)', background: 'var(--sidebar-active-bg)' } : { color: 'var(--sidebar-text)' }}
                   >
-                    <Icon name={item.icon as any} size={18} />
-                    {!collapsed && <span className="flex-1">{item.label}</span>}
+                    <Icon
+                      name={item.icon as any}
+                      size={17}
+                      style={{ color: isActive ? 'var(--shifa-blue)' : 'var(--sidebar-section-label)', flexShrink: 0 } as React.CSSProperties}
+                    />
+                    {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
                     {!collapsed && item.badge && item.badge > 0 && (
-                      <span className="px-1.5 py-0.5 text-xs font-bold rounded-full text-white" style={{ backgroundColor: 'var(--shifa-blue)', minWidth: '20px', textAlign: 'center' }}>
+                      <span
+                        className="px-1.5 py-0.5 text-xs font-bold rounded-full text-white shrink-0"
+                        style={{ backgroundColor: 'var(--shifa-blue)', minWidth: '20px', textAlign: 'center', fontSize: '10px' }}
+                      >
                         {item.badge}
                       </span>
                     )}
                     {collapsed && item.badge && item.badge > 0 && (
-                      <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--shifa-blue)' }} />
+                      <span
+                        className="absolute top-1 right-1 w-2 h-2 rounded-full"
+                        style={{ backgroundColor: 'var(--shifa-blue)' }}
+                      />
                     )}
                   </Link>
                 );
@@ -568,55 +613,79 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
             </div>
           );
         })}
-        {/* Module Catalog — admin only */}
         {(role === 'admin' || role === 'org_admin') && <ModuleCatalogSection collapsed={collapsed} />}
       </nav>
 
-      {/* User footer */}
-      <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}>
+      {/* ── User Footer ─────────────────────────────────────────── */}
+      <div
+        className="shrink-0 p-3"
+        style={{ borderTop: '1px solid var(--sidebar-border)', background: 'var(--sidebar-bg)' }}
+      >
         {!collapsed && (
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2.5">
             <LanguageSelector compact={false} />
           </div>
         )}
-        <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center flex-col' : ''}`}>
+          {/* Avatar */}
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
             style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}
+            aria-label={`Avatar de ${userInfo.name}`}
           >
             {userInfo.avatar}
           </div>
           {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate" style={{ color: 'var(--foreground)' }}>{userInfo.name}</p>
-              <p className="text-xs truncate font-mono" style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}>{userInfo.sub}</p>
-            </div>
-          )}
-          {!collapsed && (
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="p-1 rounded-lg hover:bg-muted transition-colors"
-              title="Déconnexion"
-            >
-              {signingOut ? (
-                <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Icon name="ArrowLeftOnRectangleIcon" size={16} className="text-muted-foreground" />
-              )}
-            </button>
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
+                  {userInfo.name}
+                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span
+                    className="inline-block px-1.5 py-0.5 rounded text-white font-semibold"
+                    style={{ fontSize: '9px', background: 'var(--shifa-blue)', letterSpacing: '0.03em' }}
+                  >
+                    {roleLabels[role] || role}
+                  </span>
+                  <p className="text-xs truncate font-mono" style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}>
+                    {userInfo.sub}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="p-1.5 rounded-lg transition-colors shrink-0"
+                style={{ color: 'var(--sidebar-section-label)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                title="Déconnexion"
+                aria-label="Se déconnecter"
+              >
+                {signingOut ? (
+                  <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--shifa-blue)' }} />
+                ) : (
+                  <Icon name="ArrowLeftOnRectangleIcon" size={16} />
+                )}
+              </button>
+            </>
           )}
           {collapsed && (
             <button
               onClick={handleSignOut}
               disabled={signingOut}
-              className="p-1 rounded-lg hover:bg-muted transition-colors"
+              className="p-1 rounded-lg transition-colors"
+              style={{ color: 'var(--sidebar-section-label)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               title="Déconnexion"
+              aria-label="Se déconnecter"
             >
               {signingOut ? (
-                <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--shifa-blue)' }} />
               ) : (
-                <Icon name="ArrowLeftOnRectangleIcon" size={14} className="text-muted-foreground" />
+                <Icon name="ArrowLeftOnRectangleIcon" size={14} />
               )}
             </button>
           )}
@@ -627,42 +696,50 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
 
   return (
     <>
-      {/* Mobile hamburger */}
+      {/* ── Mobile hamburger ────────────────────────────────────── */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl shadow-lg border"
-        style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
-        aria-label="Open menu"
+        className="lg:hidden fixed top-3.5 left-4 z-50 p-2 rounded-xl border transition-all"
+        style={{
+          backgroundColor: 'var(--shifa-surface-2)',
+          borderColor: 'var(--border)',
+          boxShadow: '0 2px 8px rgba(21,88,214,0.10)',
+        }}
+        aria-label="Ouvrir le menu"
       >
-        <Icon name="Bars3Icon" size={20} className="text-foreground" />
+        <Icon name="Bars3Icon" size={20} style={{ color: 'var(--shifa-navy)' } as React.CSSProperties} />
       </button>
 
-      {/* Mobile overlay */}
+      {/* ── Mobile overlay ──────────────────────────────────────── */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/50"
+          className="lg:hidden fixed inset-0 z-40"
+          style={{ backgroundColor: 'rgba(13,35,71,0.45)', backdropFilter: 'blur(2px)' }}
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
-      {/* Mobile drawer */}
+      {/* ── Mobile drawer ───────────────────────────────────────── */}
       <aside
         dir={dir}
         className={`lg:hidden fixed top-0 left-0 z-50 h-full flex flex-col border-r transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        style={{ width: '260px', backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
+        style={{ width: '260px', backgroundColor: 'var(--sidebar-bg)', borderColor: 'var(--sidebar-border)' }}
+        aria-label="Navigation principale"
       >
         <NavContent />
       </aside>
 
-      {/* Desktop sidebar */}
+      {/* ── Desktop sidebar ─────────────────────────────────────── */}
       <aside
         dir={dir}
         className="hidden lg:flex flex-col h-full border-r transition-all duration-300 ease-in-out shrink-0"
         style={{
-          width: collapsed ? '64px' : '240px',
-          backgroundColor: 'var(--card)',
-          borderColor: 'var(--border)',
+          width: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
+          backgroundColor: 'var(--sidebar-bg)',
+          borderColor: 'var(--sidebar-border)',
         }}
+        aria-label="Navigation principale"
       >
         <NavContent />
       </aside>
