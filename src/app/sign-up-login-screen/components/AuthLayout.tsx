@@ -74,9 +74,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
       {/* Right panel — form */}
       <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto">
-        {/* Mobile top bar */}
-        <div className="w-full px-5 pt-5 pb-0 flex items-center justify-between lg:hidden">
-          <ShifaBrand variant="compact" />
+        {/* Mobile top bar — language selector only (logo is in hero card below) */}
+        <div className="w-full px-5 pt-5 pb-0 flex items-center justify-end lg:hidden">
           <LanguageSelector compact />
         </div>
 
