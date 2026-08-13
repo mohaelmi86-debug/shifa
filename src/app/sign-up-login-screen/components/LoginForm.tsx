@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import EmailVerificationModal from './EmailVerificationModal';
 
 interface LoginFormData {
   email: string;
@@ -52,6 +53,8 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [loginError, setLoginError] = useState('');
+  const [showVerification, setShowVerification] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
   const { signIn } = useAuth();
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
@@ -90,7 +93,9 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
       if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
         setLoginError('Identifiants invalides. Vérifiez votre adresse e-mail et votre mot de passe.');
       } else if (msg.includes('Email not confirmed')) {
-        setLoginError('Veuillez confirmer votre adresse e-mail avant de vous connecter.');
+        // Unconfirmed user — show OTP verification modal
+        setPendingEmail(data.email);
+        setShowVerification(true);
       } else {
         setLoginError('Une erreur est survenue. Veuillez réessayer.');
       }
@@ -117,8 +122,20 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     }
   };
 
+  const handleVerified = () => {
+    // After verification, reload to trigger role-based redirect
+    window.location.href = '/sign-up-login-screen';
+  };
+
   return (
     <div className="animate-fade-in">
+      {showVerification && (
+        <EmailVerificationModal
+          email={pendingEmail}
+          onVerified={handleVerified}
+          onCancel={() => setShowVerification(false)}
+        />
+      )}
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1.5" style={{ color: 'var(--shifa-dark)' }}>Se connecter</h1>
         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Bienvenue sur SHIFA Health OS</p>

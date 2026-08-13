@@ -18,6 +18,31 @@ export function isRTL(lang: Language): boolean {
   return lang === 'ar';
 }
 
+// ─── Language Font Stacks ─────────────────────────────────────────────────────
+// Per-language font fallback stacks used by LanguageContext and CSS utilities.
+// Arabic uses RTL-optimised fonts; Mandarin uses CJK-aware fonts.
+
+export const LANGUAGE_FONTS: Record<Language, string> = {
+  fr: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+  en: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+  es: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+  pt: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+  // Arabic: RTL-optimised fonts with Arabic Unicode support
+  ar: "'Noto Sans Arabic', 'Cairo', 'Amiri', 'Scheherazade New', Arial, sans-serif",
+  // Mandarin: CJK-aware fonts with full Han character coverage
+  zh: "'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'SimHei', sans-serif",
+};
+
+// ─── Language Text Direction ──────────────────────────────────────────────────
+export const LANGUAGE_DIR: Record<Language, 'ltr' | 'rtl'> = {
+  fr: 'ltr',
+  en: 'ltr',
+  es: 'ltr',
+  pt: 'ltr',
+  ar: 'rtl',
+  zh: 'ltr',
+};
+
 // ─── Currency System ──────────────────────────────────────────────────────────
 
 export interface Currency {

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
+import EmailVerificationModal from './EmailVerificationModal';
 
 interface InstitutionFormData {
   orgName: string;
@@ -24,6 +25,8 @@ interface InstitutionFormData {
 export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [registerError, setRegisterError] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [showVerification, setShowVerification] = useState(false);
   const { signUp } = useAuth();
   const router = useRouter();
   const { register, handleSubmit, formState: { errors } } = useForm<InstitutionFormData>();
@@ -32,11 +35,16 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
     setIsLoading(true);
     setRegisterError('');
     try {
-      await signUp(data.adminEmail, data.password, {
+      const result = await signUp(data.adminEmail, data.password, {
         fullName: `${data.adminFirstName} ${data.adminLastName}`,
         role: 'org_admin',
       });
-      router.push('/administration-tablissement');
+      if (result.needsVerification) {
+        setPendingEmail(result.email);
+        setShowVerification(true);
+      } else {
+        router.push('/administration-tablissement');
+      }
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
@@ -48,8 +56,19 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
     }
   };
 
+  const handleVerified = () => {
+    router.push('/administration-tablissement');
+  };
+
   return (
     <div className="animate-fade-in">
+      {showVerification && (
+        <EmailVerificationModal
+          email={pendingEmail}
+          onVerified={handleVerified}
+          onCancel={() => setShowVerification(false)}
+        />
+      )}
       <button onClick={onSwitchToLogin} className="flex items-center gap-1.5 text-sm font-medium mb-6 transition-colors hover:text-primary" style={{ color: 'var(--muted-foreground)' }}>
         <Icon name="ArrowLeftIcon" size={15} />
         Retour à la connexion

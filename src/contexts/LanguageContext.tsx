@@ -1,6 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Language, SUPPORTED_LANGUAGES, isRTL } from '@/lib/i18n';
+import { Language, SUPPORTED_LANGUAGES, isRTL, LANGUAGE_FONTS } from '@/lib/i18n';
 
 interface LanguageContextValue {
   language: Language;
@@ -45,9 +45,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         dir={dir}
         lang={language}
         style={{
-          fontFamily: language === 'ar' ? "'Noto Sans Arabic', 'Cairo', 'Amiri', Arial, sans-serif"
-            : language === 'zh' ? "'Noto Sans SC', sans-serif"
-            : undefined,
+          fontFamily: LANGUAGE_FONTS[language],
         }}
       >
         {children}

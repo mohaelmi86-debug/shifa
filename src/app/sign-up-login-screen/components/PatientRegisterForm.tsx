@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
+import EmailVerificationModal from './EmailVerificationModal';
 
 interface PatientFormData {
   firstName: string;
@@ -23,6 +24,8 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
   const [isLoading, setIsLoading] = useState(false);
   const [registerError, setRegisterError] = useState('');
   const [step, setStep] = useState(1);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [showVerification, setShowVerification] = useState(false);
   const { signUp } = useAuth();
   const router = useRouter();
 
@@ -33,10 +36,15 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
     setIsLoading(true);
     setRegisterError('');
     try {
-      await signUp(data.email, data.password, {
+      const result = await signUp(data.email, data.password, {
         fullName: `${data.firstName} ${data.lastName}`,
       });
-      router.push('/patient-home');
+      if (result.needsVerification) {
+        setPendingEmail(result.email);
+        setShowVerification(true);
+      } else {
+        router.push('/patient-home');
+      }
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
@@ -48,8 +56,19 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
     }
   };
 
+  const handleVerified = () => {
+    router.push('/patient-home');
+  };
+
   return (
     <div className="animate-fade-in">
+      {showVerification && (
+        <EmailVerificationModal
+          email={pendingEmail}
+          onVerified={handleVerified}
+          onCancel={() => setShowVerification(false)}
+        />
+      )}
       <button onClick={onSwitchToLogin} className="flex items-center gap-1.5 text-sm font-medium mb-6 transition-colors hover:text-primary" style={{ color: 'var(--muted-foreground)' }}>
         <Icon name="ArrowLeftIcon" size={15} />
         Retour à la connexion

@@ -324,6 +324,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ─── Email confirmation gate ──────────────────────────────────────────────
+  // Block access to the app until the user has verified their email address.
+  // Unconfirmed users are redirected back to the login screen with a flag.
+  if (!user.email_confirmed_at) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/sign-up-login-screen';
+    url.searchParams.set('unconfirmed', '1');
+    url.searchParams.set('email', user.email || '');
+    return NextResponse.redirect(url);
+  }
+
   // ─── Role & org context lookup ────────────────────────────────────────────
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
