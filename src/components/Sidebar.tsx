@@ -137,6 +137,8 @@ const professionalNav: NavItem[] = [
   { key: 'nav-pro-innovation', label: 'Innovation Center', icon: 'LightBulbIcon', href: '/innovation-center', group: 'outils' },
   { key: 'nav-pro-academy-dashboard', label: 'Mon espace Academy', icon: 'AcademicCapIcon', href: '/academy-dashboard', group: 'outils' },
   { key: 'nav-pro-academy', label: 'Académie', icon: 'AcademicCapIcon', href: '/shifa-academy', group: 'outils' },
+  { key: 'nav-pro-entretiens-annuels', label: 'Entretiens annuels', icon: 'UserGroupIcon', href: '/entretiens-annuels', group: 'outils' },
+  { key: 'nav-pro-entretiens-recrutement', label: 'Recrutement & Stages', icon: 'BriefcaseIcon', href: '/entretiens-recrutement', group: 'outils' },
   { key: 'nav-pro-emploi-stage', label: 'Emploi & Stages', icon: 'BriefcaseIcon', href: '/shifa-emploi-stage', group: 'outils' },
   { key: 'nav-pro-marketplace', label: 'Marketplace', icon: 'ShoppingBagIcon', href: '/health-marketplace', group: 'outils' },
   { key: 'nav-pro-notifications', label: 'Notifications', icon: 'BellIcon', href: '/notifications-center', badge: 3, group: 'outils' },

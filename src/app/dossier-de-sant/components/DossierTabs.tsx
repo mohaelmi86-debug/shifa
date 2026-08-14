@@ -8,12 +8,12 @@ const DossierVitalsChart = dynamic(() => import('./DossierVitalsChart'), { ssr: 
 
 const tabs = [
   { key: 'tab-resume', label: 'Résumé', icon: 'Squares2X2Icon' },
-  { key: 'tab-antecedents', label: 'Antécédents', icon: 'ClockIcon' },
   { key: 'tab-consultations', label: 'Consultations', icon: 'ClipboardDocumentListIcon' },
-  { key: 'tab-prescriptions', label: 'Prescriptions', icon: 'DocumentTextIcon' },
-  { key: 'tab-resultats', label: 'Résultats', icon: 'BeakerIcon' },
   { key: 'tab-documents', label: 'Documents', icon: 'FolderOpenIcon' },
+  { key: 'tab-resultats', label: 'Résultats', icon: 'BeakerIcon' },
+  { key: 'tab-prescriptions', label: 'Prescriptions', icon: 'DocumentTextIcon' },
   { key: 'tab-vaccinations', label: 'Vaccinations', icon: 'ShieldCheckIcon' },
+  { key: 'tab-antecedents', label: 'Antécédents', icon: 'ClockIcon' },
 ];
 
 const antecedents = {
@@ -32,6 +32,15 @@ const STATIC_VACCINATIONS = [
 ];
 
 const STORAGE_KEY = 'shifa_vaccinations';
+
+// Static documents for demo
+const STATIC_DOCUMENTS = [
+  { id: 'doc-001', name: 'Compte-rendu consultation cardiologie', type: 'Compte-rendu', date: '10 août 2026', doctor: 'Dr. Kofi Diallo', size: '245 KB', format: 'PDF', category: 'Clinique' },
+  { id: 'doc-002', name: 'Ordonnance Vitamine D3', type: 'Ordonnance', date: '05 août 2026', doctor: 'Dr. Aminata Sow', size: '128 KB', format: 'PDF', category: 'Prescription' },
+  { id: 'doc-003', name: 'Résultats NFS complète', type: 'Résultat', date: '01 août 2026', doctor: 'Laboratoire Central', size: '512 KB', format: 'PDF', category: 'Biologie' },
+  { id: 'doc-004', name: 'Radio thorax face', type: 'Imagerie', date: '28 juil. 2026', doctor: 'Dr. Ibrahima Ndiaye', size: '2.4 MB', format: 'DICOM', category: 'Imagerie' },
+  { id: 'doc-005', name: 'Certificat médical aptitude sport', type: 'Certificat', date: '15 juil. 2026', doctor: 'Dr. Fatou Traoré', size: '98 KB', format: 'PDF', category: 'Administratif' },
+];
 
 interface ConsultationRecord {
   id: string;
@@ -74,6 +83,33 @@ interface DossierVaccination {
   notes: string | null;
 }
 
+interface DocumentRecord {
+  id: string;
+  name: string;
+  type: string;
+  date: string;
+  doctor: string;
+  size: string;
+  format: string;
+  category: string;
+}
+
+// Role-based visibility: which tabs are visible per role
+const ROLE_TAB_VISIBILITY: Record<string, string[]> = {
+  patient: ['tab-resume', 'tab-consultations', 'tab-documents', 'tab-resultats', 'tab-prescriptions', 'tab-vaccinations', 'tab-antecedents'],
+  professional: ['tab-resume', 'tab-consultations', 'tab-documents', 'tab-resultats', 'tab-prescriptions', 'tab-vaccinations', 'tab-antecedents'],
+  org_admin: ['tab-resume', 'tab-consultations', 'tab-documents', 'tab-resultats'],
+  default: ['tab-resume', 'tab-consultations', 'tab-documents', 'tab-resultats', 'tab-prescriptions', 'tab-vaccinations', 'tab-antecedents'],
+};
+
+const docCategoryColors: Record<string, { bg: string; text: string; icon: string }> = {
+  'Clinique': { bg: 'rgba(8,120,239,0.08)', text: 'var(--shifa-blue)', icon: 'ClipboardDocumentListIcon' },
+  'Prescription': { bg: 'rgba(16,185,129,0.08)', text: 'var(--shifa-green)', icon: 'DocumentTextIcon' },
+  'Biologie': { bg: 'rgba(139,92,246,0.08)', text: '#7c3aed', icon: 'BeakerIcon' },
+  'Imagerie': { bg: 'rgba(245,158,11,0.08)', text: 'var(--shifa-amber)', icon: 'PhotoIcon' },
+  'Administratif': { bg: 'rgba(107,114,128,0.08)', text: '#6b7280', icon: 'DocumentIcon' },
+};
+
 export default function DossierTabs() {
   const [activeTab, setActiveTab] = useState('tab-resume');
   const [consultations, setConsultations] = useState<ConsultationRecord[]>([]);
@@ -82,9 +118,18 @@ export default function DossierTabs() {
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [vaccinations, setVaccinations] = useState<DossierVaccination[]>(STATIC_VACCINATIONS);
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'live' | 'error'>('connecting');
+  const [viewMode, setViewMode] = useState<'cards' | 'timeline'>('cards');
+  const [docFilter, setDocFilter] = useState('Tous');
+  const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null);
+  const [userRole, setUserRole] = useState<string>('patient');
   const channelsRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']>[]>([]);
 
   const supabase = createClient();
+
+  const visibleTabs = tabs.filter(t => {
+    const allowed = ROLE_TAB_VISIBILITY[userRole] || ROLE_TAB_VISIBILITY.default;
+    return allowed.includes(t.key);
+  });
 
   // ── Fetch consultations from health_records ──
   const fetchConsultations = async (patientId: string) => {
@@ -122,7 +167,7 @@ export default function DossierTabs() {
     }
   };
 
-  // ── Fetch prescriptions from dedicated prescriptions table ──
+  // ── Fetch prescriptions ──
   const fetchPrescriptions = async (patientId: string) => {
     try {
       const { data, error } = await supabase
@@ -135,7 +180,6 @@ export default function DossierTabs() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Fallback: try health_records for prescriptions
         const { data: hrData } = await supabase
           .from('health_records')
           .select(`
@@ -190,7 +234,7 @@ export default function DossierTabs() {
     }
   };
 
-  // ── Fetch lab results from dedicated lab_results table ──
+  // ── Fetch lab results ──
   const fetchLabResults = async (patientId: string) => {
     try {
       const { data, error } = await supabase
@@ -204,7 +248,6 @@ export default function DossierTabs() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Fallback: try health_records for lab results
         const { data: hrData } = await supabase
           .from('health_records')
           .select(`
@@ -315,6 +358,10 @@ export default function DossierTabs() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Detect role
+        const role = user.user_metadata?.role || 'patient';
+        setUserRole(role);
+
         const { data: patient } = await supabase
           .from('patients')
           .select('id')
@@ -331,7 +378,6 @@ export default function DossierTabs() {
           fetchVaccinations(patientId),
         ]);
 
-        // Realtime: health_records
         const hrChannel = supabase
           .channel(`dossier-health-records-${patientId}`)
           .on('postgres_changes', {
@@ -348,7 +394,6 @@ export default function DossierTabs() {
             else if (status === 'CHANNEL_ERROR') setRealtimeStatus('error');
           });
 
-        // Realtime: prescriptions
         const prescChannel = supabase
           .channel(`dossier-prescriptions-${patientId}`)
           .on('postgres_changes', {
@@ -361,7 +406,6 @@ export default function DossierTabs() {
           })
           .subscribe();
 
-        // Realtime: lab_results
         const labChannel = supabase
           .channel(`dossier-lab-results-${patientId}`)
           .on('postgres_changes', {
@@ -417,19 +461,23 @@ export default function DossierTabs() {
     }
   }, [activeTab]);
 
+  const docCategories = ['Tous', ...Array.from(new Set(STATIC_DOCUMENTS.map(d => d.category)))];
+  const filteredDocs = STATIC_DOCUMENTS.filter(d => docFilter === 'Tous' || d.category === docFilter);
+
   return (
     <div>
-      {/* Tab bar */}
+      {/* Premium Tab bar */}
       <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin mb-4 pb-1">
-        {tabs.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-150 ${activeTab === tab.key ? 'shadow-shifa' : ''}`}
+            className="flex items-center gap-1.5 shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-150"
             style={{
               backgroundColor: activeTab === tab.key ? 'var(--shifa-blue)' : 'var(--card)',
               color: activeTab === tab.key ? 'white' : 'var(--muted-foreground)',
               borderColor: activeTab === tab.key ? 'var(--shifa-blue)' : 'var(--border)',
+              boxShadow: activeTab === tab.key ? '0 2px 8px rgba(8,120,239,0.25)' : 'none',
             }}
           >
             <Icon name={tab.icon as any} size={15} />
@@ -507,7 +555,6 @@ export default function DossierTabs() {
                 )}
               </div>
 
-              {/* Recent lab results summary */}
               <div className="card-base">
                 <h3 className="text-sm font-bold mb-4" style={{ color: 'var(--shifa-dark)' }}>Derniers résultats de laboratoire</h3>
                 {loadingRecords ? (
@@ -530,7 +577,12 @@ export default function DossierTabs() {
                             <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.lab} · {r.date}</p>
                           </div>
                         </div>
-                        {r.alert && <Icon name="ExclamationTriangleIcon" size={14} style={{ color: 'var(--shifa-red)' } as any} className="shrink-0" />}
+                        {r.alert && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--shifa-red)' }}>
+                            <Icon name="ExclamationTriangleIcon" size={11} />
+                            À surveiller
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -587,43 +639,44 @@ export default function DossierTabs() {
           </div>
         )}
 
-        {/* ANTÉCÉDENTS */}
-        {activeTab === 'tab-antecedents' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {[
-              { key: 'ant-med', title: 'Antécédents médicaux', items: antecedents.medicaux, icon: 'HeartIcon', color: 'var(--shifa-blue)', bg: 'rgba(0, 102, 255, 0.06)' },
-              { key: 'ant-chir', title: 'Antécédents chirurgicaux', items: antecedents.chirurgicaux, icon: 'ScissorsIcon', color: 'var(--shifa-purple)', bg: 'rgba(123, 94, 167, 0.06)' },
-              { key: 'ant-fam', title: 'Antécédents familiaux', items: antecedents.familiaux, icon: 'UsersIcon', color: 'var(--shifa-green)', bg: 'rgba(16, 185, 129, 0.06)' },
-              { key: 'ant-allerg', title: 'Allergies', items: antecedents.allergies, icon: 'ExclamationTriangleIcon', color: 'var(--shifa-red)', bg: 'rgba(239, 68, 68, 0.06)' },
-              { key: 'ant-trait', title: 'Traitements en cours', items: antecedents.traitements, icon: 'BeakerIcon', color: 'var(--shifa-cyan)', bg: 'rgba(0, 242, 195, 0.06)' },
-            ].map((section) => (
-              <div key={section.key} className="card-base" style={{ backgroundColor: section.bg, borderColor: `${section.color}20` }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'white', border: `1.5px solid ${section.color}30` }}>
-                    <Icon name={section.icon as any} size={16} style={{ color: section.color } as any} className="" />
-                  </div>
-                  <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{section.title}</h3>
-                </div>
-                {section.items.length === 0 ? (
-                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Aucun antécédent enregistré.</p>
-                ) : (
-                  <ul className="flex flex-col gap-1.5">
-                    {section.items.map((item) => (
-                      <li key={`${section.key}-${item}`} className="flex items-start gap-2 text-xs" style={{ color: 'var(--foreground)' }}>
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: section.color }} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* CONSULTATIONS */}
+        {/* CONSULTATIONS — with timeline/cards toggle */}
         {activeTab === 'tab-consultations' && (
-          <div className="flex flex-col gap-3">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold" style={{ color: 'var(--shifa-dark)' }}>
+                Consultations
+                <span className="ml-2 text-xs font-normal px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(8,120,239,0.1)', color: 'var(--shifa-blue)' }}>
+                  {consultations.length} enregistrée(s)
+                </span>
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className="p-2 rounded-lg border transition-all"
+                  style={{
+                    backgroundColor: viewMode === 'cards' ? 'var(--shifa-blue)' : 'var(--card)',
+                    borderColor: viewMode === 'cards' ? 'var(--shifa-blue)' : 'var(--border)',
+                    color: viewMode === 'cards' ? 'white' : 'var(--muted-foreground)',
+                  }}
+                  title="Vue cartes"
+                >
+                  <Icon name="Squares2X2Icon" size={15} />
+                </button>
+                <button
+                  onClick={() => setViewMode('timeline')}
+                  className="p-2 rounded-lg border transition-all"
+                  style={{
+                    backgroundColor: viewMode === 'timeline' ? 'var(--shifa-blue)' : 'var(--card)',
+                    borderColor: viewMode === 'timeline' ? 'var(--shifa-blue)' : 'var(--border)',
+                    color: viewMode === 'timeline' ? 'white' : 'var(--muted-foreground)',
+                  }}
+                  title="Vue chronologique"
+                >
+                  <Icon name="QueueListIcon" size={15} />
+                </button>
+              </div>
+            </div>
+
             {loadingRecords ? (
               <div className="flex items-center justify-center py-16">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -631,186 +684,441 @@ export default function DossierTabs() {
               </div>
             ) : consultations.length === 0 ? (
               <div className="text-center py-16">
-                <Icon name="ClipboardDocumentListIcon" size={40} className="text-muted-foreground mx-auto mb-3" />
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(8,120,239,0.08)' }}>
+                  <Icon name="ClipboardDocumentListIcon" size={32} style={{ color: 'var(--shifa-blue)' } as any} className="" />
+                </div>
                 <p className="font-semibold" style={{ color: 'var(--foreground)' }}>Aucune consultation enregistrée</p>
                 <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Vos consultations apparaîtront ici après votre premier rendez-vous.</p>
               </div>
+            ) : viewMode === 'cards' ? (
+              <div className="flex flex-col gap-3">
+                {consultations.map((c) => (
+                  <div key={c.id} className="card-base cursor-pointer hover:shadow-shifa transition-all group">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0, 102, 255, 0.08)' }}>
+                          <Icon name="ClipboardDocumentListIcon" size={18} style={{ color: 'var(--shifa-blue)' } as any} className="" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{c.motif}</p>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{c.doctor} · {c.specialty}</p>
+                          <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--foreground)' }}>{c.diagnostic}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.date}</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
+                          backgroundColor: c.status === 'signed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245,158,11,0.1)',
+                          color: c.status === 'signed' ? 'var(--shifa-green)' : 'var(--shifa-amber)',
+                        }}>
+                          {c.status === 'signed' ? 'Signé' : 'Brouillon'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
-              consultations.map((c) => (
-                <div key={c.id} className="card-base cursor-pointer hover:shadow-shifa transition-all">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0, 102, 255, 0.08)' }}>
-                        <Icon name="ClipboardDocumentListIcon" size={18} style={{ color: 'var(--shifa-blue)' } as any} className="" />
+              /* Timeline view */
+              <div className="relative pl-8">
+                <div className="absolute left-3 top-0 bottom-0 w-0.5 rounded-full" style={{ backgroundColor: 'var(--border)' }} />
+                <div className="flex flex-col gap-6">
+                  {consultations.map((c, idx) => (
+                    <div key={c.id} className="relative">
+                      <div
+                        className="absolute -left-5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center"
+                        style={{ backgroundColor: c.status === 'signed' ? 'var(--shifa-green)' : 'var(--shifa-blue)', top: '12px' }}
+                      />
+                      <div className="card-base cursor-pointer hover:shadow-shifa transition-all ml-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(8,120,239,0.1)', color: 'var(--shifa-blue)' }}>
+                                {c.date}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
+                                backgroundColor: c.status === 'signed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245,158,11,0.1)',
+                                color: c.status === 'signed' ? 'var(--shifa-green)' : 'var(--shifa-amber)',
+                              }}>
+                                {c.status === 'signed' ? 'Signé' : 'Brouillon'}
+                              </span>
+                            </div>
+                            <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{c.motif}</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{c.doctor} · {c.specialty}</p>
+                            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--foreground)' }}>{c.diagnostic}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* DOCUMENTS — with preview modal */}
+        {activeTab === 'tab-documents' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold" style={{ color: 'var(--shifa-dark)' }}>
+                Documents médicaux
+                <span className="ml-2 text-xs font-normal px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(8,120,239,0.1)', color: 'var(--shifa-blue)' }}>
+                  {filteredDocs.length} document(s)
+                </span>
+              </h2>
+              <button className="btn-primary text-xs px-3 py-2 flex items-center gap-1.5">
+                <Icon name="ArrowUpTrayIcon" size={13} />
+                Ajouter
+              </button>
+            </div>
+
+            {/* Category filters */}
+            <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-thin pb-1">
+              {docCategories.map(cat => (
+                <button
+                  key={`doccat-${cat}`}
+                  onClick={() => setDocFilter(cat)}
+                  className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
+                  style={{
+                    backgroundColor: docFilter === cat ? 'var(--shifa-blue)' : 'var(--muted)',
+                    color: docFilter === cat ? 'white' : 'var(--muted-foreground)',
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredDocs.map(doc => {
+                const catStyle = docCategoryColors[doc.category] || docCategoryColors['Administratif'];
+                return (
+                  <div
+                    key={doc.id}
+                    className="card-base cursor-pointer hover:shadow-shifa transition-all group"
+                    onClick={() => setPreviewDoc(doc)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: catStyle.bg }}>
+                        <Icon name={catStyle.icon as any} size={18} style={{ color: catStyle.text } as any} className="" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{c.motif}</p>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{c.doctor} · {c.specialty}</p>
-                        <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--foreground)' }}>{c.diagnostic}</p>
+                        <p className="font-semibold text-sm truncate" style={{ color: 'var(--foreground)' }}>{doc.name}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{doc.doctor} · {doc.date}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: catStyle.bg, color: catStyle.text }}>
+                            {doc.type}
+                          </span>
+                          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{doc.format} · {doc.size}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Aperçu">
+                          <Icon name="EyeIcon" size={14} className="text-muted-foreground" />
+                        </button>
+                        <button className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Télécharger">
+                          <Icon name="ArrowDownTrayIcon" size={14} className="text-muted-foreground" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{c.date}</span>
-                      {c.status === 'signed' && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--shifa-green)' }}>Signé</span>
-                      )}
-                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+                );
+              })}
+            </div>
 
-        {/* PRESCRIPTIONS — live from prescriptions table */}
-        {activeTab === 'tab-prescriptions' && (
-          <div className="flex flex-col gap-3">
-            {loadingRecords ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>Chargement des prescriptions...</span>
-              </div>
-            ) : prescriptions.length === 0 ? (
-              <div className="text-center py-16">
-                <Icon name="DocumentTextIcon" size={40} className="text-muted-foreground mx-auto mb-3" />
-                <p className="font-semibold" style={{ color: 'var(--foreground)' }}>Aucune prescription enregistrée</p>
-                <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Vos ordonnances apparaîtront ici.</p>
-              </div>
-            ) : (
-              prescriptions.map((p) => (
-                <div key={p.id} className="card-base">
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div>
-                      <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{p.doctor}</p>
-                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{p.date}</p>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0" style={{
-                      backgroundColor: p.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                      color: p.status === 'active' ? 'var(--shifa-green)' : 'var(--muted-foreground)',
-                    }}>
-                      {p.status === 'active' ? 'En cours' : p.status === 'draft' ? 'Brouillon' : 'Terminée'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {p.medications.map((med, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs p-2 rounded-lg" style={{ backgroundColor: 'var(--muted)' }}>
-                        <Icon name="BeakerIcon" size={12} className="text-muted-foreground shrink-0" />
-                        <span style={{ color: 'var(--foreground)' }}>{med}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {p.notes && (
-                    <p className="text-xs mt-2 italic" style={{ color: 'var(--muted-foreground)' }}>Note : {p.notes}</p>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* RÉSULTATS — live from lab_results table */}
-        {activeTab === 'tab-resultats' && (
-          <div className="flex flex-col gap-3">
-            {loadingRecords ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>Chargement des résultats...</span>
-              </div>
-            ) : labResults.length === 0 ? (
-              <div className="text-center py-16">
-                <Icon name="BeakerIcon" size={40} className="text-muted-foreground mx-auto mb-3" />
-                <p className="font-semibold" style={{ color: 'var(--foreground)' }}>Aucun résultat disponible</p>
-                <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Vos résultats d'analyses apparaîtront ici.</p>
-              </div>
-            ) : (
-              labResults.map((r) => (
-                <div key={r.id} className="card-base">
-                  <div className="flex items-center justify-between gap-4 mb-3">
+            {/* Document Preview Modal */}
+            {previewDoc && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                onClick={() => setPreviewDoc(null)}
+              >
+                <div
+                  className="w-full max-w-lg rounded-2xl overflow-hidden"
+                  style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* Modal header */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: r.alert ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0, 102, 255, 0.08)' }}>
-                        <Icon name="BeakerIcon" size={18} style={{ color: r.alert ? 'var(--shifa-red)' : 'var(--shifa-blue)' } as any} className="" />
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: (docCategoryColors[previewDoc.category] || docCategoryColors['Administratif']).bg }}>
+                        <Icon name={(docCategoryColors[previewDoc.category] || docCategoryColors['Administratif']).icon as any} size={16} style={{ color: (docCategoryColors[previewDoc.category] || docCategoryColors['Administratif']).text } as any} className="" />
                       </div>
                       <div>
-                        <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{r.label}</p>
-                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.lab} · {r.date}</p>
+                        <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{previewDoc.name}</p>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{previewDoc.format} · {previewDoc.size}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {r.alert && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--shifa-red)' }}>
-                          <Icon name="ExclamationTriangleIcon" size={12} />
-                          Anomalie
-                        </span>
-                      )}
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--shifa-green)' }}>
-                        {r.status === 'available' ? 'Disponible' : r.status}
-                      </span>
+                    <button
+                      onClick={() => setPreviewDoc(null)}
+                      className="p-2 rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <Icon name="XMarkIcon" size={18} className="text-muted-foreground" />
+                    </button>
+                  </div>
+
+                  {/* Modal body */}
+                  <div className="p-5">
+                    <div className="rounded-xl border flex items-center justify-center" style={{ height: '200px', backgroundColor: 'var(--muted)', borderColor: 'var(--border)' }}>
+                      <div className="text-center">
+                        <Icon name="DocumentIcon" size={40} className="text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>Aperçu du document</p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{previewDoc.format}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      {[
+                        { label: 'Type', value: previewDoc.type },
+                        { label: 'Catégorie', value: previewDoc.category },
+                        { label: 'Médecin', value: previewDoc.doctor },
+                        { label: 'Date', value: previewDoc.date },
+                      ].map(item => (
+                        <div key={item.label} className="p-3 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{item.label}</p>
+                          <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--foreground)' }}>{item.value}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  {r.values && r.values.length > 0 && (
-                    <div className="mt-2 border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr style={{ backgroundColor: 'var(--muted)' }}>
-                            <th className="text-left px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Paramètre</th>
-                            <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Valeur</th>
-                            <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Référence</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {r.values.map((v, i) => (
-                            <tr key={i} className="border-t" style={{ borderColor: 'var(--border)' }}>
-                              <td className="px-3 py-2" style={{ color: 'var(--foreground)' }}>{v.name}</td>
-                              <td className={`px-3 py-2 text-right font-medium ${v.is_abnormal ? 'text-red-600' : ''}`} style={{ color: v.is_abnormal ? 'var(--shifa-red)' : 'var(--foreground)' }}>
-                                {v.value} {v.unit}
-                              </td>
-                              <td className="px-3 py-2 text-right" style={{ color: 'var(--muted-foreground)' }}>{v.reference_range || '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+
+                  {/* Modal footer */}
+                  <div className="flex items-center gap-2 px-5 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                    <button className="flex-1 btn-primary text-sm py-2 flex items-center justify-center gap-2">
+                      <Icon name="ArrowDownTrayIcon" size={14} />
+                      Télécharger
+                    </button>
+                    <button className="flex-1 btn-secondary text-sm py-2 flex items-center justify-center gap-2">
+                      <Icon name="ShareIcon" size={14} />
+                      Partager
+                    </button>
+                  </div>
                 </div>
-              ))
+              </div>
             )}
           </div>
         )}
 
-        {/* DOCUMENTS */}
-        {activeTab === 'tab-documents' && (
-          <div className="text-center py-16">
-            <Icon name="FolderOpenIcon" size={40} className="text-muted-foreground mx-auto mb-3" />
-            <p className="font-semibold" style={{ color: 'var(--foreground)' }}>Aucun document</p>
-            <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Vos documents médicaux apparaîtront ici.</p>
+        {/* RÉSULTATS */}
+        {activeTab === 'tab-resultats' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold" style={{ color: 'var(--shifa-dark)' }}>Résultats d'analyses</h2>
+            </div>
+            <div className="flex flex-col gap-3">
+              {loadingRecords ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="ml-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>Chargement des résultats...</span>
+                </div>
+              ) : labResults.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(139,92,246,0.08)' }}>
+                    <Icon name="BeakerIcon" size={32} style={{ color: '#7c3aed' } as any} className="" />
+                  </div>
+                  <p className="font-semibold" style={{ color: 'var(--foreground)' }}>Aucun résultat disponible</p>
+                  <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Vos résultats d'analyses apparaîtront ici.</p>
+                </div>
+              ) : (
+                labResults.map((r) => (
+                  <div key={r.id} className="card-base">
+                    <div className="flex items-center justify-between gap-4 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: r.alert ? 'rgba(239, 68, 68, 0.08)' : 'rgba(139,92,246,0.08)' }}>
+                          <Icon name="BeakerIcon" size={18} style={{ color: r.alert ? 'var(--shifa-red)' : '#7c3aed' } as any} className="" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{r.label}</p>
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.lab} · {r.date}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {r.alert && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--shifa-red)' }}>
+                            <Icon name="ExclamationTriangleIcon" size={12} />
+                            À surveiller
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--shifa-green)' }}>
+                          {r.status === 'available' ? 'Disponible' : r.status}
+                        </span>
+                      </div>
+                    </div>
+                    {r.alert && (
+                      <div className="mb-3 p-3 rounded-xl border text-xs" style={{ backgroundColor: 'rgba(239,68,68,0.04)', borderColor: 'rgba(239,68,68,0.2)', color: 'var(--muted-foreground)' }}>
+                        <Icon name="InformationCircleIcon" size={13} className="inline mr-1" style={{ color: 'var(--shifa-red)' } as any} />
+                        Ce résultat nécessite une attention particulière. L'interprétation médicale relève de votre professionnel de santé.
+                      </div>
+                    )}
+                    {r.values && r.values.length > 0 && (
+                      <div className="mt-2 border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr style={{ backgroundColor: 'var(--muted)' }}>
+                              <th className="text-left px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Paramètre</th>
+                              <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Valeur</th>
+                              <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--muted-foreground)' }}>Référence</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {r.values.map((v, i) => (
+                              <tr key={i} className="border-t" style={{ borderColor: 'var(--border)' }}>
+                                <td className="px-3 py-2" style={{ color: 'var(--foreground)' }}>{v.name}</td>
+                                <td className="px-3 py-2 text-right font-medium" style={{ color: v.is_abnormal ? 'var(--shifa-red)' : 'var(--foreground)' }}>
+                                  {v.value} {v.unit}
+                                </td>
+                                <td className="px-3 py-2 text-right" style={{ color: 'var(--muted-foreground)' }}>{v.reference_range || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* PRESCRIPTIONS */}
+        {activeTab === 'tab-prescriptions' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold" style={{ color: 'var(--shifa-dark)' }}>Prescriptions & Ordonnances</h2>
+            </div>
+            <div className="flex flex-col gap-3">
+              {loadingRecords ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="ml-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>Chargement des prescriptions...</span>
+                </div>
+              ) : prescriptions.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(16,185,129,0.08)' }}>
+                    <Icon name="DocumentTextIcon" size={32} style={{ color: 'var(--shifa-green)' } as any} className="" />
+                  </div>
+                  <p className="font-semibold" style={{ color: 'var(--foreground)' }}>Aucune prescription enregistrée</p>
+                  <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Vos ordonnances apparaîtront ici.</p>
+                </div>
+              ) : (
+                prescriptions.map((p) => (
+                  <div key={p.id} className="card-base">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(16,185,129,0.08)' }}>
+                          <Icon name="DocumentTextIcon" size={18} style={{ color: 'var(--shifa-green)' } as any} className="" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{p.doctor}</p>
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{p.date}</p>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0" style={{
+                        backgroundColor: p.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                        color: p.status === 'active' ? 'var(--shifa-green)' : 'var(--muted-foreground)',
+                      }}>
+                        {p.status === 'active' ? 'En cours' : p.status === 'draft' ? 'Brouillon' : 'Terminée'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {p.medications.map((med, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs p-2.5 rounded-xl border" style={{ backgroundColor: 'rgba(16,185,129,0.04)', borderColor: 'rgba(16,185,129,0.15)' }}>
+                          <Icon name="BeakerIcon" size={12} style={{ color: 'var(--shifa-green)' } as any} className="shrink-0" />
+                          <span style={{ color: 'var(--foreground)' }}>{med}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {p.notes && (
+                      <p className="text-xs mt-2 italic" style={{ color: 'var(--muted-foreground)' }}>Note : {p.notes}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
         {/* VACCINATIONS */}
         {activeTab === 'tab-vaccinations' && (
-          <div className="flex flex-col gap-3">
-            {vaccinations.map((v) => (
-              <div key={v.id} className="card-base flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: v.status === 'due' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)' }}>
-                    <Icon name="ShieldCheckIcon" size={18} style={{ color: v.status === 'due' ? 'var(--shifa-amber)' : 'var(--shifa-green)' } as any} className="" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{v.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{v.lab} · {v.date}</p>
-                    {v.nextDue && <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-amber)' }}>Prochaine dose : {v.nextDue}</p>}
-                    {v.boosterDueDate && <p className="text-xs mt-0.5" style={{ color: '#f59e0b' }}>Rappel booster : {v.boosterDueDate}</p>}
-                    {v.notes && <p className="text-xs mt-1 italic" style={{ color: 'var(--muted-foreground)' }}>Notes : {v.notes}</p>}
-                  </div>
-                </div>
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0 mt-0.5" style={{
-                  backgroundColor: v.status === 'due' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                  color: v.status === 'due' ? 'var(--shifa-amber)' : 'var(--shifa-green)',
-                }}>
-                  {v.status === 'due' ? 'À faire' : 'Fait'}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold" style={{ color: 'var(--shifa-dark)' }}>
+                Carnet de vaccination
+                <span className="ml-2 text-xs font-normal px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: 'var(--shifa-green)' }}>
+                  {vaccinations.filter(v => v.status === 'done').length} à jour
                 </span>
-              </div>
-            ))}
+                {vaccinations.filter(v => v.status === 'due').length > 0 && (
+                  <span className="ml-1 text-xs font-normal px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(245,158,11,0.1)', color: 'var(--shifa-amber)' }}>
+                    {vaccinations.filter(v => v.status === 'due').length} à faire
+                  </span>
+                )}
+              </h2>
+            </div>
+            <div className="flex flex-col gap-3">
+              {vaccinations.map((v) => (
+                <div key={v.id} className="card-base flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: v.status === 'due' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)' }}>
+                      <Icon name="ShieldCheckIcon" size={18} style={{ color: v.status === 'due' ? 'var(--shifa-amber)' : 'var(--shifa-green)' } as any} className="" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{v.name}</p>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{v.lab} · {v.date}</p>
+                      {v.nextDue && <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-amber)' }}>Prochaine dose : {v.nextDue}</p>}
+                      {v.boosterDueDate && <p className="text-xs mt-0.5" style={{ color: '#f59e0b' }}>Rappel booster : {v.boosterDueDate}</p>}
+                      {v.notes && <p className="text-xs mt-1 italic" style={{ color: 'var(--muted-foreground)' }}>Notes : {v.notes}</p>}
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0 mt-0.5" style={{
+                    backgroundColor: v.status === 'due' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                    color: v.status === 'due' ? 'var(--shifa-amber)' : 'var(--shifa-green)',
+                  }}>
+                    {v.status === 'due' ? 'À faire' : 'Fait'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ANTÉCÉDENTS */}
+        {activeTab === 'tab-antecedents' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold" style={{ color: 'var(--shifa-dark)' }}>Antécédents médicaux</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {[
+                { key: 'ant-med', title: 'Antécédents médicaux', items: antecedents.medicaux, icon: 'HeartIcon', color: 'var(--shifa-blue)', bg: 'rgba(0, 102, 255, 0.06)' },
+                { key: 'ant-chir', title: 'Antécédents chirurgicaux', items: antecedents.chirurgicaux, icon: 'ScissorsIcon', color: 'var(--shifa-purple)', bg: 'rgba(123, 94, 167, 0.06)' },
+                { key: 'ant-fam', title: 'Antécédents familiaux', items: antecedents.familiaux, icon: 'UsersIcon', color: 'var(--shifa-green)', bg: 'rgba(16, 185, 129, 0.06)' },
+                { key: 'ant-allerg', title: 'Allergies', items: antecedents.allergies, icon: 'ExclamationTriangleIcon', color: 'var(--shifa-red)', bg: 'rgba(239, 68, 68, 0.06)' },
+                { key: 'ant-trait', title: 'Traitements en cours', items: antecedents.traitements, icon: 'BeakerIcon', color: 'var(--shifa-cyan)', bg: 'rgba(0, 242, 195, 0.06)' },
+              ].map((section) => (
+                <div key={section.key} className="card-base" style={{ backgroundColor: section.bg, borderColor: `${section.color}20` }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'white', border: `1.5px solid ${section.color}30` }}>
+                      <Icon name={section.icon as any} size={16} style={{ color: section.color } as any} className="" />
+                    </div>
+                    <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{section.title}</h3>
+                  </div>
+                  {section.items.length === 0 ? (
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Aucun antécédent enregistré.</p>
+                  ) : (
+                    <ul className="flex flex-col gap-1.5">
+                      {section.items.map((item) => (
+                        <li key={`${section.key}-${item}`} className="flex items-start gap-2 text-xs" style={{ color: 'var(--foreground)' }}>
+                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: section.color }} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

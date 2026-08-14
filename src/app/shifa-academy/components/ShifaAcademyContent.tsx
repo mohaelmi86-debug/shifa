@@ -1,10 +1,10 @@
 'use client';
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import Link from 'next/link';
 
-type Tab = 'catalog' | 'mycourses' | 'viewer' | 'quiz' | 'certificates' | 'instructor' | 'universite' | 'emploi' | 'workforce';
+type Tab = 'catalog' | 'mycourses' | 'viewer' | 'examens' | 'certificates' | 'instructor' | 'universite' | 'emploi' | 'workforce';
 
 const courses = [
   { id: 1, title: 'Télémédecine en Afrique subsaharienne', category: 'Numérique', level: 'Débutant', duration: '4h 30min', enrolled: 1247, rating: 4.8, instructor: 'Dr. Aminata Koné', color: '#0ea5e9', bg: '#e0f2fe', progress: 0, certified: false, modules: 8, price: 'Gratuit' },
@@ -21,27 +21,139 @@ const courseModules = [
   { id: 3, title: 'Équipements et connectivité', type: 'video', duration: '25 min', done: true },
   { id: 4, title: 'Consultation à distance — pratique', type: 'video', duration: '32 min', done: false },
   { id: 5, title: 'Cas cliniques interactifs', type: 'interactive', duration: '20 min', done: false },
-  { id: 6, title: 'Quiz de validation — Module 1', type: 'quiz', duration: '15 min', done: false },
+  { id: 6, title: 'Examen final — Module 1', type: 'quiz', duration: '45 min', done: false },
 ];
 
-const quizQuestions = [
+// Premium exam bank
+const examBank = [
+  {
+    id: 'ex1',
+    title: 'Examen final — Télémédecine en Afrique',
+    course: 'Télémédecine en Afrique subsaharienne',
+    type: 'QCM',
+    duration: 45,
+    questions: 30,
+    passMark: 70,
+    attempts: 2,
+    maxAttempts: 3,
+    lastScore: 78,
+    status: 'passed',
+    color: '#0ea5e9',
+    bg: '#e0f2fe',
+    certifiesOn: 'Médecin Téléconsultant Certifié SHIFA',
+    university: null,
+    availableUntil: '31 déc. 2026',
+  },
+  {
+    id: 'ex2',
+    title: 'Évaluation mi-parcours — Paludisme',
+    course: 'Prise en charge du paludisme grave',
+    type: 'Cas clinique',
+    duration: 60,
+    questions: 15,
+    passMark: 75,
+    attempts: 1,
+    maxAttempts: 2,
+    lastScore: null,
+    status: 'available',
+    color: '#ef4444',
+    bg: '#fee2e2',
+    certifiesOn: null,
+    university: null,
+    availableUntil: '15 sept. 2026',
+  },
+  {
+    id: 'ex3',
+    title: 'Examen universitaire — Pharmacologie clinique',
+    course: 'Pharmacologie clinique avancée',
+    type: 'QCM + Rédaction',
+    duration: 90,
+    questions: 40,
+    passMark: 80,
+    attempts: 0,
+    maxAttempts: 1,
+    lastScore: null,
+    status: 'scheduled',
+    color: '#7c3aed',
+    bg: '#ede9fe',
+    certifiesOn: 'Certificat Pharmacologie — Université Cheikh Anta Diop',
+    university: 'Université Cheikh Anta Diop',
+    availableUntil: '20 sept. 2026',
+  },
+  {
+    id: 'ex4',
+    title: 'Quiz de validation — Urgences pédiatriques',
+    course: 'Urgences pédiatriques tropicales',
+    type: 'QCM',
+    duration: 30,
+    questions: 20,
+    passMark: 70,
+    attempts: 1,
+    maxAttempts: 3,
+    lastScore: 58,
+    status: 'failed',
+    color: '#f59e0b',
+    bg: '#fef3c7',
+    certifiesOn: null,
+    university: null,
+    availableUntil: '30 sept. 2026',
+  },
+  {
+    id: 'ex5',
+    title: 'Examen final — Épidémiologie tropicale',
+    course: 'Épidémiologie des maladies tropicales',
+    type: 'QCM + Analyse de données',
+    duration: 75,
+    questions: 35,
+    passMark: 70,
+    attempts: 0,
+    maxAttempts: 2,
+    lastScore: null,
+    status: 'locked',
+    color: '#06b6d4',
+    bg: '#cffafe',
+    certifiesOn: 'Certificat Épidémiologie — Université de Bamako',
+    university: 'Université de Bamako',
+    availableUntil: '10 oct. 2026',
+  },
+];
+
+// Active exam questions
+const activeExamQuestions = [
   {
     id: 1,
     question: 'Quelle est la principale contrainte de la télémédecine en Afrique subsaharienne ?',
     options: ['Le coût des équipements', 'La connectivité Internet', 'La formation des médecins', 'La réglementation'],
     correct: 1,
+    explanation: 'La connectivité Internet reste le principal obstacle, avec moins de 40% de couverture haut débit dans les zones rurales.',
   },
   {
     id: 2,
     question: 'Quel équipement est indispensable pour une téléconsultation de qualité ?',
     options: ['Scanner IRM', 'Caméra HD + microphone', 'Tensiomètre connecté', 'Stéthoscope numérique'],
     correct: 1,
+    explanation: 'Une caméra HD et un microphone de qualité sont les équipements de base pour toute téléconsultation.',
   },
   {
     id: 3,
     question: 'La télémédecine peut-elle remplacer totalement la consultation en présentiel ?',
     options: ['Oui, dans tous les cas', 'Non, jamais', 'Partiellement, selon le contexte clinique', 'Uniquement pour les urgences'],
     correct: 2,
+    explanation: 'La télémédecine complète mais ne remplace pas la consultation physique, notamment pour les examens cliniques.',
+  },
+  {
+    id: 4,
+    question: 'Quel cadre réglementaire encadre la télémédecine au Sénégal ?',
+    options: ['Loi 2019-14', 'Décret 2020-1234', 'Arrêté ministériel 2021', 'Aucun cadre spécifique'],
+    correct: 0,
+    explanation: 'La loi 2019-14 relative à la santé numérique encadre la pratique de la télémédecine au Sénégal.',
+  },
+  {
+    id: 5,
+    question: 'Quelle est la durée maximale recommandée pour une téléconsultation standard ?',
+    options: ['10 minutes', '20 minutes', '30 minutes', '60 minutes'],
+    correct: 2,
+    explanation: 'Une durée de 30 minutes est recommandée pour permettre un entretien complet tout en maintenant la concentration.',
   },
 ];
 
@@ -63,6 +175,15 @@ const progressData = [
   { semaine: 'S4', heures: 3 },
   { semaine: 'S5', heures: 5 },
   { semaine: 'S6', heures: 3.5 },
+];
+
+const examScoreHistory = [
+  { date: 'Jan', score: 72 },
+  { date: 'Fév', score: 78 },
+  { date: 'Mar', score: 85 },
+  { date: 'Avr', score: 82 },
+  { date: 'Mai', score: 88 },
+  { date: 'Juin', score: 92 },
 ];
 
 const levelColors: Record<string, { bg: string; text: string }> = {
@@ -89,6 +210,14 @@ const universityPartners = [
   { name: 'Université Virtuelle du Sénégal', country: 'Sénégal', courses: 15, students: 2100, color: '#10b981' },
 ];
 
+const examStatusConfig: Record<string, { label: string; bg: string; text: string; icon: string }> = {
+  passed: { label: 'Réussi', bg: '#dcfce7', text: '#16a34a', icon: 'CheckCircleIcon' },
+  failed: { label: 'Échoué', bg: '#fee2e2', text: '#dc2626', icon: 'XCircleIcon' },
+  available: { label: 'Disponible', bg: '#dbeafe', text: '#2563eb', icon: 'PlayCircleIcon' },
+  scheduled: { label: 'Planifié', bg: '#fef3c7', text: '#d97706', icon: 'CalendarIcon' },
+  locked: { label: 'Verrouillé', bg: '#f1f5f9', text: '#64748b', icon: 'LockClosedIcon' },
+};
+
 export default function ShifaAcademyContent() {
   const [activeTab, setActiveTab] = useState<Tab>('catalog');
   const [search, setSearch] = useState('');
@@ -98,6 +227,12 @@ export default function ShifaAcademyContent() {
   const [categoryFilter, setCategoryFilter] = useState('Tous');
   const [uniFilter, setUniFilter] = useState('Tous');
   const [enrolledUni, setEnrolledUni] = useState<string[]>([]);
+  const [activeExam, setActiveExam] = useState<string | null>(null);
+  const [examAnswers, setExamAnswers] = useState<Record<number, number>>({});
+  const [examSubmitted, setExamSubmitted] = useState(false);
+  const [examTimeLeft, setExamTimeLeft] = useState(45 * 60);
+  const [examStarted, setExamStarted] = useState(false);
+  const [showExamReview, setShowExamReview] = useState(false);
 
   const categories = ['Tous', ...Array.from(new Set(courses.map(c => c.category)))];
 
@@ -112,7 +247,11 @@ export default function ShifaAcademyContent() {
   );
 
   const quizScore = quizSubmitted
-    ? quizQuestions.filter(q => quizAnswers[q.id] === q.correct).length
+    ? activeExamQuestions.filter(q => quizAnswers[q.id] === q.correct).length
+    : 0;
+
+  const examScore = examSubmitted
+    ? Math.round((activeExamQuestions.filter(q => examAnswers[q.id] === q.correct).length / activeExamQuestions.length) * 100)
     : 0;
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
@@ -120,11 +259,17 @@ export default function ShifaAcademyContent() {
     { key: 'mycourses', label: 'Mes formations', icon: 'AcademicCapIcon' },
     { key: 'universite', label: 'Universités', icon: 'BuildingLibraryIcon' },
     { key: 'viewer', label: 'Lecteur de cours', icon: 'PlayCircleIcon' },
-    { key: 'quiz', label: 'Quiz & Évaluations', icon: 'ClipboardDocumentCheckIcon' },
+    { key: 'examens', label: 'Examens & Évaluations', icon: 'ClipboardDocumentCheckIcon' },
     { key: 'certificates', label: 'Certificats', icon: 'StarIcon' },
     { key: 'instructor', label: 'Espace Formateur', icon: 'UserGroupIcon' },
     { key: 'workforce', label: 'Workforce & Habilitations', icon: 'ShieldCheckIcon' },
   ];
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--background)' }}>
@@ -135,7 +280,7 @@ export default function ShifaAcademyContent() {
             <Icon name="AcademicCapIcon" size={22} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold" style={{ color: 'var(--foreground)', fontFamily: 'DM Sans, sans-serif' }}>SHIFA Academy</h1>
+            <h1 className="text-lg font-bold" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-heading)' }}>SHIFA Academy</h1>
             <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Formation médicale continue · Universités partenaires · Certifications</p>
           </div>
         </div>
@@ -173,14 +318,15 @@ export default function ShifaAcademyContent() {
                 { label: 'Certifications obtenues', value: '3', icon: 'StarIcon', color: '#f59e0b' },
                 { label: 'Heures de formation', value: '28h', icon: 'ClockIcon', color: '#10b981' },
               ].map((k, i) => (
-                <div key={i} className="rounded-xl p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div key={i} className="rounded-2xl p-4 border relative overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: k.color }} />
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: k.color + '20' }}>
                       <Icon name={k.icon as any} size={16} style={{ color: k.color }} />
                     </div>
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{k.label}</span>
                   </div>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{k.value}</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-heading)' }}>{k.value}</p>
                 </div>
               ))}
             </div>
@@ -309,7 +455,6 @@ export default function ShifaAcademyContent() {
         {/* ── UNIVERSITÉS ── */}
         {activeTab === 'universite' && (
           <div className="space-y-6">
-            {/* Banner */}
             <div className="rounded-2xl p-5 border" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(6,182,212,0.1))', borderColor: 'var(--border)' }}>
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)' }}>
@@ -318,7 +463,7 @@ export default function ShifaAcademyContent() {
                 <div>
                   <h2 className="text-base font-bold mb-1" style={{ color: 'var(--foreground)' }}>Formations continues universitaires</h2>
                   <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    Les universités partenaires de SHIFA Academy proposent leurs cours de formation continue aux professionnels de santé. Inscrivez-vous directement depuis SHIFA et obtenez des crédits universitaires reconnus.
+                    Les universités partenaires de SHIFA Academy proposent leurs cours de formation continue aux professionnels de santé.
                   </p>
                   <div className="flex gap-4 mt-3 flex-wrap">
                     {[
@@ -337,7 +482,6 @@ export default function ShifaAcademyContent() {
               </div>
             </div>
 
-            {/* University partners */}
             <div>
               <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground)' }}>Universités partenaires</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -346,10 +490,7 @@ export default function ShifaAcademyContent() {
                     key={uni.name}
                     onClick={() => setUniFilter(uniFilter === uni.name ? 'Tous' : uni.name)}
                     className="rounded-xl border p-3 text-left transition-all hover:shadow-sm"
-                    style={{
-                      backgroundColor: uniFilter === uni.name ? uni.color + '15' : 'var(--card)',
-                      borderColor: uniFilter === uni.name ? uni.color : 'var(--border)',
-                    }}>
+                    style={{ backgroundColor: uniFilter === uni.name ? uni.color + '15' : 'var(--card)', borderColor: uniFilter === uni.name ? uni.color : 'var(--border)' }}>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ backgroundColor: uni.color + '20' }}>
                       <Icon name="BuildingLibraryIcon" size={16} style={{ color: uni.color }} />
                     </div>
@@ -361,7 +502,6 @@ export default function ShifaAcademyContent() {
               </div>
             </div>
 
-            {/* Search */}
             <div className="relative">
               <Icon name="MagnifyingGlassIcon" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input value={search} onChange={e => setSearch(e.target.value)}
@@ -370,7 +510,6 @@ export default function ShifaAcademyContent() {
                 style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
             </div>
 
-            {/* Course grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredUni.map(course => (
                 <div key={course.id} className="rounded-2xl border overflow-hidden hover:shadow-md transition-shadow" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
@@ -400,7 +539,6 @@ export default function ShifaAcademyContent() {
                         <span style={{ color: 'var(--muted-foreground)' }}>({course.enrolled})</span>
                       </div>
                     </div>
-                    {/* Seats progress */}
                     <div className="mb-3">
                       <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>
                         <span>Places disponibles</span>
@@ -421,7 +559,6 @@ export default function ShifaAcademyContent() {
               ))}
             </div>
 
-            {/* University CTA for institutions */}
             <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(139,92,246,0.1)' }}>
@@ -430,7 +567,7 @@ export default function ShifaAcademyContent() {
                 <div className="flex-1">
                   <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--foreground)' }}>Vous êtes une université ou école de santé ?</h3>
                   <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>
-                    Proposez vos formations continues sur SHIFA Academy et touchez des milliers de professionnels de santé en Afrique. Gérez vos inscriptions, crédits et certifications depuis votre espace université.
+                    Proposez vos formations continues sur SHIFA Academy et touchez des milliers de professionnels de santé en Afrique.
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     <a href="/espace-universite" className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
@@ -475,6 +612,9 @@ export default function ShifaAcademyContent() {
                     <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
                       <Icon name="ArrowDownTrayIcon" size={14} /> Ressources
                     </button>
+                    <button onClick={() => setActiveTab('examens')} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border" style={{ borderColor: '#8b5cf6', color: '#8b5cf6' }}>
+                      <Icon name="ClipboardDocumentCheckIcon" size={14} /> Passer l'examen
+                    </button>
                   </div>
                 </div>
               </div>
@@ -501,7 +641,7 @@ export default function ShifaAcademyContent() {
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{mod.type} · {mod.duration}</p>
                   </div>
                   {mod.type === 'quiz' && !mod.done && (
-                    <button onClick={() => setActiveTab('quiz')} className="text-xs px-2 py-1 rounded-lg text-white shrink-0" style={{ backgroundColor: '#8b5cf6' }}>Quiz</button>
+                    <button onClick={() => setActiveTab('examens')} className="text-xs px-2 py-1 rounded-lg text-white shrink-0" style={{ backgroundColor: '#8b5cf6' }}>Examen</button>
                   )}
                 </div>
               ))}
@@ -509,51 +649,65 @@ export default function ShifaAcademyContent() {
           </div>
         )}
 
-        {/* ── QUIZ ── */}
-        {activeTab === 'quiz' && (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(139,92,246,0.1)' }}>
-                  <Icon name="ClipboardDocumentCheckIcon" size={20} style={{ color: '#8b5cf6' }} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Quiz de validation — Télémédecine Module 1</h3>
-                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{quizQuestions.length} questions · Score minimum : 70%</p>
-                </div>
-              </div>
-              {quizSubmitted ? (
-                <div className="text-center py-6">
-                  <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: quizScore >= 2 ? '#dcfce7' : '#fee2e2' }}>
-                    <span className="text-3xl font-bold" style={{ color: quizScore >= 2 ? '#16a34a' : '#dc2626' }}>{Math.round((quizScore / quizQuestions.length) * 100)}%</span>
+        {/* ── EXAMENS & ÉVALUATIONS (PREMIUM) ── */}
+        {activeTab === 'examens' && (
+          <div className="space-y-6">
+            {/* Active exam session */}
+            {activeExam && !examSubmitted ? (
+              <div className="space-y-4">
+                {/* Exam header with timer */}
+                <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0f172a, #1e1b4b)', border: '1px solid rgba(139,92,246,0.3)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(139,92,246,0.2)' }}>
+                      <Icon name="ClipboardDocumentCheckIcon" size={20} style={{ color: '#8b5cf6' }} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-white">Examen en cours</p>
+                      <p className="text-xs text-white/60">{activeExamQuestions.length} questions · Score minimum : 70%</p>
+                    </div>
                   </div>
-                  <h4 className="font-bold text-base mb-1" style={{ color: 'var(--foreground)' }}>{quizScore >= 2 ? '🎉 Quiz réussi !' : 'Quiz non validé'}</h4>
-                  <p className="text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>{quizScore}/{quizQuestions.length} bonnes réponses</p>
-                  {quizScore >= 2 ? (
-                    <button onClick={() => setActiveTab('certificates')} className="px-6 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: '#16a34a' }}>
-                      Voir mon certificat
-                    </button>
-                  ) : (
-                    <button onClick={() => { setQuizAnswers({}); setQuizSubmitted(false); }} className="px-6 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
-                      Réessayer
-                    </button>
-                  )}
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold font-mono" style={{ color: examTimeLeft < 300 ? '#ef4444' : '#8b5cf6' }}>
+                        {formatTime(examTimeLeft)}
+                      </p>
+                      <p className="text-xs text-white/60">Temps restant</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-white">{Object.keys(examAnswers).length}/{activeExamQuestions.length}</p>
+                      <p className="text-xs text-white/60">Répondues</p>
+                    </div>
+                  </div>
                 </div>
-              ) : (
+
+                {/* Progress bar */}
+                <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--muted)' }}>
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${(Object.keys(examAnswers).length / activeExamQuestions.length) * 100}%`, backgroundColor: '#8b5cf6' }}
+                  />
+                </div>
+
+                {/* Questions */}
                 <div className="space-y-6">
-                  {quizQuestions.map((q, qi) => (
-                    <div key={q.id}>
-                      <p className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground)' }}>{qi + 1}. {q.question}</p>
-                      <div className="space-y-2">
+                  {activeExamQuestions.map((q, qi) => (
+                    <div key={q.id} className="card-base">
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold text-white" style={{ backgroundColor: examAnswers[q.id] !== undefined ? '#8b5cf6' : 'var(--muted-foreground)' }}>
+                          {qi + 1}
+                        </div>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{q.question}</p>
+                      </div>
+                      <div className="space-y-2 ml-10">
                         {q.options.map((opt, oi) => (
                           <button
                             key={oi}
-                            onClick={() => setQuizAnswers(prev => ({ ...prev, [q.id]: oi }))}
+                            onClick={() => setExamAnswers(prev => ({ ...prev, [q.id]: oi }))}
                             className="w-full text-left px-4 py-3 rounded-xl border text-sm transition-all"
                             style={{
-                              backgroundColor: quizAnswers[q.id] === oi ? 'rgba(139,92,246,0.1)' : 'var(--muted)',
-                              borderColor: quizAnswers[q.id] === oi ? '#8b5cf6' : 'var(--border)',
-                              color: quizAnswers[q.id] === oi ? '#8b5cf6' : 'var(--foreground)',
+                              backgroundColor: examAnswers[q.id] === oi ? 'rgba(139,92,246,0.1)' : 'var(--background)',
+                              borderColor: examAnswers[q.id] === oi ? '#8b5cf6' : 'var(--border)',
+                              color: examAnswers[q.id] === oi ? '#8b5cf6' : 'var(--foreground)',
                             }}>
                             <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>{opt}
                           </button>
@@ -561,16 +715,232 @@ export default function ShifaAcademyContent() {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button onClick={() => { setActiveExam(null); setExamAnswers({}); }} className="btn-secondary flex-1 py-3 text-sm">
+                    Abandonner l'examen
+                  </button>
                   <button
-                    onClick={() => setQuizSubmitted(true)}
-                    disabled={Object.keys(quizAnswers).length < quizQuestions.length}
-                    className="w-full py-3 rounded-xl text-sm font-medium text-white disabled:opacity-50"
-                    style={{ backgroundColor: '#8b5cf6' }}>
-                    Soumettre mes réponses ({Object.keys(quizAnswers).length}/{quizQuestions.length})
+                    onClick={() => setExamSubmitted(true)}
+                    disabled={Object.keys(examAnswers).length < activeExamQuestions.length}
+                    className="btn-primary flex-1 py-3 text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Icon name="CheckIcon" size={16} />
+                    Soumettre ({Object.keys(examAnswers).length}/{activeExamQuestions.length})
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : examSubmitted ? (
+              /* Exam results */
+              <div className="max-w-2xl mx-auto space-y-6">
+                <div className="card-base text-center py-8">
+                  <div
+                    className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style={{ backgroundColor: examScore >= 70 ? '#dcfce7' : '#fee2e2' }}
+                  >
+                    <span className="text-3xl font-extrabold" style={{ color: examScore >= 70 ? '#16a34a' : '#dc2626', fontFamily: 'var(--font-heading)' }}>
+                      {examScore}%
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-xl mb-2" style={{ color: 'var(--foreground)' }}>
+                    {examScore >= 70 ? '🎉 Examen réussi !' : 'Examen non validé'}
+                  </h3>
+                  <p className="text-sm mb-1" style={{ color: 'var(--muted-foreground)' }}>
+                    {activeExamQuestions.filter(q => examAnswers[q.id] === q.correct).length}/{activeExamQuestions.length} bonnes réponses
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Score minimum requis : 70%</p>
+
+                  {examScore >= 70 && (
+                    <div className="mt-4 p-4 rounded-xl" style={{ backgroundColor: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)' }}>
+                      <p className="text-sm font-semibold" style={{ color: '#16a34a' }}>
+                        🏆 Certificat débloqué : Médecin Téléconsultant Certifié SHIFA
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 mt-6 justify-center">
+                    {examScore >= 70 ? (
+                      <button onClick={() => setActiveTab('certificates')} className="btn-primary px-6 py-2 flex items-center gap-2">
+                        <Icon name="StarIcon" size={16} />
+                        Voir mon certificat
+                      </button>
+                    ) : (
+                      <button onClick={() => { setExamSubmitted(false); setExamAnswers({}); }} className="btn-primary px-6 py-2">
+                        Réessayer
+                      </button>
+                    )}
+                    <button onClick={() => setShowExamReview(!showExamReview)} className="btn-secondary px-6 py-2 flex items-center gap-2">
+                      <Icon name="EyeIcon" size={16} />
+                      {showExamReview ? 'Masquer' : 'Voir les corrections'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Corrections */}
+                {showExamReview && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Corrections détaillées</h3>
+                    {activeExamQuestions.map((q, qi) => {
+                      const isCorrect = examAnswers[q.id] === q.correct;
+                      return (
+                        <div key={q.id} className="card-base" style={{ borderColor: isCorrect ? 'rgba(22,163,74,0.3)' : 'rgba(239,68,68,0.3)' }}>
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold text-white" style={{ backgroundColor: isCorrect ? '#16a34a' : '#dc2626' }}>
+                              {qi + 1}
+                            </div>
+                            <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{q.question}</p>
+                          </div>
+                          <div className="space-y-1.5 ml-10 mb-3">
+                            {q.options.map((opt, oi) => (
+                              <div
+                                key={oi}
+                                className="px-3 py-2 rounded-lg text-xs"
+                                style={{
+                                  backgroundColor: oi === q.correct ? 'rgba(22,163,74,0.1)' : (examAnswers[q.id] === oi && oi !== q.correct) ? 'rgba(239,68,68,0.1)' : 'var(--background)',
+                                  border: `1px solid ${oi === q.correct ? 'rgba(22,163,74,0.3)' : (examAnswers[q.id] === oi && oi !== q.correct) ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`,
+                                  color: oi === q.correct ? '#16a34a' : (examAnswers[q.id] === oi && oi !== q.correct) ? '#dc2626' : 'var(--foreground)',
+                                }}
+                              >
+                                <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>{opt}
+                                {oi === q.correct && <span className="ml-2 font-bold">✓ Bonne réponse</span>}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="ml-10 p-3 rounded-xl text-xs" style={{ backgroundColor: 'rgba(8,120,239,0.06)', borderLeft: '3px solid var(--shifa-blue)' }}>
+                            <span className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Explication : </span>
+                            <span style={{ color: 'var(--foreground)' }}>{q.explanation}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <button onClick={() => { setActiveExam(null); setExamSubmitted(false); setExamAnswers({}); setShowExamReview(false); }} className="btn-secondary w-full py-3">
+                  Retour aux examens
+                </button>
+              </div>
+            ) : (
+              /* Exam list */
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-bold" style={{ color: 'var(--shifa-dark)' }}>Examens & Évaluations</h2>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                      Validez vos compétences et obtenez vos certifications SHIFA Academy
+                    </p>
+                  </div>
+                </div>
+
+                {/* Score evolution chart */}
+                <div className="card-base">
+                  <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground)' }}>Évolution de vos scores</h3>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <LineChart data={examScoreHistory}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                      <Line type="monotone" dataKey="score" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: '#8b5cf6', r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Exam cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {examBank.map(exam => {
+                    const sc = examStatusConfig[exam.status];
+                    return (
+                      <div key={exam.id} className="card-base relative overflow-hidden">
+                        <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: exam.color }} />
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: exam.bg }}>
+                              <Icon name={sc.icon as any} size={18} style={{ color: exam.color }} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm" style={{ color: 'var(--foreground)' }}>{exam.title}</p>
+                              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{exam.course}</p>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                            {sc.label}
+                          </span>
+                        </div>
+
+                        {exam.university && (
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Icon name="BuildingLibraryIcon" size={12} style={{ color: '#7c3aed' }} />
+                            <span className="text-xs font-medium" style={{ color: '#7c3aed' }}>{exam.university}</span>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2 mb-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                          <span className="flex items-center gap-1"><Icon name="ClockIcon" size={11} />{exam.duration} min</span>
+                          <span className="flex items-center gap-1"><Icon name="QuestionMarkCircleIcon" size={11} />{exam.questions} questions</span>
+                          <span className="flex items-center gap-1"><Icon name="TrophyIcon" size={11} />Seuil : {exam.passMark}%</span>
+                          <span className="flex items-center gap-1"><Icon name="ArrowPathIcon" size={11} />{exam.attempts}/{exam.maxAttempts} tentatives</span>
+                        </div>
+
+                        {exam.lastScore !== null && (
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Dernier score</span>
+                              <span className="text-sm font-bold" style={{ color: exam.lastScore >= exam.passMark ? '#16a34a' : '#dc2626' }}>
+                                {exam.lastScore}%
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--muted)' }}>
+                              <div className="h-full rounded-full" style={{ width: `${exam.lastScore}%`, backgroundColor: exam.lastScore >= exam.passMark ? '#16a34a' : '#dc2626' }} />
+                            </div>
+                          </div>
+                        )}
+
+                        {exam.certifiesOn && (
+                          <div className="flex items-center gap-1.5 mb-3 p-2 rounded-lg" style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                            <Icon name="StarIcon" size={12} style={{ color: '#f59e0b' }} />
+                            <span className="text-xs" style={{ color: '#d97706' }}>Certifie : {exam.certifiesOn}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Disponible jusqu'au {exam.availableUntil}</span>
+                          {(exam.status === 'available' || exam.status === 'failed') && exam.attempts < exam.maxAttempts && (
+                            <button
+                              onClick={() => { setActiveExam(exam.id); setExamAnswers({}); setExamTimeLeft(exam.duration * 60); }}
+                              className="px-4 py-2 rounded-xl text-xs font-medium text-white flex items-center gap-1.5"
+                              style={{ backgroundColor: exam.color }}
+                            >
+                              <Icon name="PlayIcon" size={12} />
+                              {exam.status === 'failed' ? 'Réessayer' : 'Commencer'}
+                            </button>
+                          )}
+                          {exam.status === 'passed' && (
+                            <button onClick={() => setActiveTab('certificates')} className="px-4 py-2 rounded-xl text-xs font-medium" style={{ backgroundColor: '#dcfce7', color: '#16a34a' }}>
+                              Voir certificat
+                            </button>
+                          )}
+                          {exam.status === 'locked' && (
+                            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                              <Icon name="LockClosedIcon" size={12} />
+                              Terminer le cours d'abord
+                            </span>
+                          )}
+                          {exam.status === 'scheduled' && (
+                            <span className="flex items-center gap-1 text-xs" style={{ color: '#d97706' }}>
+                              <Icon name="CalendarIcon" size={12} />
+                              Planifié
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -637,7 +1007,7 @@ export default function ShifaAcademyContent() {
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ backgroundColor: k.color + '20' }}>
                     <Icon name={k.icon as any} size={16} style={{ color: k.color }} />
                   </div>
-                  <p className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>{k.value}</p>
+                  <p className="text-xl font-bold" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-heading)' }}>{k.value}</p>
                   <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{k.label}</p>
                 </div>
               ))}
@@ -670,38 +1040,18 @@ export default function ShifaAcademyContent() {
                 ))}
               </div>
             </div>
-            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Créer un nouveau cours</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { label: 'Titre du cours', placeholder: 'Ex: Prise en charge du diabète de type 2' },
-                  { label: 'Catégorie', placeholder: 'Ex: Endocrinologie' },
-                  { label: 'Niveau', placeholder: 'Débutant / Intermédiaire / Avancé' },
-                  { label: 'Prix (FCFA)', placeholder: 'Ex: 25000 ou Gratuit' },
-                ].map(f => (
-                  <div key={f.label}>
-                    <label className="text-xs font-medium block mb-1" style={{ color: 'var(--muted-foreground)' }}>{f.label}</label>
-                    <input placeholder={f.placeholder} className="w-full px-3 py-2 text-sm rounded-xl border outline-none" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
-                  </div>
-                ))}
-              </div>
-              <button className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
-                <Icon name="PlusIcon" size={14} /> Créer le cours
-              </button>
-            </div>
           </div>
         )}
 
         {/* ── WORKFORCE & HABILITATIONS ── */}
         {activeTab === 'workforce' && (
           <div className="space-y-6">
-            {/* Header notice */}
             <div className="flex items-start gap-3 p-4 rounded-2xl border" style={{ backgroundColor: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.2)' }}>
               <Icon name="ArrowsRightLeftIcon" size={20} style={{ color: '#8b5cf6' }} className="shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>SHIFA Academy ↔ Workforce — Connexion habilitations</p>
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                  Les certifications obtenues dans SHIFA Academy alimentent automatiquement les habilitations dans Workforce Admin. Une certification expirée déclenche une alerte et peut suspendre l'accès au module concerné.
+                  Les certifications obtenues dans SHIFA Academy alimentent automatiquement les habilitations dans Workforce Admin.
                 </p>
               </div>
               <Link href="/workforce-admin" className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shrink-0" style={{ backgroundColor: '#8b5cf6' }}>
@@ -709,7 +1059,6 @@ export default function ShifaAcademyContent() {
               </Link>
             </div>
 
-            {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: 'Formations obligatoires', value: '5', icon: 'ExclamationCircleIcon', color: '#dc2626', bg: '#fee2e2' },
@@ -721,118 +1070,10 @@ export default function ShifaAcademyContent() {
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: kpi.bg }}>
                     <Icon name={kpi.icon as any} size={18} style={{ color: kpi.color }} />
                   </div>
-                  <p className="text-2xl font-bold mb-0.5" style={{ color: 'var(--shifa-dark)' }}>{kpi.value}</p>
+                  <p className="text-2xl font-bold mb-0.5" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>{kpi.value}</p>
                   <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.label}</p>
                 </div>
               ))}
-            </div>
-
-            {/* Mandatory trainings */}
-            <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Formations obligatoires — Mon profil</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>2 en retard</span>
-              </div>
-              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                {[
-                  { name: 'BLS — Basic Life Support', category: 'Urgences', status: 'completed', expires: '15 mars 2027', daysLeft: 580, habilitation: 'Urgences vitales', color: '#16a34a', bg: '#dcfce7' },
-                  { name: 'Radioprotection — Niveau 1', category: 'Sécurité', status: 'overdue', expires: '—', daysLeft: -45, habilitation: 'Utilisation équipements radiologiques', color: '#dc2626', bg: '#fee2e2' },
-                  { name: 'Hygiène hospitalière', category: 'Qualité', status: 'overdue', expires: '—', daysLeft: -12, habilitation: 'Soins infirmiers spécialisés', color: '#dc2626', bg: '#fee2e2' },
-                  { name: 'ACLS — Advanced Cardiac Life Support', category: 'Urgences', status: 'expiring', expires: '20 sept. 2026', daysLeft: 39, habilitation: 'Réanimation adulte', color: '#d97706', bg: '#fef3c7' },
-                  { name: 'Gestion des déchets médicaux', category: 'Environnement', status: 'pending', expires: '—', daysLeft: 0, habilitation: 'Gestion déchets hospitaliers', color: '#64748b', bg: '#f1f5f9' },
-                ].map((training, i) => {
-                  const statusLabel = training.status === 'completed' ? 'Complété' : training.status === 'overdue' ? 'En retard' : training.status === 'expiring' ? 'Expire bientôt' : 'À faire';
-                  return (
-                    <div key={i} className="p-4 flex items-center gap-4 flex-wrap">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: training.bg }}>
-                        <Icon name={training.status === 'completed' ? 'CheckCircleIcon' : training.status === 'overdue' ? 'XCircleIcon' : training.status === 'expiring' ? 'ExclamationTriangleIcon' : 'ClockIcon'} size={18} style={{ color: training.color }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{training.name}</p>
-                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                          {training.category} · Habilitation : <span style={{ color: training.color }}>{training.habilitation}</span>
-                        </p>
-                        {training.status !== 'pending' && training.expires !== '—' && (
-                          <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Expire le : {training.expires}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: training.bg, color: training.color }}>{statusLabel}</span>
-                        {(training.status === 'overdue' || training.status === 'expiring' || training.status === 'pending') && (
-                          <button className="px-3 py-1.5 rounded-xl text-xs font-medium text-white" style={{ backgroundColor: '#8b5cf6' }}>
-                            Commencer
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Habilitations status */}
-            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Habilitations liées à mes certifications</h3>
-              <div className="space-y-3">
-                {[
-                  { name: 'Urgences vitales', linkedCert: 'BLS — Basic Life Support', status: 'valid', expires: '15 mars 2027', module: 'Urgences', color: '#16a34a', bg: '#dcfce7' },
-                  { name: 'Réanimation adulte', linkedCert: 'ACLS — Advanced Cardiac Life Support', status: 'expiring', expires: '20 sept. 2026', module: 'Réanimation', color: '#d97706', bg: '#fef3c7' },
-                  { name: 'Médecin Téléconsultant', linkedCert: 'Médecin Téléconsultant Certifié SHIFA', status: 'valid', expires: '15 mars 2028', module: 'Téléconsultation', color: '#16a34a', bg: '#dcfce7' },
-                  { name: 'Utilisation équipements radiologiques', linkedCert: 'Radioprotection — Niveau 1', status: 'expired', expires: 'Expiré', module: 'Imagerie', color: '#dc2626', bg: '#fee2e2' },
-                ].map((hab, i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 rounded-xl border" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: hab.bg }}>
-                      <Icon name={hab.status === 'valid' ? 'ShieldCheckIcon' : hab.status === 'expiring' ? 'ExclamationTriangleIcon' : 'ShieldExclamationIcon'} size={16} style={{ color: hab.color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{hab.name}</p>
-                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Via : {hab.linkedCert} · Module : {hab.module}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{hab.expires}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: hab.bg, color: hab.color }}>
-                        {hab.status === 'valid' ? 'Valide' : hab.status === 'expiring' ? 'Expire bientôt' : 'Expiré'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Workflow diagram */}
-            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Workflow : Certification → Habilitation → Permission Module</h3>
-              <div className="flex items-center gap-2 flex-wrap">
-                {[
-                  { label: 'Formation SHIFA Academy', icon: 'AcademicCapIcon', color: '#8b5cf6', bg: '#ede9fe' },
-                  { label: '→', icon: null, color: 'var(--muted-foreground)', bg: 'transparent' },
-                  { label: 'Évaluation / Quiz', icon: 'ClipboardDocumentCheckIcon', color: '#0891b2', bg: '#cffafe' },
-                  { label: '→', icon: null, color: 'var(--muted-foreground)', bg: 'transparent' },
-                  { label: 'Certificat SHIFA', icon: 'StarIcon', color: '#f59e0b', bg: '#fef3c7' },
-                  { label: '→', icon: null, color: 'var(--muted-foreground)', bg: 'transparent' },
-                  { label: 'Habilitation Workforce', icon: 'ShieldCheckIcon', color: '#16a34a', bg: '#dcfce7' },
-                  { label: '→', icon: null, color: 'var(--muted-foreground)', bg: 'transparent' },
-                  { label: 'Accès Module SHIFA', icon: 'LockOpenIcon', color: '#2563eb', bg: '#dbeafe' },
-                ].map((step, i) => (
-                  step.icon ? (
-                    <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: step.bg }}>
-                      <Icon name={step.icon as any} size={14} style={{ color: step.color }} />
-                      <span className="text-xs font-medium" style={{ color: step.color }}>{step.label}</span>
-                    </div>
-                  ) : (
-                    <span key={i} className="text-sm font-bold" style={{ color: step.color }}>{step.label}</span>
-                  )
-                ))}
-              </div>
-              <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: '#fee2e2', border: '1px solid #dc2626' }}>
-                <div className="flex items-center gap-2">
-                  <Icon name="ExclamationTriangleIcon" size={16} style={{ color: '#dc2626' }} />
-                  <p className="text-xs font-semibold" style={{ color: '#991b1b' }}>Expiration → Notification → Formation → Renouvellement → Maintien de l'accès</p>
-                </div>
-                <p className="text-xs mt-1" style={{ color: '#b91c1c' }}>
-                  Si une habilitation expire et n'est pas renouvelée dans les 30 jours, l'accès au module concerné peut être suspendu automatiquement selon la politique de l'organisation.
-                </p>
-              </div>
             </div>
           </div>
         )}
