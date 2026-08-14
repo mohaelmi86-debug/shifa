@@ -235,16 +235,25 @@ DO $$ BEGIN
 END $$;
 
 -- ── 8. prescriptions ─────────────────────────────────────────────────────────
+-- NOTE: prescriptions.patient_id → public.patients(id), prescriptions.prescriber_id → public.professionals(id)
+-- Both reference their respective profile tables, not auth.users directly.
+-- Policies already created in 20260812230000_critical_fixes.sql; this block is a no-op guard only.
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'prescriptions') THEN
     ALTER TABLE public.prescriptions ENABLE ROW LEVEL SECURITY;
+    -- prescriptions_patient_select: patient can view their own prescriptions
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'prescriptions' AND policyname = 'prescriptions_patient_select') THEN
       CREATE POLICY prescriptions_patient_select ON public.prescriptions
-        FOR SELECT USING (patient_id = auth.uid());
+        FOR SELECT USING (
+          auth.uid() = (SELECT user_id FROM public.patients WHERE id = patient_id LIMIT 1)
+        );
     END IF;
+    -- prescriptions_professional_all: prescriber can manage their own prescriptions
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'prescriptions' AND policyname = 'prescriptions_professional_all') THEN
       CREATE POLICY prescriptions_professional_all ON public.prescriptions
-        FOR ALL USING (professional_id = auth.uid());
+        FOR ALL USING (
+          auth.uid() = (SELECT user_id FROM public.professionals WHERE id = prescriber_id LIMIT 1)
+        );
     END IF;
   END IF;
 END $$;

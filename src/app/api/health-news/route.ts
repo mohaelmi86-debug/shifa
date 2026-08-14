@@ -10,7 +10,7 @@ const healthNewsPool = [
   tag: 'Prévention',
   tagColor: '#0878EF',
   tagBg: '#D8E8FB',
-  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1464d9c92-1766529742624.png",
+  img: "https://images.unsplash.com/photo-1613377512507-92803ec4ef17",
   alt: 'Médecin mesurant la tension artérielle d\'un patient'
 },
 {
@@ -50,7 +50,7 @@ const healthNewsPool = [
   tag: 'Santé mentale',
   tagColor: '#0878EF',
   tagBg: '#D8E8FB',
-  img: "https://img.rocket.new/generatedImages/rocket_gen_img_16c71160a-1786669138739.png",
+  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1e86e6638-1786697336408.png",
   alt: 'Professionnel de santé en consultation de soutien psychologique'
 },
 {

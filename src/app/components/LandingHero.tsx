@@ -60,7 +60,7 @@ const fallbackNews: NewsItem[] = [
   tag: 'Prévention',
   tagColor: '#0878EF',
   tagBg: '#D8E8FB',
-  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1464d9c92-1766529742624.png",
+  img: "https://images.unsplash.com/photo-1613377512507-92803ec4ef17",
   alt: 'Médecin mesurant la tension artérielle d\'un patient'
 },
 {
@@ -112,9 +112,9 @@ export default function LandingHero() {
       } catch {
 
 
+
         // Keep fallback news on error
-      } finally {if (!cancelled) setNewsLoading(false);}
-    }
+      } finally {if (!cancelled) setNewsLoading(false);}}
     fetchNews();
     return () => {cancelled = true;};
   }, []);
@@ -198,7 +198,7 @@ export default function LandingHero() {
             <div className="flex-1 max-w-lg">
               <div className="rounded-3xl overflow-hidden" style={{ boxShadow: '0 24px 64px rgba(8,120,239,0.15)' }}>
                 <img
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_108e6b7e2-1786669138486.png"
+                  src="https://img.rocket.new/generatedImages/rocket_gen_img_1a71a6f37-1786697335449.png"
                   alt="Médecin souriant utilisant l'application SHIFA Health OS sur son smartphone"
                   className="w-full h-80 object-cover" />
               </div>
