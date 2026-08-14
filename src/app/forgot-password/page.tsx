@@ -4,17 +4,125 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import Icon from '@/components/ui/AppIcon';
 import ShifaBrand from '@/components/ui/ShifaBrand';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+const FP_STRINGS: Record<string, Record<string, string>> = {
+  fr: {
+    heroTitle: 'Récupérez\nvotre accès.',
+    heroSub: 'Saisissez votre adresse e-mail et nous vous enverrons un lien sécurisé pour réinitialiser votre mot de passe.',
+    tag1: 'Lien sécurisé', tag2: 'Valable 1h', tag3: 'Chiffré TLS', tag4: 'RGPD',
+    footer: '© 2026 SHIFA Health OS · Plateforme de santé numérique',
+    sentTitle: 'E-mail envoyé !',
+    sentSub: 'Un lien de réinitialisation a été envoyé à',
+    sentHint: 'Vérifiez votre boîte de réception et vos spams. Le lien est valable 1 heure.',
+    backToLogin: 'Retour à la connexion',
+    formTitle: 'Mot de passe oublié',
+    formSub: 'Saisissez votre adresse e-mail pour recevoir un lien de réinitialisation sécurisé.',
+    emailLabel: 'Adresse e-mail',
+    emailPlaceholder: 'votre@email.com',
+    submitBtn: 'Envoyer le lien de réinitialisation',
+    emailRequired: 'Veuillez saisir votre adresse e-mail.',
+    errorGeneric: 'Une erreur est survenue. Veuillez réessayer.',
+  },
+  en: {
+    heroTitle: 'Recover\nyour access.',
+    heroSub: 'Enter your email address and we will send you a secure link to reset your password.',
+    tag1: 'Secure link', tag2: 'Valid 1h', tag3: 'TLS encrypted', tag4: 'GDPR',
+    footer: '© 2026 SHIFA Health OS · Digital health platform',
+    sentTitle: 'Email sent!',
+    sentSub: 'A reset link has been sent to',
+    sentHint: 'Check your inbox and spam folder. The link is valid for 1 hour.',
+    backToLogin: 'Back to login',
+    formTitle: 'Forgot password',
+    formSub: 'Enter your email address to receive a secure reset link.',
+    emailLabel: 'Email address',
+    emailPlaceholder: 'your@email.com',
+    submitBtn: 'Send reset link',
+    emailRequired: 'Please enter your email address.',
+    errorGeneric: 'An error occurred. Please try again.',
+  },
+  es: {
+    heroTitle: 'Recupera\ntu acceso.',
+    heroSub: 'Ingresa tu correo electrónico y te enviaremos un enlace seguro para restablecer tu contraseña.',
+    tag1: 'Enlace seguro', tag2: 'Válido 1h', tag3: 'Cifrado TLS', tag4: 'RGPD',
+    footer: '© 2026 SHIFA Health OS · Plataforma de salud digital',
+    sentTitle: '¡Correo enviado!',
+    sentSub: 'Se ha enviado un enlace de restablecimiento a',
+    sentHint: 'Revisa tu bandeja de entrada y spam. El enlace es válido por 1 hora.',
+    backToLogin: 'Volver al inicio de sesión',
+    formTitle: 'Contraseña olvidada',
+    formSub: 'Ingresa tu correo electrónico para recibir un enlace de restablecimiento seguro.',
+    emailLabel: 'Correo electrónico',
+    emailPlaceholder: 'tu@email.com',
+    submitBtn: 'Enviar enlace de restablecimiento',
+    emailRequired: 'Por favor ingresa tu correo electrónico.',
+    errorGeneric: 'Ocurrió un error. Por favor, inténtalo de nuevo.',
+  },
+  pt: {
+    heroTitle: 'Recupere\nseu acesso.',
+    heroSub: 'Digite seu e-mail e enviaremos um link seguro para redefinir sua senha.',
+    tag1: 'Link seguro', tag2: 'Válido 1h', tag3: 'Criptografado TLS', tag4: 'LGPD',
+    footer: '© 2026 SHIFA Health OS · Plataforma de saúde digital',
+    sentTitle: 'E-mail enviado!',
+    sentSub: 'Um link de redefinição foi enviado para',
+    sentHint: 'Verifique sua caixa de entrada e spam. O link é válido por 1 hora.',
+    backToLogin: 'Voltar ao login',
+    formTitle: 'Senha esquecida',
+    formSub: 'Digite seu e-mail para receber um link seguro de redefinição.',
+    emailLabel: 'Endereço de e-mail',
+    emailPlaceholder: 'seu@email.com',
+    submitBtn: 'Enviar link de redefinição',
+    emailRequired: 'Por favor, insira seu endereço de e-mail.',
+    errorGeneric: 'Ocorreu um erro. Por favor, tente novamente.',
+  },
+  ar: {
+    heroTitle: 'استعد\nوصولك.',
+    heroSub: 'أدخل بريدك الإلكتروني وسنرسل لك رابطاً آمناً لإعادة تعيين كلمة المرور.',
+    tag1: 'رابط آمن', tag2: 'صالح ساعة', tag3: 'مشفر TLS', tag4: 'RGPD',
+    footer: '© 2026 SHIFA Health OS · منصة الصحة الرقمية',
+    sentTitle: 'تم إرسال البريد الإلكتروني!',
+    sentSub: 'تم إرسال رابط إعادة التعيين إلى',
+    sentHint: 'تحقق من صندوق الوارد والبريد العشوائي. الرابط صالح لمدة ساعة واحدة.',
+    backToLogin: 'العودة إلى تسجيل الدخول',
+    formTitle: 'نسيت كلمة المرور',
+    formSub: 'أدخل بريدك الإلكتروني لتلقي رابط إعادة التعيين آمن.',
+    emailLabel: 'البريد الإلكتروني',
+    emailPlaceholder: 'بريدك@email.com',
+    submitBtn: 'إرسال رابط إعادة التعيين',
+    emailRequired: 'يرجى إدخال بريدك الإلكتروني.',
+    errorGeneric: 'حدث خطأ. يرجى المحاولة مرة أخرى.',
+  },
+  zh: {
+    heroTitle: '找回\n您的访问权限。',
+    heroSub: '输入您的电子邮件地址，我们将向您发送一个安全链接以重置密码。',
+    tag1: '安全链接', tag2: '有效1小时', tag3: 'TLS加密', tag4: 'GDPR',
+    footer: '© 2026 SHIFA Health OS · 数字健康平台',
+    sentTitle: '邮件已发送！',
+    sentSub: '重置链接已发送至',
+    sentHint: '请检查您的收件箱和垃圾邮件文件夹。链接有效期为1小时。',
+    backToLogin: '返回登录',
+    formTitle: '忘记密码',
+    formSub: '输入您的电子邮件地址以接收安全重置链接。',
+    emailLabel: '电子邮件地址',
+    emailPlaceholder: 'your@email.com',
+    submitBtn: '发送重置链接',
+    emailRequired: '请输入您的电子邮件地址。',
+    errorGeneric: '发生错误，请重试。',
+  },
+};
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const { language } = useLanguage();
+  const s = FP_STRINGS[language] || FP_STRINGS['fr'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      setError('Veuillez saisir votre adresse e-mail.');
+      setError(s.emailRequired);
       return;
     }
     setIsLoading(true);
@@ -27,7 +135,7 @@ export default function ForgotPasswordPage() {
       if (resetError) throw resetError;
       setSent(true);
     } catch (err: any) {
-      setError(err?.message || 'Une erreur est survenue. Veuillez réessayer.');
+      setError(err?.message || s.errorGeneric);
     } finally {
       setIsLoading(false);
     }
@@ -55,14 +163,14 @@ export default function ForgotPasswordPage() {
           >
             <Icon name="LockClosedIcon" size={28} className="text-white" />
           </div>
-          <h2 className="text-3xl font-bold text-white leading-tight mb-4" style={{ letterSpacing: '-0.02em' }}>
-            Récupérez<br />votre accès.
+          <h2 className="text-3xl font-bold text-white leading-tight mb-4" style={{ letterSpacing: '-0.02em', whiteSpace: 'pre-line' }}>
+            {s.heroTitle}
           </h2>
           <p className="text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.72)' }}>
-            Saisissez votre adresse e-mail et nous vous enverrons un lien sécurisé pour réinitialiser votre mot de passe.
+            {s.heroSub}
           </p>
           <div className="flex flex-wrap gap-2 mt-6">
-            {['Lien sécurisé', 'Valable 1h', 'Chiffré TLS', 'RGPD'].map((tag) => (
+            {[s.tag1, s.tag2, s.tag3, s.tag4].map((tag) => (
               <span
                 key={tag}
                 className="px-3 py-1 rounded-full text-xs font-semibold"
@@ -74,7 +182,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
         <p className="text-xs relative z-10" style={{ color: 'rgba(255,255,255,0.35)' }}>
-          © 2026 SHIFA Health OS · Plateforme de santé numérique
+          {s.footer}
         </p>
       </div>
 
@@ -96,7 +204,6 @@ export default function ForgotPasswordPage() {
         </div>
 
         <div className="w-full max-w-md">
-          {/* Card */}
           <div
             className="rounded-2xl border p-8"
             style={{
@@ -114,16 +221,16 @@ export default function ForgotPasswordPage() {
                   <Icon name="CheckCircleIcon" size={32} style={{ color: '#059669' } as any} />
                 </div>
                 <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
-                  E-mail envoyé !
+                  {s.sentTitle}
                 </h1>
                 <p className="text-sm mb-2" style={{ color: 'var(--muted-foreground)' }}>
-                  Un lien de réinitialisation a été envoyé à
+                  {s.sentSub}
                 </p>
                 <p className="text-sm font-semibold mb-6 px-3 py-2 rounded-xl" style={{ color: 'var(--shifa-blue)', backgroundColor: 'var(--shifa-light)' }}>
                   {email}
                 </p>
                 <p className="text-xs mb-6" style={{ color: 'var(--muted-foreground)' }}>
-                  Vérifiez votre boîte de réception et vos spams. Le lien est valable 1 heure.
+                  {s.sentHint}
                 </p>
                 <Link
                   href="/sign-up-login-screen"
@@ -131,7 +238,7 @@ export default function ForgotPasswordPage() {
                   style={{ minHeight: '44px' }}
                 >
                   <Icon name="ArrowLeftIcon" size={16} />
-                  Retour à la connexion
+                  {s.backToLogin}
                 </Link>
               </div>
             ) : (
@@ -144,10 +251,10 @@ export default function ForgotPasswordPage() {
                     <Icon name="LockClosedIcon" size={22} style={{ color: 'var(--shifa-blue)' } as any} />
                   </div>
                   <h1 className="text-2xl font-bold mb-1.5" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)', letterSpacing: '-0.02em' }}>
-                    Mot de passe oublié
+                    {s.formTitle}
                   </h1>
                   <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    Saisissez votre adresse e-mail pour recevoir un lien de réinitialisation sécurisé.
+                    {s.formSub}
                   </p>
                 </div>
 
@@ -164,16 +271,16 @@ export default function ForgotPasswordPage() {
                 <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                   <div>
                     <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
-                      Adresse e-mail
+                      {s.emailLabel}
                     </label>
                     <input
                       type="email"
                       className="input-premium"
-                      placeholder="votre@email.com"
+                      placeholder={s.emailPlaceholder}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       autoFocus
-                      aria-label="Adresse e-mail"
+                      aria-label={s.emailLabel}
                     />
                   </div>
 
@@ -188,7 +295,7 @@ export default function ForgotPasswordPage() {
                     ) : (
                       <>
                         <Icon name="EnvelopeIcon" size={16} />
-                        Envoyer le lien de réinitialisation
+                        {s.submitBtn}
                       </>
                     )}
                   </button>
@@ -201,7 +308,7 @@ export default function ForgotPasswordPage() {
                     style={{ color: 'var(--shifa-blue)' }}
                   >
                     <Icon name="ArrowLeftIcon" size={14} />
-                    Retour à la connexion
+                    {s.backToLogin}
                   </Link>
                 </div>
               </>

@@ -1,7 +1,7 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-
+import { createClient } from '@/lib/supabase/client';
 
 type TabKey = 'patients' | 'dispensing' | 'inventory' | 'orders' | 'billing';
 
@@ -69,292 +69,327 @@ const billStatusConfig: Record<string, { bg: string; color: string }> = {
   remboursement: { bg: 'rgba(0,102,255,0.10)', color: 'var(--shifa-blue)' },
 };
 
-const kpis = [
-  { label: 'Ordonnances du jour', value: '34', icon: 'DocumentTextIcon', color: 'var(--shifa-blue)' },
-  { label: 'En attente dispensation', value: '7', icon: 'ClockIcon', color: 'var(--shifa-amber)' },
-  { label: 'Médicaments stock bas', value: '3', icon: 'ExclamationTriangleIcon', color: 'var(--shifa-red)' },
-  { label: 'Lots expirant < 30j', value: '2', icon: 'CalendarDaysIcon', color: 'var(--shifa-amber)' },
-  { label: 'Commandes en cours', value: '2', icon: 'TruckIcon', color: 'var(--shifa-purple)' },
-  { label: 'Recettes du jour', value: '142K', icon: 'BanknotesIcon', color: 'var(--shifa-green)' },
-];
-
 const tabs: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'patients', label: 'Patients & Ordonnances', icon: 'UsersIcon' },
-  { key: 'dispensing', label: 'Dispensation', icon: 'DocumentCheckIcon' },
-  { key: 'inventory', label: 'Stock & Lots', icon: 'ArchiveBoxIcon' },
-  { key: 'orders', label: 'Fournisseurs & Commandes', icon: 'TruckIcon' },
+  { key: 'patients', label: 'Ordonnances', icon: 'DocumentTextIcon' },
+  { key: 'dispensing', label: 'Dispensation', icon: 'ArchiveBoxIcon' },
+  { key: 'inventory', label: 'Stock', icon: 'ClipboardDocumentListIcon' },
+  { key: 'orders', label: 'Commandes', icon: 'TruckIcon' },
   { key: 'billing', label: 'Facturation', icon: 'BanknotesIcon' },
 ];
 
 export default function PharmacyDashboardContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('patients');
+  const [posTransactions, setPosTransactions] = useState<any[]>([]);
+  const [posLoading, setPosLoading] = useState(false);
+  const [posError, setPosError] = useState('');
+
+  useEffect(() => {
+    if (activeTab === 'dispensing') {
+      fetchPosTransactions();
+    }
+  }, [activeTab]);
+
+  const fetchPosTransactions = async () => {
+    setPosLoading(true);
+    setPosError('');
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('pharmacy_pos_transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setPosTransactions(data || []);
+    } catch (err: any) {
+      setPosError(err?.message || 'Erreur lors du chargement des transactions.');
+    } finally {
+      setPosLoading(false);
+    }
+  };
+
+  const kpis = [
+    { label: 'Ordonnances du jour', value: String(rxPatients.length), icon: 'DocumentTextIcon', color: 'var(--shifa-blue)', bg: 'rgba(0,102,255,0.08)' },
+    { label: 'En attente dispensation', value: String(rxPatients.filter(r => r.status === 'en attente').length), icon: 'ClockIcon', color: 'var(--shifa-amber)', bg: 'rgba(245,158,11,0.08)' },
+    { label: 'Médicaments stock bas', value: String(inventory.filter(m => m.status === 'low' || m.status === 'expired').length), icon: 'ExclamationTriangleIcon', color: 'var(--shifa-red)', bg: 'rgba(239,68,68,0.08)' },
+    { label: 'Commandes en cours', value: String(orders.filter(o => o.status !== 'livré').length), icon: 'TruckIcon', color: 'var(--shifa-purple)', bg: 'rgba(123,94,167,0.08)' },
+  ];
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--background)' }}>
-      {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--shifa-green), var(--shifa-cyan))' }}>
-              <Icon name="ArchiveBoxIcon" size={18} className="text-white" />
+    <div className="px-6 lg:px-8 xl:px-10 py-6 max-w-screen-2xl mx-auto">
+      {/* Premium Page Header — SHIFA design tokens */}
+      <div
+        className="relative rounded-2xl overflow-hidden mb-8 p-6 lg:p-8"
+        style={{
+          background: 'linear-gradient(135deg, #0D4F3C 0%, #0D9E6E 55%, #00F2C3 100%)',
+          boxShadow: '0 8px 32px rgba(13,158,110,0.3)',
+        }}
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.04)', transform: 'translate(30%, -30%)' }} />
+        <div className="absolute bottom-0 left-1/3 w-48 h-48 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.03)', transform: 'translateY(40%)' }} />
+
+        <div className="relative z-10 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
+            >
+              <Icon name="ArchiveBoxIcon" size={26} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-display)' }}>Pharmacie Hospitalière</h1>
-              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Gestion médicaments, dispensation & facturation</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)' }}>
+                  Pharmacie hospitalière
+                </span>
+              </div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-white" style={{ letterSpacing: '-0.02em' }}>
+                Tableau de bord Pharmacie
+              </h1>
+              <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                Ordonnances, dispensation, stock, commandes et facturation
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn-secondary text-sm flex items-center gap-1.5 px-3 py-1.5"><Icon name="ArrowDownTrayIcon" size={14} /> Export</button>
-            <button className="btn-primary text-sm flex items-center gap-1.5 px-3 py-1.5"><Icon name="PlusIcon" size={14} /> Nouvelle dispensation</button>
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}>
+              <Icon name="ArrowDownTrayIcon" size={15} />
+              Exporter
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.95)', color: '#0D4F3C' }}>
+              <Icon name="PlusIcon" size={15} />
+              Nouvelle dispensation
+            </button>
           </div>
+        </div>
+
+        {/* Quick stats bar */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          {kpis.map((kpi) => (
+            <div key={kpi.label} className="rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Icon name={kpi.icon as any} size={14} className="text-white opacity-80" />
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{kpi.label}</span>
+              </div>
+              <p className="text-xl font-bold text-white">{kpi.value}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="px-6 py-4 grid grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpis.map(k => (
-          <div key={k.label} className="card p-3 flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <Icon name={k.icon as any} size={16} style={{ color: k.color }} />
-              <span className="text-xl font-bold" style={{ color: k.color, fontFamily: 'var(--font-display)' }}>{k.value}</span>
-            </div>
-            <p className="text-xs leading-tight" style={{ color: 'var(--muted-foreground)' }}>{k.label}</p>
-          </div>
-        ))}
-      </div>
-
       {/* Tabs */}
-      <div className="px-6 border-b flex gap-1" style={{ borderColor: 'var(--border)' }}>
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === t.key ? 'border-[var(--shifa-green)] text-[var(--shifa-green)]' : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}>
-            <Icon name={t.icon as any} size={14} />{t.label}
+      <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin mb-6 pb-1">
+        {tabs.map((tab) => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-1.5 shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-150 ${activeTab === tab.key ? 'shadow-shifa' : ''}`}
+            style={{ backgroundColor: activeTab === tab.key ? 'var(--shifa-blue)' : 'var(--card)', color: activeTab === tab.key ? 'white' : 'var(--muted-foreground)', borderColor: activeTab === tab.key ? 'var(--shifa-blue)' : 'var(--border)' }}>
+            <Icon name={tab.icon as any} size={15} />{tab.label}
           </button>
         ))}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      {/* Ordonnances Tab */}
+      {activeTab === 'patients' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Ordonnances du jour</h3>
+            <button className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"><Icon name="PlusIcon" size={13} />Nouvelle</button>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+            {rxPatients.map((rx) => (
+              <div key={rx.id} className="p-4 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(13,158,110,0.1)' }}>
+                    <Icon name="DocumentTextIcon" size={16} style={{ color: 'var(--shifa-green)' }} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--shifa-dark)' }}>{rx.name}</p>
+                      <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{rx.id}</span>
+                      {rx.insurance && <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ backgroundColor: 'rgba(0,102,255,0.08)', color: 'var(--shifa-blue)' }}>Assuré</span>}
+                    </div>
+                    <p className="text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>{rx.doctor} · {rx.date}</p>
+                    <p className="text-xs" style={{ color: 'var(--foreground)' }}>{rx.drug} · {rx.qty}</p>
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: statusRxConfig[rx.status]?.bg, color: statusRxConfig[rx.status]?.color }}>
+                  {rx.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* PATIENTS & PRESCRIPTIONS */}
-        {activeTab === 'patients' && (
-          <div className="card overflow-hidden">
-            <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-              <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>File d'attente — Ordonnances du jour</h3>
-              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{rxPatients.length} ordonnances</span>
+      {/* Dispensation Tab — Supabase */}
+      {activeTab === 'dispensing' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Transactions POS (pharmacy_pos_transactions)</h3>
+            <button onClick={fetchPosTransactions} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
+              <Icon name="ArrowPathIcon" size={13} className={posLoading ? 'animate-spin' : ''} />
+              Actualiser
+            </button>
+          </div>
+
+          {posLoading && (
+            <div className="p-12 flex flex-col items-center justify-center gap-3">
+              <div className="w-10 h-10 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--shifa-green)', borderTopColor: 'transparent' }} />
+              <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Chargement des transactions…</p>
             </div>
+          )}
+
+          {!posLoading && posError && (
+            <div className="p-8 flex flex-col items-center justify-center gap-3">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(239,68,68,0.1)' }}>
+                <Icon name="ExclamationCircleIcon" size={24} style={{ color: 'var(--shifa-red)' }} />
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--shifa-red)' }}>Erreur de chargement</p>
+              <p className="text-xs text-center" style={{ color: 'var(--muted-foreground)' }}>{posError}</p>
+              <button onClick={fetchPosTransactions} className="btn-primary text-xs px-4 py-2">Réessayer</button>
+            </div>
+          )}
+
+          {!posLoading && !posError && posTransactions.length === 0 && (
+            <div className="p-12 flex flex-col items-center justify-center gap-3">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(13,158,110,0.08)' }}>
+                <Icon name="ArchiveBoxIcon" size={26} style={{ color: 'var(--shifa-green)' }} />
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--shifa-dark)' }}>Aucune transaction enregistrée</p>
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Les transactions POS apparaîtront ici.</p>
+            </div>
+          )}
+
+          {!posLoading && !posError && posTransactions.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                    {['ID', 'Statut', 'Total', 'Créé le'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {posTransactions.map((t: any, i: number) => (
+                    <tr key={t.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{t.id?.slice(0, 8)}…</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{t.status || '—'}</td>
+                      <td className="px-4 py-3 text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{t.total_amount ? `${t.total_amount} FCFA` : '—'}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{t.created_at ? new Date(t.created_at).toLocaleDateString('fr-FR') : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Inventory Tab */}
+      {activeTab === 'inventory' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Stock médicaments</h3>
+            <button className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"><Icon name="PlusIcon" size={13} />Ajouter</button>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Réf.', 'Patient', 'Médecin', 'Médicaments prescrits', 'Durée', 'Assurance', 'Statut', 'Actions'].map(h => (
+                <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                  {['Médicament', 'Forme', 'Lot', 'Expiration', 'Stock', 'Min', 'Fournisseur', 'Statut'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {rxPatients.map((p, i) => (
-                  <tr key={p.id} style={{ borderBottom: i < rxPatients.length - 1 ? '1px solid var(--border)' : 'none' }} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--shifa-green)' }}>{p.id}</td>
-                    <td className="px-4 py-3"><p className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>{p.name}</p><p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{p.age} ans</p></td>
-                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{p.doctor}</td>
-                    <td className="px-4 py-3 text-xs max-w-xs" style={{ color: 'var(--foreground)' }}>{p.drug}</td>
-                    <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{p.qty}</td>
+                {inventory.map((m, i) => (
+                  <tr key={m.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: 'var(--shifa-dark)' }}>{m.name}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{m.form}</td>
+                    <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{m.lot}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{m.expiry}</td>
+                    <td className="px-4 py-3 text-sm font-bold" style={{ color: m.stock < m.min ? 'var(--shifa-red)' : 'var(--shifa-dark)' }}>{m.stock} {m.unit}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{m.min}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{m.supplier}</td>
                     <td className="px-4 py-3">
-                      {p.insurance ? <span className="px-1.5 py-0.5 rounded text-xs" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'var(--shifa-green)' }}>Oui</span> : <span className="px-1.5 py-0.5 rounded text-xs" style={{ backgroundColor: 'rgba(156,163,175,0.15)', color: 'var(--muted-foreground)' }}>Non</span>}
-                    </td>
-                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: statusRxConfig[p.status].bg, color: statusRxConfig[p.status].color }}>{p.status}</span></td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button className="p-1 rounded hover:bg-muted" title="Dispenser"><Icon name="CheckCircleIcon" size={14} style={{ color: 'var(--shifa-green)' }} /></button>
-                        <button className="p-1 rounded hover:bg-muted" title="Voir"><Icon name="EyeIcon" size={14} style={{ color: 'var(--shifa-blue)' }} /></button>
-                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: stockStatusConfig[m.status].bg, color: stockStatusConfig[m.status].color }}>
+                        {stockStatusConfig[m.status].label}
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* DISPENSING */}
-        {activeTab === 'dispensing' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="card p-4">
-              <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--foreground)' }}>Dispensation en cours — RX-201</h3>
-              <div className="p-3 rounded-xl mb-3" style={{ backgroundColor: 'var(--muted)' }}>
-                <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Oumar Diallo, 58 ans</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Prescrit par Dr. Sy — 10:20</p>
-              </div>
-              {['Metformine 850mg — 30 comprimés', 'Amlodipine 5mg — 30 comprimés'].map((drug, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl border mb-2" style={{ borderColor: 'var(--border)' }}>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{drug.split(' — ')[0]}</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{drug.split(' — ')[1]}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'var(--shifa-green)' }}>En stock</span>
-                    <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
-                  </div>
-                </div>
-              ))}
-              <button className="w-full py-2.5 rounded-xl text-sm font-semibold text-white mt-2" style={{ backgroundColor: 'var(--shifa-green)' }}>Confirmer la dispensation</button>
-            </div>
-            <div className="card p-4">
-              <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--foreground)' }}>Historique dispensations — Aujourd'hui</h3>
-              <div className="space-y-2">
-                {rxPatients.filter(p => p.status === 'dispensé').map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-3 rounded-xl" style={{ backgroundColor: 'var(--muted)' }}>
-                    <div>
-                      <p className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>{p.name}</p>
-                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{p.drug.substring(0, 40)}…</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'var(--shifa-green)' }}>Dispensé</span>
-                      <p className="text-xs mt-0.5 font-mono" style={{ color: 'var(--muted-foreground)' }}>{p.date}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Orders Tab */}
+      {activeTab === 'orders' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Commandes fournisseurs</h3>
+            <button className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"><Icon name="PlusIcon" size={13} />Nouvelle commande</button>
           </div>
-        )}
-
-        {/* INVENTORY */}
-        {activeTab === 'inventory' && (
-          <div>
-            <div className="grid grid-cols-4 gap-3 mb-4">
-              {[
-                { label: 'Références actives', count: inventory.length, color: 'var(--shifa-blue)' },
-                { label: 'Stock bas', count: inventory.filter(m => m.status === 'low').length, color: 'var(--shifa-amber)' },
-                { label: 'Expirant bientôt', count: inventory.filter(m => m.status === 'expiring').length, color: 'var(--shifa-amber)' },
-                { label: 'Périmés', count: inventory.filter(m => m.status === 'expired').length, color: 'var(--shifa-red)' },
-              ].map(s => (
-                <div key={s.label} className="card p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${s.color}18` }}>
-                    <Icon name="ArchiveBoxIcon" size={16} style={{ color: s.color }} />
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+            {orders.map((order) => (
+              <div key={order.id} className="p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(13,158,110,0.1)' }}>
+                    <Icon name="TruckIcon" size={16} style={{ color: 'var(--shifa-green)' }} />
                   </div>
                   <div>
-                    <p className="text-xl font-bold" style={{ color: s.color, fontFamily: 'var(--font-display)' }}>{s.count}</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.label}</p>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--shifa-dark)' }}>{order.id}</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{order.supplier} · {order.items} articles · {order.date}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="card overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Médicament', 'Forme', 'N° Lot', 'Expiration', 'Stock', 'Stock min.', 'Fournisseur', 'Statut'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {inventory.map((m, i) => (
-                    <tr key={m.id} style={{ borderBottom: i < inventory.length - 1 ? '1px solid var(--border)' : 'none', backgroundColor: m.status === 'expired' ? 'rgba(239,68,68,0.03)' : 'transparent' }} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-medium text-sm" style={{ color: 'var(--foreground)' }}>{m.name}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{m.form}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--shifa-blue)' }}>{m.lot}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: m.status === 'expired' ? 'var(--shifa-red)' : m.status === 'expiring' ? 'var(--shifa-amber)' : 'var(--muted-foreground)' }}>{m.expiry}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm" style={{ color: m.stock < m.min ? 'var(--shifa-red)' : 'var(--foreground)' }}>{m.stock}</span>
-                          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{m.unit}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{m.min} {m.unit}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{m.supplier}</td>
-                      <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: stockStatusConfig[m.status].bg, color: stockStatusConfig[m.status].color }}>{stockStatusConfig[m.status].label}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ORDERS */}
-        {activeTab === 'orders' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 card overflow-hidden">
-              <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-                <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Commandes fournisseurs</h3>
-                <button className="btn-primary text-xs px-2.5 py-1 flex items-center gap-1"><Icon name="PlusIcon" size={12} /> Nouvelle commande</button>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Réf. commande', 'Fournisseur', 'Articles', 'Montant total', 'Date', 'Statut'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((o, i) => (
-                    <tr key={o.id} style={{ borderBottom: i < orders.length - 1 ? '1px solid var(--border)' : 'none' }} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--shifa-green)' }}>{o.id}</td>
-                      <td className="px-4 py-3 font-medium text-sm" style={{ color: 'var(--foreground)' }}>{o.supplier}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{o.items} articles</td>
-                      <td className="px-4 py-3 font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{o.total}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{o.date}</td>
-                      <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: orderStatusConfig[o.status].bg, color: orderStatusConfig[o.status].color }}>{o.status}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="card p-4">
-              <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--foreground)' }}>Fournisseurs actifs</h3>
-              {['Pharma Sénégal', 'MedImport', 'Dakar Pharma'].map(s => (
-                <div key={s} className="flex items-center justify-between p-3 rounded-xl mb-2" style={{ backgroundColor: 'var(--muted)' }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(0,102,255,0.1)' }}>
-                      <Icon name="BuildingStorefrontIcon" size={14} style={{ color: 'var(--shifa-blue)' }} />
-                    </div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{s}</p>
-                  </div>
-                  <button className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: 'rgba(0,102,255,0.1)', color: 'var(--shifa-blue)' }}>Commander</button>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>{order.total}</p>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: orderStatusConfig[order.status]?.bg, color: orderStatusConfig[order.status]?.color }}>
+                    {order.status}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* BILLING */}
-        {activeTab === 'billing' && (
-          <div className="card overflow-hidden">
-            <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-              <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Facturation — Dispensations du jour</h3>
-              <div className="flex gap-2">
-                <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: 'var(--shifa-green)' }}>Total encaissé : 142 000 FCFA</span>
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Billing Tab */}
+      {activeTab === 'billing' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Facturation patients</h3>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Réf.', 'Patient', 'Médicaments', 'Montant total', 'Part assurance', 'Reste à payer', 'Statut', 'Action'].map(h => (
+                <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                  {['Patient', 'Médicaments', 'Montant', 'Assurance', 'Reste à payer', 'Statut'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {billing.map((b, i) => (
-                  <tr key={b.id} style={{ borderBottom: i < billing.length - 1 ? '1px solid var(--border)' : 'none' }} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--shifa-green)' }}>{b.id}</td>
-                    <td className="px-4 py-3 font-medium text-sm" style={{ color: 'var(--foreground)' }}>{b.patient}</td>
+                  <tr key={b.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: 'var(--shifa-dark)' }}>{b.patient}</td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{b.drugs}</td>
-                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{b.amount}</td>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{b.amount}</td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--shifa-blue)' }}>{b.insurance}</td>
-                    <td className="px-4 py-3 font-bold text-sm" style={{ color: b.balance === '0 FCFA' ? 'var(--shifa-green)' : 'var(--shifa-amber)' }}>{b.balance}</td>
-                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: billStatusConfig[b.status].bg, color: billStatusConfig[b.status].color }}>{b.status}</span></td>
-                    <td className="px-4 py-3"><button className="text-xs px-2.5 py-1 rounded-lg font-medium text-white" style={{ backgroundColor: 'var(--shifa-green)' }}>Encaisser</button></td>
+                    <td className="px-4 py-3 text-xs font-bold" style={{ color: 'var(--shifa-dark)' }}>{b.balance}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: billStatusConfig[b.status]?.bg, color: billStatusConfig[b.status]?.color }}>
+                        {b.status}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

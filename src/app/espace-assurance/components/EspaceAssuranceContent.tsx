@@ -51,20 +51,67 @@ export default function EspaceAssuranceContent() {
 
   return (
     <div className="px-6 lg:px-8 xl:px-10 py-6 max-w-screen-2xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #0A1B3D, #00F2C3)' }}>
-            <Icon name="ShieldCheckIcon" size={22} className="text-white" />
+      {/* Premium Page Header — SHIFA design tokens */}
+      <div
+        className="relative rounded-2xl overflow-hidden mb-8 p-6 lg:p-8"
+        style={{
+          background: 'linear-gradient(135deg, #0A1B3D 0%, #00B89A 60%, #00F2C3 100%)',
+          boxShadow: '0 8px 32px rgba(0,184,154,0.25)',
+        }}
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.04)', transform: 'translate(30%, -30%)' }} />
+        <div className="absolute bottom-0 left-1/3 w-48 h-48 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.03)', transform: 'translateY(40%)' }} />
+
+        <div className="relative z-10 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
+            >
+              <Icon name="ShieldCheckIcon" size={26} className="text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)' }}>
+                  Assurance Maladie / Mutuelle
+                </span>
+              </div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-white" style={{ letterSpacing: '-0.02em' }}>
+                Espace Assurance
+              </h1>
+              <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                Gestion des adhérents, remboursements et conventions
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: 'var(--shifa-dark)' }}>Assurance Maladie / Mutuelle</h1>
-            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Gestion des adhérents, remboursements et conventions</p>
+          <div className="flex items-center gap-2">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}>
+              <Icon name="ArrowDownTrayIcon" size={15} />
+              Exporter
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.95)', color: '#0A1B3D' }}>
+              <Icon name="UserPlusIcon" size={15} />
+              Nouvel adhérent
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-secondary flex items-center gap-2 text-sm"><Icon name="ArrowDownTrayIcon" size={15} />Exporter</button>
-          <button className="btn-primary flex items-center gap-2 text-sm"><Icon name="UserPlusIcon" size={15} />Nouvel adhérent</button>
+
+        {/* Quick stats bar */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          {[
+            { label: 'Adhérents actifs', value: '142 380', icon: 'UsersIcon' },
+            { label: 'En attente', value: '1 847', icon: 'ClockIcon' },
+            { label: 'Taux remboursement', value: '94.2%', icon: 'CheckCircleIcon' },
+            { label: 'Établissements', value: '312', icon: 'BuildingOffice2Icon' },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Icon name={stat.icon as any} size={14} className="text-white opacity-80" />
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{stat.label}</span>
+              </div>
+              <p className="text-xl font-bold text-white">{stat.value}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -79,89 +126,93 @@ export default function EspaceAssuranceContent() {
         ))}
       </div>
 
-      {/* DASHBOARD */}
+      {/* Dashboard Tab */}
       {activeTab === 'tab-dashboard' && (
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((kpi) => (
-              <div key={kpi.label} className="card-base flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: kpi.bg }}>
-                  <Icon name={kpi.icon as any} size={20} style={{ color: kpi.color } as any} className="" />
+              <div key={kpi.label} className="rounded-2xl border p-5 transition-all hover:shadow-md" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: kpi.bg }}>
+                    <Icon name={kpi.icon as any} size={18} style={{ color: kpi.color }} />
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.label}</p>
-                  <p className="text-xl font-bold" style={{ color: 'var(--shifa-dark)' }}>{kpi.value}</p>
-                  <p className="text-xs" style={{ color: kpi.color }}>{kpi.sub}</p>
-                </div>
+                <p className="text-2xl font-bold mb-0.5" style={{ color: 'var(--shifa-dark)' }}>{kpi.value}</p>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>{kpi.label}</p>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.sub}</p>
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-            <div className="xl:col-span-2 card-base">
-              <h3 className="text-sm font-bold mb-4" style={{ color: 'var(--shifa-dark)' }}>Montant remboursé — 6 derniers mois (millions FCFA)</h3>
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={remboursementsData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="mois" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} />
-                    <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
-                    <Bar dataKey="montant" fill="var(--shifa-blue)" radius={[6, 6, 0, 0]} name="Montant (M FCFA)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-bold mb-4" style={{ color: 'var(--shifa-dark)' }}>Remboursements mensuels (M FCFA)</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={remboursementsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="montant" fill="var(--shifa-cyan)" radius={[4,4,0,0]} name="Montant (M)" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <div className="card-base">
-              <h3 className="text-sm font-bold mb-4" style={{ color: 'var(--shifa-dark)' }}>Répartition par type d'acte</h3>
-              <div className="h-36">
-                <ResponsiveContainer width="100%" height="100%">
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-bold mb-4" style={{ color: 'var(--shifa-dark)' }}>Répartition des actes</h3>
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width="50%" height={180}>
                   <PieChart>
-                    <Pie data={actesPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={60} dataKey="value">
-                      {actesPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    <Pie data={actesPieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} dataKey="value">
+                      {actesPieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
-              <div className="flex flex-col gap-1.5 mt-2">
-                {actesPieData.map((d) => (
-                  <div key={d.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} /><span className="text-xs" style={{ color: 'var(--foreground)' }}>{d.name}</span></div>
-                    <span className="text-xs font-bold" style={{ color: 'var(--foreground)' }}>{d.value}%</span>
-                  </div>
-                ))}
+                <div className="flex-1 space-y-2">
+                  {actesPieData.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{item.name}</span>
+                      </div>
+                      <span className="text-xs font-bold" style={{ color: 'var(--shifa-dark)' }}>{item.value}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ADHÉRENTS */}
       {activeTab === 'tab-adherents' && (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>142 380 adhérents actifs</p>
-            <div className="flex items-center gap-2">
-              <input type="text" placeholder="Rechercher un adhérent..." className="input-field text-sm" style={{ width: '240px' }} />
-            </div>
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Liste des adhérents</h3>
+            <button className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"><Icon name="UserPlusIcon" size={13} />Ajouter</button>
           </div>
-          <div className="card-base overflow-hidden p-0">
-            <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
               <thead>
-                <tr style={{ backgroundColor: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
-                  {['Adhérent', 'N° Police', 'Plan', 'Cotisation', 'Statut', 'Depuis'].map((h) => (
-                    <th key={h} className="text-left text-xs font-bold px-4 py-3" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+                <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                  {['Adhérent', 'N° Adhérent', 'Statut', 'Plan', 'Cotisation', 'Depuis'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {adherents.map((a, i) => (
-                  <tr key={a.id} className="hover:bg-muted/50 transition-colors cursor-pointer" style={{ borderBottom: i < adherents.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                    <td className="px-4 py-3 text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{a.nom}</td>
+                  <tr key={a.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: 'var(--shifa-dark)' }}>{a.nom}</td>
                     <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{a.numero}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--foreground)' }}>{a.plan}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: a.statut === 'actif' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', color: a.statut === 'actif' ? 'var(--shifa-green)' : 'var(--shifa-red)' }}>
+                        {a.statut}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{a.plan}</td>
                     <td className="px-4 py-3 text-xs" style={{ color: a.cotisation === 'À jour' ? 'var(--shifa-green)' : 'var(--shifa-red)' }}>{a.cotisation}</td>
-                    <td className="px-4 py-3"><span className={`badge-base ${a.statut === 'actif' ? 'status-active' : 'status-pending'}`}>{a.statut}</span></td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{a.depuis}</td>
                   </tr>
                 ))}
@@ -171,100 +222,47 @@ export default function EspaceAssuranceContent() {
         </div>
       )}
 
-      {/* REMBOURSEMENTS */}
       {activeTab === 'tab-remboursements' && (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>1 847 demandes en attente</p>
-            <button className="btn-primary flex items-center gap-2 text-sm"><Icon name="PlusIcon" size={15} />Nouvelle demande</button>
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Demandes de remboursement</h3>
           </div>
-          {remboursements.map((r) => (
-            <div key={r.id} className="card-base hover:shadow-shifa transition-all duration-150">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0,102,255,0.08)' }}>
-                    <Icon name="BanknotesIcon" size={18} style={{ color: 'var(--shifa-blue)' } as any} className="" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <p className="font-bold text-sm" style={{ color: 'var(--foreground)' }}>{r.adherent}</p>
-                      <span className={`badge-base ${r.statut === 'traité' ? 'status-completed' : r.statut === 'en_cours' ? 'status-active' : r.statut === 'rejeté' ? 'status-critical' : 'status-pending'}`}>
-                        {r.statut === 'traité' ? 'Traité' : r.statut === 'en_cours' ? 'En cours' : r.statut === 'rejeté' ? 'Rejeté' : 'En attente'}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                  {['Adhérent', 'Acte médical', 'Montant', 'Date', 'Statut'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {remboursements.map((r, i) => (
+                  <tr key={r.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: 'var(--shifa-dark)' }}>{r.adherent}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.acte}</td>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: 'var(--foreground)' }}>{r.montant}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.date}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: r.statut === 'traité' ? 'rgba(16,185,129,0.12)' : r.statut === 'en_cours' ? 'rgba(0,102,255,0.10)' : r.statut === 'rejeté' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)', color: r.statut === 'traité' ? 'var(--shifa-green)' : r.statut === 'en_cours' ? 'var(--shifa-blue)' : r.statut === 'rejeté' ? 'var(--shifa-red)' : 'var(--shifa-amber)' }}>
+                        {r.statut}
                       </span>
-                    </div>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.acte} · {r.date}</p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-sm" style={{ color: 'var(--shifa-dark)' }}>{r.montant}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <button className="p-1.5 rounded-lg border hover:bg-muted transition-colors" style={{ borderColor: 'var(--border)' }}><Icon name="EyeIcon" size={13} className="text-muted-foreground" /></button>
-                    <button className="p-1.5 rounded-lg border hover:bg-muted transition-colors" style={{ borderColor: 'var(--border)' }}><Icon name="CheckIcon" size={13} className="text-muted-foreground" /></button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* CONVENTIONS */}
-      {activeTab === 'tab-conventions' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[
-            { nom: 'CHU de Dakar', type: 'Hôpital universitaire', taux: '80%', statut: 'actif', expire: '31 déc. 2026' },
-            { nom: 'Clinique du Cap-Vert', type: 'Clinique privée', taux: '70%', statut: 'actif', expire: '30 juin 2027' },
-            { nom: 'Laboratoire BioSanté', type: 'Laboratoire', taux: '85%', statut: 'actif', expire: '31 mars 2027' },
-            { nom: 'Pharmacie Centrale', type: 'Pharmacie', taux: '60%', statut: 'révision', expire: '31 août 2026' },
-            { nom: 'Centre Imagerie Dakar', type: 'Imagerie médicale', taux: '75%', statut: 'actif', expire: '31 jan. 2027' },
-            { nom: 'CHR Saint-Louis', type: 'Hôpital régional', taux: '80%', statut: 'actif', expire: '31 déc. 2026' },
-          ].map((conv) => (
-            <div key={conv.nom} className="card-base hover:shadow-shifa transition-all duration-150">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0,102,255,0.08)' }}>
-                    <Icon name="BuildingOffice2Icon" size={16} style={{ color: 'var(--shifa-blue)' } as any} className="" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{conv.nom}</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{conv.type}</p>
-                  </div>
-                </div>
-                <span className={`badge-base ${conv.statut === 'actif' ? 'status-active' : 'status-pending'}`}>{conv.statut}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                <span>Taux remboursement: <strong style={{ color: 'var(--shifa-blue)' }}>{conv.taux}</strong></span>
-                <span>Expire: {conv.expire}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* RAPPORTS */}
-      {activeTab === 'tab-rapports' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[
-            { titre: 'Rapport mensuel remboursements — Juillet 2026', type: 'PDF', taille: '2.1 MB', date: '05 août 2026' },
-            { titre: 'Analyse sinistralité T2 2026', type: 'PDF', taille: '3.4 MB', date: '01 août 2026' },
-            { titre: 'Statistiques adhérents — Bilan semestriel', type: 'XLSX', taille: '1.8 MB', date: '15 juil. 2026' },
-            { titre: 'Rapport fraude et contrôle interne', type: 'PDF', taille: '2.7 MB', date: '10 juil. 2026' },
-          ].map((r) => (
-            <div key={r.titre} className="card-base hover:shadow-shifa transition-all duration-150">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0,102,255,0.08)' }}>
-                  <Icon name="DocumentTextIcon" size={18} style={{ color: 'var(--shifa-blue)' } as any} className="" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>{r.titre}</p>
-                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.type} · {r.taille} · {r.date}</p>
-                </div>
-              </div>
-              <button className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border text-xs font-semibold transition-colors hover:bg-muted" style={{ borderColor: 'var(--border)', color: 'var(--shifa-blue)' }}>
-                <Icon name="ArrowDownTrayIcon" size={13} />Télécharger
-              </button>
-            </div>
-          ))}
+      {(activeTab === 'tab-conventions' || activeTab === 'tab-rapports') && (
+        <div className="rounded-2xl border p-12 flex flex-col items-center justify-center text-center" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: 'rgba(0,102,255,0.08)' }}>
+            <Icon name="ClipboardDocumentListIcon" size={24} style={{ color: 'var(--shifa-blue)' }} />
+          </div>
+          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--shifa-dark)' }}>Section en cours de développement</p>
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cette section sera disponible prochainement.</p>
         </div>
       )}
     </div>
