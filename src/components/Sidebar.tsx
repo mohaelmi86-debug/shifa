@@ -188,6 +188,7 @@ const adminNav: NavItem[] = [
   { key: 'nav-adm-org-hr-payroll', label: 'Paie & RH', icon: 'BanknotesIcon', href: '/org-hr-payroll', group: 'gestion' },
   { key: 'nav-adm-hr-planning', label: 'Planification RH & Congés', icon: 'CalendarDaysIcon', href: '/org-hr-planning', group: 'gestion' },
   { key: 'nav-adm-kiosk', label: 'SHIFA Kiosk', icon: 'ComputerDesktopIcon', href: '/shifa-kiosk', group: 'gestion' },
+{ key: 'nav-adm-shifa-access', label: 'SHIFA Access', icon: 'ShieldCheckIcon', href: '/shifa-access', group: 'gestion' },
   { key: 'nav-adm-display', label: 'SHIFA Display', icon: 'TvIcon', href: '/shifa-display', group: 'gestion' },
   { key: 'nav-adm-pro-verif', label: 'Vérification professionnels', icon: 'ShieldCheckIcon', href: '/pro-verification', group: 'gestion' },
   { key: 'nav-adm-sterilization', label: 'Stérilisation Centrale', icon: 'ShieldCheckIcon', href: '/sterilization', group: 'gestion' },
