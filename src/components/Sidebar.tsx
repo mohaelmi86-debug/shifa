@@ -60,6 +60,7 @@ const patientNav: NavItem[] = [
   { key: 'nav-notifications', label: 'Notifications', icon: 'BellIcon', href: '/patient-notifications', badge: 3, group: 'compte' },
   { key: 'nav-urgences-contacts', label: 'Contacts d\'urgence', icon: 'PhoneIcon', href: '/patient-emergency-contacts', group: 'compte' },
   { key: 'nav-parametres', label: 'Paramètres', icon: 'Cog6ToothIcon', href: '/patient-settings', group: 'compte' },
+  { key: 'nav-settings-global', label: 'Langue & Région', icon: 'GlobeAltIcon', href: '/settings', group: 'compte' },
 ];
 
 const professionalNav: NavItem[] = [
@@ -158,6 +159,7 @@ const professionalNav: NavItem[] = [
   { key: 'nav-pro-agenda-availability', label: 'Disponibilités & Horaires', icon: 'CalendarDaysIcon', href: '/pro-agenda-availability', group: 'compte' },
   { key: 'nav-pro-schedule-templates', label: 'Modèles de planning', icon: 'CalendarDaysIcon', href: '/pro-schedule-templates', group: 'compte' },
   { key: 'nav-pro-parametres', label: 'Paramètres', icon: 'Cog6ToothIcon', href: '/pro-parametres', group: 'compte' },
+  { key: 'nav-pro-settings-global', label: 'Langue & Région', icon: 'GlobeAltIcon', href: '/settings', group: 'compte' },
 ];
 
 const adminNav: NavItem[] = [
