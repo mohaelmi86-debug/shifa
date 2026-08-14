@@ -287,6 +287,10 @@
     background: #E8EFF8;
     color: #4A6080;
   }
+  .status-cancelled {
+    background: #FEE2E2;
+    color: #991B1B;
+  }
   .status-critical {
     background: var(--shifa-red-light);
     color: #991B1B;

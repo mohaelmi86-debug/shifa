@@ -31,8 +31,8 @@ const patientTabs: NavTab[] = [
     ),
   },
   {
-    key: 'parcours',
-    label: 'Parcours',
+    key: 'planifier',
+    label: 'Planifier',
     href: '/appointment-booking',
     badge: 2,
     icon: (
@@ -47,8 +47,8 @@ const patientTabs: NavTab[] = [
     ),
   },
   {
-    key: 'sante',
-    label: 'Santé',
+    key: 'masante',
+    label: 'Ma santé',
     href: '/dossier-de-sant',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-[22px] h-[22px]">
@@ -62,8 +62,8 @@ const patientTabs: NavTab[] = [
     ),
   },
   {
-    key: 'messages',
-    label: 'Messages',
+    key: 'echanges',
+    label: 'Échanges',
     href: '/patient-messages',
     badge: 3,
     icon: (
@@ -78,8 +78,8 @@ const patientTabs: NavTab[] = [
     ),
   },
   {
-    key: 'compte',
-    label: 'Compte',
+    key: 'profil',
+    label: 'Profil',
     href: '/patient-settings',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-[22px] h-[22px]">
@@ -112,6 +112,21 @@ const professionalTabs: NavTab[] = [
     ),
   },
   {
+    key: 'agenda',
+    label: 'Agenda',
+    href: '/pro-agenda',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-[22px] h-[22px]">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+      </svg>
+    ),
+    activeIcon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-[22px] h-[22px]">
+        <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
     key: 'patients',
     label: 'Patients',
     href: '/pro-patients',
@@ -128,23 +143,8 @@ const professionalTabs: NavTab[] = [
     ),
   },
   {
-    key: 'agenda',
-    label: 'Agenda',
-    href: '/pro-agenda',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-[22px] h-[22px]">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-      </svg>
-    ),
-    activeIcon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" className="w-[22px] h-[22px]">
-        <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-  {
-    key: 'messages',
-    label: 'Messages',
+    key: 'echanges',
+    label: 'Échanges',
     href: '/pro-messages',
     badge: 7,
     icon: (
