@@ -388,24 +388,24 @@ CREATE POLICY "mkt_settle_update" ON public.marketplace_settlements
 CREATE POLICY "mkt_settle_delete" ON public.marketplace_settlements
   FOR DELETE USING (public.is_platform_admin());
 
--- ── revenue_reconciliations ────────────────────────────────
-ALTER TABLE IF EXISTS public.revenue_reconciliations ENABLE ROW LEVEL SECURITY;
+-- ── revenue_reconciliation (singular — matches phase2_financial_domains.sql) ──
+ALTER TABLE IF EXISTS public.revenue_reconciliation ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "rev_recon_select_admin" ON public.revenue_reconciliations;
-DROP POLICY IF EXISTS "rev_recon_insert" ON public.revenue_reconciliations;
-DROP POLICY IF EXISTS "rev_recon_update" ON public.revenue_reconciliations;
-DROP POLICY IF EXISTS "rev_recon_delete" ON public.revenue_reconciliations;
+DROP POLICY IF EXISTS "rev_recon_select_admin" ON public.revenue_reconciliation;
+DROP POLICY IF EXISTS "rev_recon_insert" ON public.revenue_reconciliation;
+DROP POLICY IF EXISTS "rev_recon_update" ON public.revenue_reconciliation;
+DROP POLICY IF EXISTS "rev_recon_delete" ON public.revenue_reconciliation;
 
-CREATE POLICY "rev_recon_select_admin" ON public.revenue_reconciliations
+CREATE POLICY "rev_recon_select_admin" ON public.revenue_reconciliation
   FOR SELECT USING (public.is_platform_admin());
 
-CREATE POLICY "rev_recon_insert" ON public.revenue_reconciliations
+CREATE POLICY "rev_recon_insert" ON public.revenue_reconciliation
   FOR INSERT WITH CHECK (public.is_platform_admin());
 
-CREATE POLICY "rev_recon_update" ON public.revenue_reconciliations
+CREATE POLICY "rev_recon_update" ON public.revenue_reconciliation
   FOR UPDATE USING (public.is_platform_admin());
 
-CREATE POLICY "rev_recon_delete" ON public.revenue_reconciliations
+CREATE POLICY "rev_recon_delete" ON public.revenue_reconciliation
   FOR DELETE USING (public.is_platform_admin());
 
 -- ============================================================
