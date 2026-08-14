@@ -372,8 +372,8 @@ DROP POLICY IF EXISTS "mkt_settle_delete" ON public.marketplace_settlements;
 
 CREATE POLICY "mkt_settle_select_vendor" ON public.marketplace_settlements
   FOR SELECT USING (
-    vendor_id = auth.uid()
-    OR (organization_id IS NOT NULL AND organization_id = public.user_org_id() AND public.is_org_admin())
+    seller_organization_id = public.user_org_id()
+    OR public.is_org_admin()
   );
 
 CREATE POLICY "mkt_settle_select_admin" ON public.marketplace_settlements

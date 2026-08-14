@@ -53,47 +53,47 @@ interface NewsItem {
 }
 
 const fallbackNews: NewsItem[] = [
-  {
-    key: 'n1',
-    date: '17 Mai 2024',
-    title: 'Hypertension : les bons réflexes au quotidien',
-    tag: 'Prévention',
-    tagColor: '#0878EF',
-    tagBg: '#D8E8FB',
-    img: "https://img.rocket.new/generatedImages/rocket_gen_img_1464d9c92-1766529742624.png",
-    alt: 'Médecin mesurant la tension artérielle d\'un patient'
-  },
-  {
-    key: 'n2',
-    date: '15 Mai 2024',
-    title: 'Vaccination : ce qu\'il faut savoir en 2024',
-    tag: 'Conseils',
-    tagColor: '#059669',
-    tagBg: '#D1FAE5',
-    img: "https://images.unsplash.com/photo-1649652214831-4c54e5b65252",
-    alt: 'Infirmière préparant un vaccin pour un patient'
-  },
-  {
-    key: 'n3',
-    date: '12 Mai 2024',
-    title: 'Sommeil : 7 conseils pour mieux vivre',
-    tag: 'Bien-être',
-    tagColor: '#7C3AED',
-    tagBg: '#EDE9FE',
-    img: "https://img.rocket.new/generatedImages/rocket_gen_img_1530ee71c-1773939742685.png",
-    alt: 'Personne dormant paisiblement dans un lit confortable'
-  },
-  {
-    key: 'n4',
-    date: '10 Mai 2024',
-    title: 'Diabète : comprendre et mieux vivre',
-    tag: 'Maladies chroniques',
-    tagColor: '#D97706',
-    tagBg: '#FEF3C7',
-    img: "https://images.unsplash.com/photo-1683727186226-910f31a9da45",
-    alt: 'Patient vérifiant son taux de glycémie avec un glucomètre'
-  }
-];
+{
+  key: 'n1',
+  date: '17 Mai 2024',
+  title: 'Hypertension : les bons réflexes au quotidien',
+  tag: 'Prévention',
+  tagColor: '#0878EF',
+  tagBg: '#D8E8FB',
+  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1bbe42ba8-1772189214829.png",
+  alt: 'Médecin mesurant la tension artérielle d\'un patient'
+},
+{
+  key: 'n2',
+  date: '15 Mai 2024',
+  title: 'Vaccination : ce qu\'il faut savoir en 2024',
+  tag: 'Conseils',
+  tagColor: '#059669',
+  tagBg: '#D1FAE5',
+  img: "https://images.unsplash.com/photo-1649652214831-4c54e5b65252",
+  alt: 'Infirmière préparant un vaccin pour un patient'
+},
+{
+  key: 'n3',
+  date: '12 Mai 2024',
+  title: 'Sommeil : 7 conseils pour mieux vivre',
+  tag: 'Bien-être',
+  tagColor: '#7C3AED',
+  tagBg: '#EDE9FE',
+  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1530ee71c-1773939742685.png",
+  alt: 'Personne dormant paisiblement dans un lit confortable'
+},
+{
+  key: 'n4',
+  date: '10 Mai 2024',
+  title: 'Diabète : comprendre et mieux vivre',
+  tag: 'Maladies chroniques',
+  tagColor: '#D97706',
+  tagBg: '#FEF3C7',
+  img: "https://images.unsplash.com/photo-1683727186226-910f31a9da45",
+  alt: 'Patient vérifiant son taux de glycémie avec un glucomètre'
+}];
+
 
 export default function LandingHero() {
   const [news, setNews] = useState<NewsItem[]>(fallbackNews);
@@ -110,13 +110,13 @@ export default function LandingHero() {
           setNews(data);
         }
       } catch {
+
         // Keep fallback news on error
-      } finally {
-        if (!cancelled) setNewsLoading(false);
+      } finally {if (!cancelled) setNewsLoading(false);
       }
     }
     fetchNews();
-    return () => { cancelled = true; };
+    return () => {cancelled = true;};
   }, []);
 
   return (
@@ -140,7 +140,7 @@ export default function LandingHero() {
                 </div>
                 <div className="w-28 h-28 rounded-2xl overflow-hidden shrink-0" style={{ boxShadow: '0 8px 24px rgba(8,120,239,0.15)' }}>
                   <img
-                    src="https://img.rocket.new/generatedImages/rocket_gen_img_1e400d46f-1780212343912.png"
+                    src="https://img.rocket.new/generatedImages/rocket_gen_img_163fb0f46-1786668325791.png"
                     alt="Médecin souriant tenant un smartphone affichant l'application SHIFA Health OS"
                     className="w-full h-full object-cover" />
                 </div>
@@ -198,7 +198,7 @@ export default function LandingHero() {
             <div className="flex-1 max-w-lg">
               <div className="rounded-3xl overflow-hidden" style={{ boxShadow: '0 24px 64px rgba(8,120,239,0.15)' }}>
                 <img
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_160ae6723-1786618149875.png"
+                  src="https://img.rocket.new/generatedImages/rocket_gen_img_1304406b0-1786668325184.png"
                   alt="Médecin souriant utilisant l'application SHIFA Health OS sur son smartphone"
                   className="w-full h-80 object-cover" />
               </div>
@@ -244,9 +244,9 @@ export default function LandingHero() {
             <button className="text-sm font-semibold" style={{ color: '#0878EF' }}>Voir tout</button>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {newsLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="rounded-2xl overflow-hidden border animate-pulse" style={{ borderColor: '#D4DFEF', backgroundColor: '#EDF1F9' }}>
+            {newsLoading ?
+            Array.from({ length: 4 }).map((_, i) =>
+            <div key={i} className="rounded-2xl overflow-hidden border animate-pulse" style={{ borderColor: '#D4DFEF', backgroundColor: '#EDF1F9' }}>
                     <div className="h-28" style={{ backgroundColor: '#D4DFEF' }} />
                     <div className="p-3 space-y-2">
                       <div className="h-2 rounded" style={{ backgroundColor: '#D4DFEF', width: '60%' }} />
@@ -254,9 +254,9 @@ export default function LandingHero() {
                       <div className="h-3 rounded" style={{ backgroundColor: '#D4DFEF', width: '80%' }} />
                     </div>
                   </div>
-                ))
-              : news?.map((item) =>
-                <div key={item?.key} className="rounded-2xl overflow-hidden border" style={{ borderColor: '#D4DFEF', backgroundColor: '#F7F9FE', boxShadow: '0 1px 6px rgba(8,120,239,0.05)' }}>
+            ) :
+            news?.map((item) =>
+            <div key={item?.key} className="rounded-2xl overflow-hidden border" style={{ borderColor: '#D4DFEF', backgroundColor: '#F7F9FE', boxShadow: '0 1px 6px rgba(8,120,239,0.05)' }}>
                     <div className="h-28 overflow-hidden">
                       <img src={item?.img} alt={item?.alt} className="w-full h-full object-cover" />
                     </div>
@@ -268,11 +268,11 @@ export default function LandingHero() {
                       </span>
                     </div>
                   </div>
-                )
+            )
             }
           </div>
         </div>
       </section>
-    </>
-  );
+    </>);
+
 }
