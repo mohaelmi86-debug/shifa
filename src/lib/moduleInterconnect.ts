@@ -684,3 +684,232 @@ export const canRolePerformTransition = (
   role: string,
   transition: TransferStateTransition
 ): boolean => transition.requiredRole.split('|').includes(role);
+
+// ─── RUNTIME ENFORCEMENT ENGINE ──────────────────────────────────────────────
+// Makes requiredPermissions and auditRequired actually enforceable at runtime.
+
+export interface RuntimeContext {
+  userId: string;
+  userRole: string;
+  organizationId?: string;
+  permissions: string[];
+}
+
+export interface FlowExecutionResult {
+  allowed: boolean;
+  flowId: string;
+  reason?: string;
+  auditEvent?: Omit<AuditEvent, 'id' | 'timestamp'>;
+}
+
+/**
+ * Check if a user context has all required permissions for a flow.
+ * Call this BEFORE executing any inter-module data exchange.
+ */
+export function checkFlowPermissions(
+  flow: ModuleFlow,
+  context: RuntimeContext
+): FlowExecutionResult {
+  const missing = flow.requiredPermissions.filter(
+    (perm) => !context.permissions.includes(perm)
+  );
+
+  if (missing.length > 0) {
+    const auditEvent: Omit<AuditEvent, 'id' | 'timestamp'> = {
+      userId: context.userId,
+      userRole: context.userRole,
+      organization: context.organizationId || 'unknown',
+      sourceModule: flow.from,
+      targetModule: flow.to,
+      dataScope: flow.dataScope,
+      action: 'share',
+      authorized: false,
+      result: 'denied',
+      errorMessage: `Missing permissions: ${missing.join(', ')}`,
+    };
+    return { allowed: false, flowId: flow.id, reason: `Missing permissions: ${missing.join(', ')}`, auditEvent };
+  }
+
+  const auditEvent: Omit<AuditEvent, 'id' | 'timestamp'> = {
+    userId: context.userId,
+    userRole: context.userRole,
+    organization: context.organizationId || 'unknown',
+    sourceModule: flow.from,
+    targetModule: flow.to,
+    dataScope: flow.dataScope,
+    action: 'share',
+    authorized: true,
+    result: 'success',
+  };
+
+  return { allowed: true, flowId: flow.id, auditEvent };
+}
+
+/**
+ * Write an audit event to Supabase audit_logs table.
+ * Only called when auditRequired: true on the flow.
+ */
+export async function writeAuditEvent(
+  event: Omit<AuditEvent, 'id' | 'timestamp'>,
+  supabaseClient: any
+): Promise<void> {
+  try {
+    await supabaseClient.from('audit_logs').insert({
+      user_id: event.userId,
+      user_role: event.userRole,
+      organization_id: event.organization !== 'unknown' ? event.organization : null,
+      source_module: event.sourceModule,
+      target_module: event.targetModule,
+      data_scope: event.dataScope,
+      action: event.action,
+      resource_id: event.resourceId,
+      authorized: event.authorized,
+      result: event.result,
+      error_message: event.errorMessage,
+      metadata: {},
+    });
+  } catch (err) {
+    // Audit write failure must never block the main operation
+    console.warn('[SHIFA Audit] Failed to write audit event:', err);
+  }
+}
+
+/**
+ * Execute a module flow with full permission check + optional audit.
+ * Use this as the single entry point for all inter-module data exchanges.
+ *
+ * @example
+ * const result = await executeFlow(
+ *   'flow-consult-prescription',
+ *   { userId, userRole, organizationId, permissions },
+ *   supabase,
+ *   async () => { // actual data transfer logic }
+ * );
+ */
+export async function executeFlow<T>(
+  flowId: string,
+  context: RuntimeContext,
+  supabaseClient: any,
+  operation: () => Promise<T>
+): Promise<{ success: boolean; data?: T; error?: string }> {
+  const flow = allFlows.find((f) => f.id === flowId);
+  if (!flow) {
+    return { success: false, error: `Unknown flow: ${flowId}` };
+  }
+
+  const check = checkFlowPermissions(flow, context);
+
+  if (!check.allowed) {
+    if (flow.auditRequired && check.auditEvent) {
+      await writeAuditEvent(check.auditEvent, supabaseClient);
+    }
+    return { success: false, error: check.reason };
+  }
+
+  try {
+    const data = await operation();
+
+    if (flow.auditRequired && check.auditEvent) {
+      await writeAuditEvent({ ...check.auditEvent, result: 'success' }, supabaseClient);
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    const errorMsg = err?.message || 'Operation failed';
+
+    if (flow.auditRequired && check.auditEvent) {
+      await writeAuditEvent(
+        { ...check.auditEvent, result: 'error', errorMessage: errorMsg },
+        supabaseClient
+      );
+    }
+
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Get the permission set for a given role.
+ * Used to build the RuntimeContext.permissions array.
+ */
+export function getPermissionsForRole(role: string): string[] {
+  const rolePermissions: Record<string, string[]> = {
+    platform_admin: ['*'], // All permissions
+    org_admin: [
+      'consultation.read', 'prescription.read', 'pharmacy.read', 'pharmacy.receive',
+      'laboratory.read', 'laboratory.validate', 'imaging.read', 'imaging.validate',
+      'billing.read', 'billing.create', 'billing.validate',
+      'payment.read', 'payment.create',
+      'hospitalization.read', 'hospitalization.create',
+      'emergency.read', 'emergency.admit',
+      'patient-record.read', 'patient-record.write',
+      'workforce.read', 'planning.read', 'inventory.read',
+      'procurement.read', 'supply-chain.read', 'accounting.read',
+      'analytics.read', 'audit.read',
+    ],
+    professional: [
+      'consultation.read', 'consultation.write',
+      'prescription.create', 'prescription.share',
+      'pharmacy.receive',
+      'laboratory.request', 'laboratory.read',
+      'imaging.request', 'imaging.read',
+      'billing.create', 'billing.read',
+      'hospitalization.read', 'hospitalization.create',
+      'emergency.admit', 'emergency.read',
+      'patient-record.read', 'patient-record.write',
+      'care-plans.read', 'care-plans.write',
+      'referrals.create', 'referrals.read',
+      'patient-transfer.create', 'patient-transfer.submit',
+    ],
+    patient: [
+      'patient-record.read', // Own record only — enforced by RLS
+      'consultation.read',   // Own consultations only
+      'prescription.read',   // Own prescriptions only
+      'laboratory.read',     // Own results only
+      'imaging.read',        // Own imaging only
+      'billing.read',        // Own invoices only
+      'payment.create',      // Pay own invoices
+    ],
+    pharmacy: [
+      'pharmacy.receive', 'pharmacy.dispense',
+      'prescription.read',
+      'billing.create',
+      'inventory.read', 'inventory.update',
+    ],
+    researcher: [
+      'analytics.read',
+      'research.read', 'research.write',
+    ],
+    insurance: [
+      'billing.read',
+      'payment.read',
+    ],
+    ministry: [
+      'analytics.read',
+      'public-health.read', 'public-health.write',
+      'epidemio.read',
+    ],
+    ambassador: [
+      // No medical data access
+    ],
+    vendor: [
+      'marketplace.read', 'marketplace.write',
+    ],
+    developer: [
+      'analytics.read',
+    ],
+  };
+
+  const perms = rolePermissions[role] || [];
+  // platform_admin wildcard — return special marker
+  if (perms.includes('*')) return ['*'];
+  return perms;
+}
+
+/**
+ * Check if a permission is satisfied given a permissions array.
+ * Handles the '*' wildcard for platform_admin.
+ */
+export function hasPermission(permissions: string[], required: string): boolean {
+  return permissions.includes('*') || permissions.includes(required);
+}
