@@ -2,7 +2,17 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/lib/supabase/client';
+
+const HEADER_STRINGS: Record<string, { greeting: (name: string) => string; subtitle: string; notifLabel: string }> = {
+  fr: { greeting: (n) => n ? `Bonjour, ${n}` : 'Bonjour', subtitle: 'Votre espace santé', notifLabel: 'Voir les notifications' },
+  en: { greeting: (n) => n ? `Hello, ${n}` : 'Hello', subtitle: 'Your health space', notifLabel: 'View notifications' },
+  es: { greeting: (n) => n ? `Hola, ${n}` : 'Hola', subtitle: 'Tu espacio de salud', notifLabel: 'Ver notificaciones' },
+  pt: { greeting: (n) => n ? `Olá, ${n}` : 'Olá', subtitle: 'Seu espaço de saúde', notifLabel: 'Ver notificações' },
+  ar: { greeting: (n) => n ? `مرحباً، ${n}` : 'مرحباً', subtitle: 'مساحتك الصحية', notifLabel: 'عرض الإشعارات' },
+  zh: { greeting: (n) => n ? `你好，${n}` : '你好', subtitle: '您的健康空间', notifLabel: '查看通知' },
+};
 
 function BellIcon({ className }: { className?: string }) {
   return (
@@ -14,7 +24,9 @@ function BellIcon({ className }: { className?: string }) {
 
 export default function PatientHeader() {
   const { user } = useAuth();
+  const { language } = useLanguage();
   const [firstName, setFirstName] = useState<string>('');
+  const hs = HEADER_STRINGS[language] || HEADER_STRINGS['fr'];
 
   useEffect(() => {
     if (!user) return;
@@ -33,8 +45,6 @@ export default function PatientHeader() {
       });
   }, [user]);
 
-  const greeting = firstName ? `Bonjour, ${firstName}` : 'Bonjour';
-
   return (
     <header
       className="sticky top-0 z-40 flex items-center justify-between px-4 py-3"
@@ -46,7 +56,6 @@ export default function PatientHeader() {
       role="banner"
     >
       <div className="flex items-center gap-3">
-        {/* SHIFA Logo mark */}
         <div
           className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: 'linear-gradient(135deg, #1252B0 0%, #1565D8 100%)' }}
@@ -58,10 +67,10 @@ export default function PatientHeader() {
         </div>
         <div>
           <p className="text-xs font-medium leading-none mb-0.5" style={{ color: 'var(--shifa-gray)' }}>
-            {greeting} 👋
+            {hs.greeting(firstName)} 👋
           </p>
           <p className="font-bold text-sm leading-none" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
-            Votre espace santé
+            {hs.subtitle}
           </p>
         </div>
       </div>
@@ -71,7 +80,7 @@ export default function PatientHeader() {
           href="/patient-notifications"
           className="w-9 h-9 rounded-xl flex items-center justify-center relative transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2"
           style={{ backgroundColor: 'var(--shifa-light)' }}
-          aria-label="Voir les notifications"
+          aria-label={hs.notifLabel}
         >
           <BellIcon className="w-5 h-5" style={{ color: 'var(--shifa-blue)' } as React.CSSProperties} />
           <span

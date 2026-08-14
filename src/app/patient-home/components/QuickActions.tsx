@@ -2,21 +2,37 @@ import React from 'react';
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
 
-const actions = [
-  { key: 'qa-planifier', icon: 'CalendarDaysIcon', label: 'Planifier', color: 'var(--shifa-blue)', bg: 'var(--shifa-light)', href: '/appointment-booking' },
-  { key: 'qa-teleconsult', icon: 'VideoCameraIcon', label: 'Téléconsultation', color: '#059669', bg: '#D1FAE5', href: '/patient-teleconsultation' },
-  { key: 'qa-resultats', icon: 'BeakerIcon', label: 'Résultats', color: 'var(--shifa-purple)', bg: '#EDE9FE', href: '/patient-results' },
-  { key: 'qa-dossier', icon: 'FolderOpenIcon', label: 'Dossier santé', color: 'var(--shifa-cyan)', bg: '#E0F2FE', href: '/dossier-de-sant' },
-  { key: 'qa-echanges', icon: 'ChatBubbleLeftRightIcon', label: 'Échanges', color: 'var(--shifa-amber)', bg: 'var(--shifa-amber-light)', href: '/patient-messages' },
-  { key: 'qa-prevention', icon: 'ShieldCheckIcon', label: 'Prévention', color: '#059669', bg: '#D1FAE5', href: '/patient-prevention' },
-];
+// ── i18n labels for quick actions ─────────────────────────────────────────────
+const ACTION_LABELS: Record<string, Record<string, string>> = {
+  fr: { title: 'Accès rapide', planifier: 'Planifier', teleconsult: 'Téléconsultation', resultats: 'Résultats', dossier: 'Dossier santé', echanges: 'Échanges', prevention: 'Prévention' },
+  en: { title: 'Quick access', planifier: 'Schedule', teleconsult: 'Teleconsult', resultats: 'Results', dossier: 'Health record', echanges: 'Messages', prevention: 'Prevention' },
+  es: { title: 'Acceso rápido', planifier: 'Planificar', teleconsult: 'Teleconsulta', resultats: 'Resultados', dossier: 'Historial', echanges: 'Mensajes', prevention: 'Prevención' },
+  pt: { title: 'Acesso rápido', planifier: 'Agendar', teleconsult: 'Teleconsulta', resultats: 'Resultados', dossier: 'Prontuário', echanges: 'Mensagens', prevention: 'Prevenção' },
+  ar: { title: 'وصول سريع', planifier: 'تحديد موعد', teleconsult: 'استشارة عن بُعد', resultats: 'النتائج', dossier: 'الملف الصحي', echanges: 'الرسائل', prevention: 'الوقاية' },
+  zh: { title: '快速访问', planifier: '预约', teleconsult: '远程问诊', resultats: '结果', dossier: '健康档案', echanges: '消息', prevention: '预防' },
+};
 
-export default function QuickActions() {
+interface QuickActionsProps {
+  language?: string;
+}
+
+export default function QuickActions({ language = 'fr' }: QuickActionsProps) {
+  const labels = ACTION_LABELS[language] || ACTION_LABELS['fr'];
+
+  const actions = [
+    { key: 'qa-planifier', icon: 'CalendarDaysIcon', label: labels.planifier, color: 'var(--shifa-blue)', bg: 'var(--shifa-light)', href: '/appointment-booking' },
+    { key: 'qa-teleconsult', icon: 'VideoCameraIcon', label: labels.teleconsult, color: '#059669', bg: '#D1FAE5', href: '/patient-teleconsultation' },
+    { key: 'qa-resultats', icon: 'BeakerIcon', label: labels.resultats, color: 'var(--shifa-purple)', bg: '#EDE9FE', href: '/patient-results' },
+    { key: 'qa-dossier', icon: 'FolderOpenIcon', label: labels.dossier, color: 'var(--shifa-cyan)', bg: '#E0F2FE', href: '/dossier-de-sant' },
+    { key: 'qa-echanges', icon: 'ChatBubbleLeftRightIcon', label: labels.echanges, color: 'var(--shifa-amber)', bg: 'var(--shifa-amber-light)', href: '/patient-messages' },
+    { key: 'qa-prevention', icon: 'ShieldCheckIcon', label: labels.prevention, color: '#059669', bg: '#D1FAE5', href: '/patient-prevention' },
+  ];
+
   return (
     <section aria-labelledby="quick-actions-title">
       <div className="flex items-center justify-between mb-3">
         <h2 id="quick-actions-title" className="text-sm font-bold" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
-          Accès rapide
+          {labels.title}
         </h2>
       </div>
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">

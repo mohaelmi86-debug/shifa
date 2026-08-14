@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
+
 import PatientHeader from './PatientHeader';
 import QuickActions from './QuickActions';
 
@@ -46,12 +48,266 @@ const staticNews: NewsItem[] = [
   { id: 'n3', title: 'Santé mentale : briser les tabous pour mieux se soigner', category: 'Santé mentale', date: '8 août 2026', readTime: '5 min' },
 ];
 
-// ── Status config ─────────────────────────────────────────────────────────────
-const resultStatusConfig: Record<string, { label: string; bg: string; color: string; dot: string }> = {
-  Normal: { label: 'Normal', bg: '#D1FAE5', color: '#065F46', dot: '#059669' },
-  'À surveiller': { label: 'À surveiller', bg: '#FEF3C7', color: '#92400E', dot: '#D97706' },
-  Anomalie: { label: 'Anomalie', bg: '#FEE2E2', color: '#991B1B', dot: '#DC2626' },
-  'En attente': { label: 'En attente', bg: '#E8EFF8', color: '#4A6080', dot: '#8FA8C8' },
+// ── i18n strings for patient-home (keys not in global TranslationKey) ─────────
+const HOME_STRINGS: Record<string, Record<string, string>> = {
+  fr: {
+    nextAppt: 'Prochain rendez-vous',
+    quickAccess: 'Accès rapide',
+    myDocs: 'Mes documents',
+    lastResults: 'Derniers résultats',
+    myDossier: 'Mon dossier de santé',
+    healthNews: 'Actualités santé',
+    newsDisclaimer: 'Informations de santé publique — non liées à votre dossier personnel.',
+    newsGeneral: 'Général',
+    upcoming: 'À venir',
+    completed: 'Terminés',
+    cancelled: 'Annulés',
+    documents: 'Documents',
+    noAppt: 'Aucun rendez-vous à venir',
+    noApptSub: 'Planifiez votre prochaine consultation',
+    scheduleAppt: 'Planifier un rendez-vous',
+    newAppt: 'Nouveau rendez-vous',
+    teleconsult: 'Téléconsultation',
+    teleconsultAvail: 'Téléconsultation disponible',
+    noResults: 'Aucun résultat disponible',
+    noResultsSub: 'Vos résultats d\'analyses apparaîtront ici',
+    dossierCompleteness: 'Complétude du dossier',
+    toComplete: 'À compléter',
+    viewAll: 'Voir tout',
+    ordonnances: 'Ordonnances',
+    resultats: 'Résultats',
+    antecedents: 'Antécédents médicaux',
+    antecedentsAvail: 'Historique disponible',
+    antecedentsEmpty: 'Aucun antécédent enregistré',
+    allergies: 'Allergies & intolérances',
+    allergiesAvail: 'Allergies enregistrées',
+    allergiesEmpty: 'Aucune allergie renseignée',
+    vaccinations: 'Vaccinations',
+    vaccinationsAvail: 'Carnet de vaccination disponible',
+    vaccinationsEmpty: 'Carnet non renseigné',
+    treatments: 'Traitements en cours',
+    treatmentsAvail: 'Traitements actifs',
+    treatmentsEmpty: 'Aucun traitement actif',
+    statusNormal: 'Normal',
+    statusWatch: 'À surveiller',
+    statusAnomaly: 'Anomalie',
+    statusPending: 'En attente',
+  },
+  en: {
+    nextAppt: 'Next appointment',
+    quickAccess: 'Quick access',
+    myDocs: 'My documents',
+    lastResults: 'Latest results',
+    myDossier: 'My health record',
+    healthNews: 'Health news',
+    newsDisclaimer: 'Public health information — not linked to your personal record.',
+    newsGeneral: 'General',
+    upcoming: 'Upcoming',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    documents: 'Documents',
+    noAppt: 'No upcoming appointments',
+    noApptSub: 'Schedule your next consultation',
+    scheduleAppt: 'Schedule appointment',
+    newAppt: 'New appointment',
+    teleconsult: 'Teleconsultation',
+    teleconsultAvail: 'Teleconsultation available',
+    noResults: 'No results available',
+    noResultsSub: 'Your test results will appear here',
+    dossierCompleteness: 'Record completeness',
+    toComplete: 'To complete',
+    viewAll: 'View all',
+    ordonnances: 'Prescriptions',
+    resultats: 'Results',
+    antecedents: 'Medical history',
+    antecedentsAvail: 'History available',
+    antecedentsEmpty: 'No history recorded',
+    allergies: 'Allergies & intolerances',
+    allergiesAvail: 'Allergies recorded',
+    allergiesEmpty: 'No allergies recorded',
+    vaccinations: 'Vaccinations',
+    vaccinationsAvail: 'Vaccination record available',
+    vaccinationsEmpty: 'Record not filled',
+    treatments: 'Current treatments',
+    treatmentsAvail: 'Active treatments',
+    treatmentsEmpty: 'No active treatment',
+    statusNormal: 'Normal',
+    statusWatch: 'Watch',
+    statusAnomaly: 'Anomaly',
+    statusPending: 'Pending',
+  },
+  es: {
+    nextAppt: 'Próxima cita',
+    quickAccess: 'Acceso rápido',
+    myDocs: 'Mis documentos',
+    lastResults: 'Últimos resultados',
+    myDossier: 'Mi historial de salud',
+    healthNews: 'Noticias de salud',
+    newsDisclaimer: 'Información de salud pública — no vinculada a su expediente personal.',
+    newsGeneral: 'General',
+    upcoming: 'Próximas',
+    completed: 'Completadas',
+    cancelled: 'Canceladas',
+    documents: 'Documentos',
+    noAppt: 'Sin citas próximas',
+    noApptSub: 'Programe su próxima consulta',
+    scheduleAppt: 'Programar cita',
+    newAppt: 'Nueva cita',
+    teleconsult: 'Teleconsulta',
+    teleconsultAvail: 'Teleconsulta disponible',
+    noResults: 'Sin resultados disponibles',
+    noResultsSub: 'Sus resultados aparecerán aquí',
+    dossierCompleteness: 'Completitud del expediente',
+    toComplete: 'Por completar',
+    viewAll: 'Ver todo',
+    ordonnances: 'Recetas',
+    resultats: 'Resultados',
+    antecedents: 'Antecedentes médicos',
+    antecedentsAvail: 'Historial disponible',
+    antecedentsEmpty: 'Sin antecedentes registrados',
+    allergies: 'Alergias e intolerancias',
+    allergiesAvail: 'Alergias registradas',
+    allergiesEmpty: 'Sin alergias registradas',
+    vaccinations: 'Vacunaciones',
+    vaccinationsAvail: 'Carnet de vacunación disponible',
+    vaccinationsEmpty: 'Carnet no completado',
+    treatments: 'Tratamientos actuales',
+    treatmentsAvail: 'Tratamientos activos',
+    treatmentsEmpty: 'Sin tratamiento activo',
+    statusNormal: 'Normal',
+    statusWatch: 'Vigilar',
+    statusAnomaly: 'Anomalía',
+    statusPending: 'Pendiente',
+  },
+  pt: {
+    nextAppt: 'Próxima consulta',
+    quickAccess: 'Acesso rápido',
+    myDocs: 'Meus documentos',
+    lastResults: 'Últimos resultados',
+    myDossier: 'Meu prontuário',
+    healthNews: 'Notícias de saúde',
+    newsDisclaimer: 'Informações de saúde pública — não vinculadas ao seu prontuário pessoal.',
+    newsGeneral: 'Geral',
+    upcoming: 'Próximas',
+    completed: 'Concluídas',
+    cancelled: 'Canceladas',
+    documents: 'Documentos',
+    noAppt: 'Sem consultas próximas',
+    noApptSub: 'Agende sua próxima consulta',
+    scheduleAppt: 'Agendar consulta',
+    newAppt: 'Nova consulta',
+    teleconsult: 'Teleconsulta',
+    teleconsultAvail: 'Teleconsulta disponível',
+    noResults: 'Sem resultados disponíveis',
+    noResultsSub: 'Seus resultados aparecerão aqui',
+    dossierCompleteness: 'Completude do prontuário',
+    toComplete: 'A completar',
+    viewAll: 'Ver tudo',
+    ordonnances: 'Receitas',
+    resultats: 'Resultados',
+    antecedents: 'Histórico médico',
+    antecedentsAvail: 'Histórico disponível',
+    antecedentsEmpty: 'Sem histórico registrado',
+    allergies: 'Alergias e intolerâncias',
+    allergiesAvail: 'Alergias registradas',
+    allergiesEmpty: 'Sem alergias registradas',
+    vaccinations: 'Vacinações',
+    vaccinationsAvail: 'Carteira de vacinação disponível',
+    vaccinationsEmpty: 'Carteira não preenchida',
+    treatments: 'Tratamentos atuais',
+    treatmentsAvail: 'Tratamentos ativos',
+    treatmentsEmpty: 'Sem tratamento ativo',
+    statusNormal: 'Normal',
+    statusWatch: 'Monitorar',
+    statusAnomaly: 'Anomalia',
+    statusPending: 'Pendente',
+  },
+  ar: {
+    nextAppt: 'الموعد القادم',
+    quickAccess: 'وصول سريع',
+    myDocs: 'وثائقي',
+    lastResults: 'آخر النتائج',
+    myDossier: 'ملفي الصحي',
+    healthNews: 'أخبار الصحة',
+    newsDisclaimer: 'معلومات الصحة العامة — غير مرتبطة بملفك الشخصي.',
+    newsGeneral: 'عام',
+    upcoming: 'القادمة',
+    completed: 'المكتملة',
+    cancelled: 'الملغاة',
+    documents: 'الوثائق',
+    noAppt: 'لا مواعيد قادمة',
+    noApptSub: 'حدد موعد استشارتك القادمة',
+    scheduleAppt: 'تحديد موعد',
+    newAppt: 'موعد جديد',
+    teleconsult: 'استشارة عن بُعد',
+    teleconsultAvail: 'استشارة عن بُعد متاحة',
+    noResults: 'لا نتائج متاحة',
+    noResultsSub: 'ستظهر نتائج تحاليلك هنا',
+    dossierCompleteness: 'اكتمال الملف',
+    toComplete: 'للإكمال',
+    viewAll: 'عرض الكل',
+    ordonnances: 'الوصفات',
+    resultats: 'النتائج',
+    antecedents: 'السوابق الطبية',
+    antecedentsAvail: 'السجل متاح',
+    antecedentsEmpty: 'لا سوابق مسجلة',
+    allergies: 'الحساسية وعدم التحمل',
+    allergiesAvail: 'الحساسية مسجلة',
+    allergiesEmpty: 'لا حساسية مسجلة',
+    vaccinations: 'التطعيمات',
+    vaccinationsAvail: 'دفتر التطعيم متاح',
+    vaccinationsEmpty: 'الدفتر غير مكتمل',
+    treatments: 'العلاجات الجارية',
+    treatmentsAvail: 'علاجات نشطة',
+    treatmentsEmpty: 'لا علاج نشط',
+    statusNormal: 'طبيعي',
+    statusWatch: 'للمراقبة',
+    statusAnomaly: 'شذوذ',
+    statusPending: 'في الانتظار',
+  },
+  zh: {
+    nextAppt: '下次预约',
+    quickAccess: '快速访问',
+    myDocs: '我的文件',
+    lastResults: '最新结果',
+    myDossier: '我的健康档案',
+    healthNews: '健康资讯',
+    newsDisclaimer: '公共卫生信息——与您的个人档案无关。',
+    newsGeneral: '综合',
+    upcoming: '即将到来',
+    completed: '已完成',
+    cancelled: '已取消',
+    documents: '文件',
+    noAppt: '暂无预约',
+    noApptSub: '安排您的下次就诊',
+    scheduleAppt: '预约就诊',
+    newAppt: '新预约',
+    teleconsult: '远程问诊',
+    teleconsultAvail: '远程问诊可用',
+    noResults: '暂无结果',
+    noResultsSub: '您的检查结果将显示在此处',
+    dossierCompleteness: '档案完整度',
+    toComplete: '待完善',
+    viewAll: '查看全部',
+    ordonnances: '处方',
+    resultats: '结果',
+    antecedents: '病史',
+    antecedentsAvail: '病史可用',
+    antecedentsEmpty: '未记录病史',
+    allergies: '过敏与不耐受',
+    allergiesAvail: '已记录过敏',
+    allergiesEmpty: '未记录过敏',
+    vaccinations: '疫苗接种',
+    vaccinationsAvail: '疫苗接种记录可用',
+    vaccinationsEmpty: '记录未填写',
+    treatments: '当前治疗',
+    treatmentsAvail: '活跃治疗',
+    treatmentsEmpty: '无活跃治疗',
+    statusNormal: '正常',
+    statusWatch: '待观察',
+    statusAnomaly: '异常',
+    statusPending: '待处理',
+  },
 };
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
@@ -132,13 +388,13 @@ function Skeleton({ className = '' }: { className?: string }) {
 }
 
 // ── Section Header ────────────────────────────────────────────────────────────
-function SectionHeader({ title, href, linkLabel = 'Voir tout' }: { title: string; href?: string; linkLabel?: string }) {
+function SectionHeader({ title, href, linkLabel }: { title: string; href?: string; linkLabel?: string }) {
   return (
     <div className="flex items-center justify-between mb-3">
       <h2 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
         {title}
       </h2>
-      {href && (
+      {href && linkLabel && (
         <Link href={href} className="text-xs font-semibold transition-colors hover:underline" style={{ color: 'var(--shifa-blue)' }}>
           {linkLabel}
         </Link>
@@ -150,6 +406,16 @@ function SectionHeader({ title, href, linkLabel = 'Voir tout' }: { title: string
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function PatientHomeContent() {
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const t = HOME_STRINGS[language] || HOME_STRINGS['fr'];
+
+  // Status config uses translated labels
+  const resultStatusConfig: Record<string, { label: string; bg: string; color: string; dot: string }> = {
+    Normal: { label: t.statusNormal, bg: '#D1FAE5', color: '#065F46', dot: '#059669' },
+    'À surveiller': { label: t.statusWatch, bg: '#FEF3C7', color: '#92400E', dot: '#D97706' },
+    Anomalie: { label: t.statusAnomaly, bg: '#FEE2E2', color: '#991B1B', dot: '#DC2626' },
+    'En attente': { label: t.statusPending, bg: '#E8EFF8', color: '#4A6080', dot: '#8FA8C8' },
+  };
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [stats, setStats] = useState<AppointmentStats>({ upcoming: 0, completed: 0, cancelled: 0, documents: 0 });
@@ -176,7 +442,6 @@ export default function PatientHomeContent() {
     if (!user) return;
     const supabase = createClient();
 
-    // Stats: appointment counts
     const fetchStats = async () => {
       setStatsLoading(true);
       try {
@@ -204,7 +469,6 @@ export default function PatientHomeContent() {
       }
     };
 
-    // Next appointment
     const fetchNextAppointment = async () => {
       setApptLoading(true);
       try {
@@ -226,7 +490,6 @@ export default function PatientHomeContent() {
       }
     };
 
-    // Lab results
     const fetchResults = async () => {
       setResultsLoading(true);
       try {
@@ -252,7 +515,6 @@ export default function PatientHomeContent() {
       }
     };
 
-    // Dossier health records
     const fetchDossier = async () => {
       setDossierLoading(true);
       try {
@@ -270,26 +532,26 @@ export default function PatientHomeContent() {
 
         const items: DossierItem[] = [
           {
-            key: 'd1', label: 'Antécédents médicaux',
-            sub: hasAntecedents ? 'Historique disponible' : 'Aucun antécédent enregistré',
+            key: 'd1', label: t.antecedents,
+            sub: hasAntecedents ? t.antecedentsAvail : t.antecedentsEmpty,
             href: '/dossier-de-sant', filled: hasAntecedents,
             icon: <ClipboardIcon className="w-4 h-4" style={{ color: 'var(--shifa-blue)' }} />,
           },
           {
-            key: 'd2', label: 'Allergies & intolérances',
-            sub: hasAllergies ? 'Allergies enregistrées' : 'Aucune allergie renseignée',
+            key: 'd2', label: t.allergies,
+            sub: hasAllergies ? t.allergiesAvail : t.allergiesEmpty,
             href: '/dossier-de-sant', filled: hasAllergies,
             icon: <AlertIcon className="w-4 h-4" style={{ color: '#D97706' }} />,
           },
           {
-            key: 'd3', label: 'Vaccinations',
-            sub: hasVaccinations ? 'Carnet de vaccination disponible' : 'Carnet non renseigné',
+            key: 'd3', label: t.vaccinations,
+            sub: hasVaccinations ? t.vaccinationsAvail : t.vaccinationsEmpty,
             href: '/patient-vaccination', filled: hasVaccinations,
             icon: <ShieldIcon className="w-4 h-4" style={{ color: '#059669' }} />,
           },
           {
-            key: 'd4', label: 'Traitements en cours',
-            sub: hasTreatments ? 'Traitements actifs' : 'Aucun traitement actif',
+            key: 'd4', label: t.treatments,
+            sub: hasTreatments ? t.treatmentsAvail : t.treatmentsEmpty,
             href: '/dossier-de-sant', filled: hasTreatments,
             icon: <PillIcon className="w-4 h-4" style={{ color: 'var(--shifa-purple)' }} />,
           },
@@ -304,7 +566,6 @@ export default function PatientHomeContent() {
       }
     };
 
-    // Document counts
     const fetchDocCounts = async () => {
       setDocsLoading(true);
       try {
@@ -335,7 +596,6 @@ export default function PatientHomeContent() {
     fetchDocCounts();
   }, [user]);
 
-  // News
   useEffect(() => {
     fetch('/api/health-news')
       .then(r => r.json())
@@ -384,16 +644,16 @@ export default function PatientHomeContent() {
             ) : (
               <>
                 {[
-                  { value: stats.upcoming, label: 'À venir', color: 'var(--shifa-blue)', bg: 'var(--shifa-light)', ariaLabel: `${stats.upcoming} rendez-vous à venir` },
-                  { value: stats.completed, label: 'Terminés', color: '#059669', bg: '#D1FAE5', ariaLabel: `${stats.completed} rendez-vous terminés` },
-                  { value: stats.cancelled, label: 'Annulés', color: 'var(--shifa-red)', bg: 'var(--shifa-red-light)', ariaLabel: `${stats.cancelled} rendez-vous annulés` },
-                  { value: stats.documents, label: 'Documents', color: 'var(--shifa-purple)', bg: '#EDE9FE', ariaLabel: `${stats.documents} documents` },
+                  { value: stats.upcoming, label: t.upcoming, color: 'var(--shifa-blue)', bg: 'var(--shifa-light)' },
+                  { value: stats.completed, label: t.completed, color: '#059669', bg: '#D1FAE5' },
+                  { value: stats.cancelled, label: t.cancelled, color: 'var(--shifa-red)', bg: 'var(--shifa-red-light)' },
+                  { value: stats.documents, label: t.documents, color: 'var(--shifa-purple)', bg: '#EDE9FE' },
                 ].map((s, i) => (
                   <div
                     key={i}
                     className="flex flex-col items-center gap-1 p-3 rounded-2xl"
                     style={{ backgroundColor: 'var(--shifa-surface-2)', border: '1px solid var(--border)', boxShadow: '0 1px 4px rgba(21,88,214,0.05)' }}
-                    aria-label={s.ariaLabel}
+                    aria-label={`${s.value} ${s.label}`}
                   >
                     <p className="text-xl font-bold leading-none" style={{ color: s.color, fontFamily: 'var(--font-heading)' }}>{s.value}</p>
                     <p className="text-xs text-center leading-tight mt-1" style={{ color: 'var(--shifa-gray)' }}>{s.label}</p>
@@ -406,7 +666,7 @@ export default function PatientHomeContent() {
 
         {/* ── Prochain rendez-vous ──────────────────────────────────── */}
         <section className="mb-6" aria-labelledby="next-appt-title">
-          <SectionHeader title="Prochain rendez-vous" href="/appointment-history" />
+          <SectionHeader title={t.nextAppt} href="/appointment-history" linkLabel={t.viewAll} />
           <div
             className="rounded-2xl p-4"
             style={{ backgroundColor: 'var(--shifa-surface-2)', border: '1px solid var(--border)', boxShadow: '0 2px 12px rgba(21,88,214,0.07)' }}
@@ -468,7 +728,7 @@ export default function PatientHomeContent() {
                     style={{ backgroundColor: '#D1FAE5', border: '1px solid #A7F3D0' }}
                   >
                     <VideoIcon className="w-4 h-4 shrink-0" style={{ color: '#059669' }} />
-                    <p className="text-xs font-semibold" style={{ color: '#065F46' }}>Téléconsultation disponible</p>
+                    <p className="text-xs font-semibold" style={{ color: '#065F46' }}>{t.teleconsultAvail}</p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3 mt-4">
@@ -478,7 +738,7 @@ export default function PatientHomeContent() {
                     style={{ backgroundColor: 'var(--shifa-blue)', boxShadow: '0 2px 8px rgba(21,101,216,0.25)' }}
                   >
                     <CalendarIcon className="w-4 h-4" />
-                    Nouveau rendez-vous
+                    {t.newAppt}
                   </Link>
                   <Link
                     href="/patient-teleconsultation"
@@ -486,12 +746,11 @@ export default function PatientHomeContent() {
                     style={{ borderColor: 'var(--border)', color: 'var(--shifa-dark)', backgroundColor: 'var(--shifa-surface)' }}
                   >
                     <VideoIcon className="w-4 h-4" />
-                    Téléconsultation
+                    {t.teleconsult}
                   </Link>
                 </div>
               </>
             ) : (
-              /* Empty state */
               <div className="text-center py-6">
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
@@ -500,15 +759,15 @@ export default function PatientHomeContent() {
                 >
                   <CalendarIcon className="w-7 h-7" style={{ color: 'var(--shifa-blue)' }} />
                 </div>
-                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--shifa-dark)' }}>Aucun rendez-vous à venir</p>
-                <p className="text-xs mb-4" style={{ color: 'var(--shifa-gray)' }}>Planifiez votre prochaine consultation</p>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--shifa-dark)' }}>{t.noAppt}</p>
+                <p className="text-xs mb-4" style={{ color: 'var(--shifa-gray)' }}>{t.noApptSub}</p>
                 <Link
                   href="/appointment-booking"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all active:scale-95"
                   style={{ backgroundColor: 'var(--shifa-blue)', boxShadow: '0 2px 8px rgba(21,101,216,0.25)' }}
                 >
                   <CalendarIcon className="w-4 h-4" />
-                  Planifier un rendez-vous
+                  {t.scheduleAppt}
                 </Link>
               </div>
             )}
@@ -517,20 +776,20 @@ export default function PatientHomeContent() {
 
         {/* ── Accès rapide ──────────────────────────────────────────── */}
         <div className="mb-6">
-          <QuickActions />
+          <QuickActions language={language} />
         </div>
 
         {/* ── Mes documents ─────────────────────────────────────────── */}
         <section className="mb-6" aria-labelledby="docs-title">
-          <SectionHeader title="Mes documents" href="/patient-documents" />
+          <SectionHeader title={t.myDocs} href="/patient-documents" linkLabel={t.viewAll} />
           <div className="grid grid-cols-3 gap-2 mb-4">
             {docsLoading ? (
               Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />)
             ) : (
               [
-                { key: 'ord', label: 'Ordonnances', count: docCounts.ordonnances, color: 'var(--shifa-blue)', bg: 'var(--shifa-light)', href: '/patient-documents' },
-                { key: 'res', label: 'Résultats', count: docCounts.resultats, color: 'var(--shifa-purple)', bg: '#EDE9FE', href: '/patient-results' },
-                { key: 'docs', label: 'Documents', count: docCounts.documents, color: '#059669', bg: '#D1FAE5', href: '/patient-documents' },
+                { key: 'ord', label: t.ordonnances, count: docCounts.ordonnances, color: 'var(--shifa-blue)', bg: 'var(--shifa-light)', href: '/patient-documents' },
+                { key: 'res', label: t.resultats, count: docCounts.resultats, color: 'var(--shifa-purple)', bg: '#EDE9FE', href: '/patient-results' },
+                { key: 'docs', label: t.documents, count: docCounts.documents, color: '#059669', bg: '#D1FAE5', href: '/patient-documents' },
               ].map((d) => (
                 <Link
                   key={d.key}
@@ -551,8 +810,8 @@ export default function PatientHomeContent() {
 
           {/* Derniers résultats */}
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--shifa-gray)' }}>Derniers résultats</p>
-            <Link href="/patient-results" className="text-xs font-semibold" style={{ color: 'var(--shifa-blue)' }}>Voir tout</Link>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--shifa-gray)' }}>{t.lastResults}</p>
+            <Link href="/patient-results" className="text-xs font-semibold" style={{ color: 'var(--shifa-blue)' }}>{t.viewAll}</Link>
           </div>
 
           {resultsLoading ? (
@@ -566,8 +825,8 @@ export default function PatientHomeContent() {
             >
               <BeakerIcon className="w-8 h-8 shrink-0" style={{ color: 'var(--shifa-gray)', opacity: 0.4 }} />
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--shifa-dark)' }}>Aucun résultat disponible</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-gray)' }}>Vos résultats d'analyses apparaîtront ici</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--shifa-dark)' }}>{t.noResults}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--shifa-gray)' }}>{t.noResultsSub}</p>
               </div>
             </div>
           ) : (
@@ -607,22 +866,21 @@ export default function PatientHomeContent() {
         <section className="mb-6" aria-labelledby="dossier-title">
           <div className="flex items-center justify-between mb-3">
             <h2 id="dossier-title" className="text-sm font-bold" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
-              Mon dossier de santé
+              {t.myDossier}
             </h2>
-            <Link href="/dossier-de-sant" className="text-xs font-semibold" style={{ color: 'var(--shifa-blue)' }}>Voir tout</Link>
+            <Link href="/dossier-de-sant" className="text-xs font-semibold" style={{ color: 'var(--shifa-blue)' }}>{t.viewAll}</Link>
           </div>
 
-          {/* Completeness indicator */}
           {!dossierLoading && (
             <div
               className="flex items-center gap-3 p-3 rounded-xl mb-3"
               style={{ backgroundColor: dossierCompleteness >= 75 ? '#D1FAE5' : dossierCompleteness >= 50 ? '#FEF3C7' : 'var(--shifa-light)', border: `1px solid ${dossierCompleteness >= 75 ? '#A7F3D0' : dossierCompleteness >= 50 ? '#FDE68A' : 'var(--border)'}` }}
-              aria-label={`Dossier complété à ${dossierCompleteness}%`}
+              aria-label={`${t.dossierCompleteness} ${dossierCompleteness}%`}
             >
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-xs font-semibold" style={{ color: dossierCompleteness >= 75 ? '#065F46' : dossierCompleteness >= 50 ? '#92400E' : 'var(--shifa-blue)' }}>
-                    Complétude du dossier
+                    {t.dossierCompleteness}
                   </p>
                   <span className="text-xs font-bold" style={{ color: dossierCompleteness >= 75 ? '#065F46' : dossierCompleteness >= 50 ? '#92400E' : 'var(--shifa-blue)' }}>
                     {dossierCompleteness}%
@@ -670,9 +928,9 @@ export default function PatientHomeContent() {
                       <span
                         className="px-2 py-0.5 rounded-full text-xs font-semibold"
                         style={{ backgroundColor: 'var(--shifa-amber-light)', color: '#92400E' }}
-                        aria-label="À compléter"
+                        aria-label={t.toComplete}
                       >
-                        À compléter
+                        {t.toComplete}
                       </span>
                     )}
                     <ChevronRightIcon className="w-4 h-4" style={{ color: 'var(--shifa-gray)' }} />
@@ -687,18 +945,17 @@ export default function PatientHomeContent() {
         <section className="mb-6" aria-labelledby="news-title">
           <div className="flex items-center gap-2 mb-1">
             <h2 id="news-title" className="text-sm font-bold" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
-              Actualités santé
+              {t.healthNews}
             </h2>
             <span
               className="px-2 py-0.5 rounded-full text-xs font-semibold"
               style={{ backgroundColor: 'var(--shifa-light)', color: 'var(--shifa-blue)' }}
-              aria-label="Informations générales"
             >
-              Général
+              {t.newsGeneral}
             </span>
           </div>
           <p className="text-xs mb-3" style={{ color: 'var(--shifa-gray)' }}>
-            Informations de santé publique — non liées à votre dossier personnel.
+            {t.newsDisclaimer}
           </p>
 
           {newsLoading ? (
