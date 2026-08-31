@@ -238,7 +238,7 @@ export default function BiomedicalEquipmentContent() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                  <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                     {filteredEquipment.map(eq => {
                       const s = statusConfig[eq.statut];
                       return (
@@ -353,7 +353,7 @@ export default function BiomedicalEquipmentContent() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                   {contracts.map(cnt => {
                     const s = statusConfig[cnt.statut];
                     return (

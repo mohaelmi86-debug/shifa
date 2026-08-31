@@ -202,7 +202,7 @@ export default function QualityAccreditationContent() {
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Non-conformités récentes</h3>
                 <button onClick={() => setActiveTab('nonconformities')} className="text-xs font-medium" style={{ color: 'var(--shifa-blue)' }}>Voir toutes →</button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {nonconformities.slice(0, 4).map(nc => {
                   const g = graviteConfig[nc.gravite];
                   const s = statusConfig[nc.statut];
@@ -278,7 +278,7 @@ export default function QualityAccreditationContent() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                   {procedures.map(proc => {
                     const s = statusConfig[proc.statut];
                     return (

@@ -651,7 +651,7 @@ export default function PatientTransferContent() {
                 ))}
               </div>
             </div>
-            <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {filteredAudit.map((event, i) => {
                 const rc = auditResultConfig[event.result];
                 return (

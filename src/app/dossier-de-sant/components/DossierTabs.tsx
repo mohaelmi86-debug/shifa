@@ -371,11 +371,12 @@ export default function DossierTabs() {
         if (!patient) return;
         patientId = patient.id;
 
+        const pid: string = patientId;
         await Promise.all([
-          fetchConsultations(patientId),
-          fetchPrescriptions(patientId),
-          fetchLabResults(patientId),
-          fetchVaccinations(patientId),
+          fetchConsultations(pid),
+          fetchPrescriptions(pid),
+          fetchLabResults(pid),
+          fetchVaccinations(pid),
         ]);
 
         const hrChannel = supabase

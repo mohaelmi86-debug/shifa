@@ -149,7 +149,7 @@ export default function WalletInterfaceContent() {
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Transactions récentes</h3>
                 <button onClick={() => setActiveTab('transactions')} className="text-xs font-medium" style={{ color: 'var(--shifa-blue)' }}>Voir tout →</button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {transactions.slice(0, 4).map(tx => {
                   const typeConf = txTypeConfig[tx.type];
                   const statusConf = txStatusConfig[tx.statut];
@@ -331,7 +331,7 @@ export default function WalletInterfaceContent() {
             <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Historique des transactions</h3>
             </div>
-            <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {transactions.map(tx => {
                 const typeConf = txTypeConfig[tx.type];
                 const statusConf = txStatusConfig[tx.statut];

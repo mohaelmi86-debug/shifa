@@ -399,14 +399,42 @@ export async function middleware(request: NextRequest) {
   if (matchedGuard) {
     const [, allowedRoles] = matchedGuard;
     // Empty array = any authenticated user
-    // __unknown__ role = profile fetch failed, allow through to avoid false blocks
-    if (allowedRoles.length > 0 && userRole !== '__unknown__' && !allowedRoles.includes(userRole)) {
-      // Redirect to the appropriate home for the user's actual role
-      const url = request.nextUrl.clone();
-      url.pathname = getRoleHome(userRole);
-      url.searchParams.delete('error');
-      return NextResponse.redirect(url);
+    // P0.8 FIX: __unknown__ role now DENIES access to protected routes (DENY BY DEFAULT)
+    // Previously: __unknown__ was allowed through to avoid false blocks
+    // Now: __unknown__ is treated as unauthorized for any route with explicit role guards
+    if (allowedRoles.length > 0) {
+      if (userRole === '__unknown__' || !allowedRoles.includes(userRole)) {
+        // If role is unknown/invalid, redirect to login with error context
+        if (userRole === '__unknown__') {
+          const url = request.nextUrl.clone();
+          url.pathname = '/sign-up-login-screen';
+          url.searchParams.set('error', 'role_unknown');
+          url.searchParams.set('redirectTo', pathname);
+          return NextResponse.redirect(url);
+        }
+        // Known but unauthorized role: redirect to their home
+        const url = request.nextUrl.clone();
+        url.pathname = getRoleHome(userRole);
+        url.searchParams.delete('error');
+        return NextResponse.redirect(url);
+      }
+    } else {
+      // Empty allowedRoles = any authenticated user, but __unknown__ still denied
+      if (userRole === '__unknown__') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/sign-up-login-screen';
+        url.searchParams.set('error', 'role_unknown');
+        url.searchParams.set('redirectTo', pathname);
+        return NextResponse.redirect(url);
+      }
     }
+  } else if (userRole === '__unknown__') {
+    // No guard matched but route is not public — deny unknown roles
+    const url = request.nextUrl.clone();
+    url.pathname = '/sign-up-login-screen';
+    url.searchParams.set('error', 'role_unknown');
+    url.searchParams.set('redirectTo', pathname);
+    return NextResponse.redirect(url);
   }
 
   // ─── Inject org context into request headers ──────────────────────────────

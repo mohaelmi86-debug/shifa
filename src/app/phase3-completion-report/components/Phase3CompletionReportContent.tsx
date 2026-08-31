@@ -310,7 +310,7 @@ export default function Phase3CompletionReportContent() {
               <div className="px-4 py-3 border-b" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
                 <h2 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Scores par domaine</h2>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {REPORT_DATA.map(item => {
                   const cfg = STATUS_CONFIG[item.status];
                   return (
@@ -380,7 +380,7 @@ export default function Phase3CompletionReportContent() {
             <div className="px-4 py-3 border-b" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
               <h2 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>État des modules ({MODULES_STATUS.length} modules)</h2>
             </div>
-            <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {MODULES_STATUS.map(mod => (
                 <div key={mod.route} className="flex items-center gap-3 px-4 py-3" style={{ background: 'var(--card)' }}>
                   <div className="flex-1 min-w-0">
