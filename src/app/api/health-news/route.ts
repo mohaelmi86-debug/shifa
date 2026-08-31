@@ -50,7 +50,7 @@ const healthNewsPool = [
   tag: 'Santé mentale',
   tagColor: '#0878EF',
   tagBg: '#D8E8FB',
-  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1fe3d22ff-1788188290467.png",
+  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1a1e38992-1788189022771.png",
   alt: 'Professionnel de santé en consultation de soutien psychologique'
 },
 {

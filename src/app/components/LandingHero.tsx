@@ -118,9 +118,9 @@ export default function LandingHero() {
 
 
 
+
         // Keep fallback news on error
-      } finally {if (!cancelled) setNewsLoading(false);}}fetchNews();return () => {cancelled = true;};}, []);return (
-    <>
+      } finally {if (!cancelled) setNewsLoading(false);}}fetchNews();return () => {cancelled = true;};}, []);return <>
       {/* Hero Section */}
       <section className="bg-white">
         <div className="max-w-screen-xl mx-auto px-5 lg:px-10 xl:px-16">
@@ -140,27 +140,27 @@ export default function LandingHero() {
                 </div>
                 <div className="w-28 h-28 rounded-2xl overflow-hidden shrink-0" style={{ boxShadow: '0 8px 24px rgba(8,120,239,0.15)' }}>
                   <img
-                    src="https://img.rocket.new/generatedImages/rocket_gen_img_13ccc0db3-1788188290688.png"
-                    alt="Médecin souriant tenant un smartphone affichant l'application SHIFA Health OS"
-                    className="w-full h-full object-cover" />
+                  src="https://img.rocket.new/generatedImages/rocket_gen_img_1e400d46f-1780212343912.png"
+                  alt="Médecin souriant tenant un smartphone affichant l'application SHIFA Health OS"
+                  className="w-full h-full object-cover" />
                 </div>
               </div>
 
               {/* CTAs */}
               <div className="flex flex-col gap-3">
                 <Link
-                  href="/sign-up-login-screen"
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-white"
-                  style={{ backgroundColor: '#0878EF', boxShadow: '0 4px 16px rgba(8,120,239,0.35)' }}>
+                href="/sign-up-login-screen"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-white"
+                style={{ backgroundColor: '#0878EF', boxShadow: '0 4px 16px rgba(8,120,239,0.35)' }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
                     <path strokeLinecap="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                   </svg>
                   Se connecter
                 </Link>
                 <Link
-                  href="/sign-up-login-screen"
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm border-2"
-                  style={{ borderColor: '#0878EF', color: '#0878EF', backgroundColor: 'transparent' }}>
+                href="/sign-up-login-screen"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm border-2"
+                style={{ borderColor: '#0878EF', color: '#0878EF', backgroundColor: 'transparent' }}>
                   Créer un compte
                 </Link>
               </div>
@@ -179,18 +179,18 @@ export default function LandingHero() {
               </p>
               <div className="flex gap-4">
                 <Link
-                  href="/sign-up-login-screen"
-                  className="flex items-center gap-2 px-8 py-4 rounded-2xl font-semibold text-white"
-                  style={{ backgroundColor: '#0878EF', boxShadow: '0 4px 20px rgba(8,120,239,0.35)' }}>
+                href="/sign-up-login-screen"
+                className="flex items-center gap-2 px-8 py-4 rounded-2xl font-semibold text-white"
+                style={{ backgroundColor: '#0878EF', boxShadow: '0 4px 20px rgba(8,120,239,0.35)' }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
                     <path strokeLinecap="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                   </svg>
                   Se connecter
                 </Link>
                 <Link
-                  href="/sign-up-login-screen"
-                  className="flex items-center gap-2 px-8 py-4 rounded-2xl font-semibold border-2"
-                  style={{ borderColor: '#0878EF', color: '#0878EF' }}>
+                href="/sign-up-login-screen"
+                className="flex items-center gap-2 px-8 py-4 rounded-2xl font-semibold border-2"
+                style={{ borderColor: '#0878EF', color: '#0878EF' }}>
                   Créer un compte
                 </Link>
               </div>
@@ -198,9 +198,9 @@ export default function LandingHero() {
             <div className="flex-1 max-w-lg">
               <div className="rounded-3xl overflow-hidden" style={{ boxShadow: '0 24px 64px rgba(8,120,239,0.15)' }}>
                 <img
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_13f680ce2-1788188291307.png"
-                  alt="Médecin souriant utilisant l'application SHIFA Health OS sur son smartphone"
-                  className="w-full h-80 object-cover" />
+                src="https://img.rocket.new/generatedImages/rocket_gen_img_1c5ad95e4-1788189029227.png"
+                alt="Médecin souriant utilisant l'application SHIFA Health OS sur son smartphone"
+                className="w-full h-80 object-cover" />
               </div>
             </div>
           </div>
@@ -213,13 +213,13 @@ export default function LandingHero() {
           <p className="text-sm font-semibold mb-5" style={{ color: '#4A6080' }}>Vous êtes...</p>
           <div className="flex flex-col gap-3 max-w-lg">
             {paths?.map((p) =>
-            <Link key={p?.key} href={p?.href} className="block group">
+          <Link key={p?.key} href={p?.href} className="block group">
                 <div
-                className="flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-[0.98]"
-                style={{ backgroundColor: '#F7F9FE', borderColor: '#D4DFEF', boxShadow: '0 1px 6px rgba(8,120,239,0.06)' }}>
+              className="flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-[0.98]"
+              style={{ backgroundColor: '#F7F9FE', borderColor: '#D4DFEF', boxShadow: '0 1px 6px rgba(8,120,239,0.06)' }}>
                   <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: '#D8E8FB', color: '#0878EF' }}>
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: '#D8E8FB', color: '#0878EF' }}>
                     {p?.icon}
                   </div>
                   <div className="flex-1">
@@ -231,7 +231,7 @@ export default function LandingHero() {
                   </svg>
                 </div>
               </Link>
-            )}
+          )}
           </div>
         </div>
       </section>
@@ -245,8 +245,8 @@ export default function LandingHero() {
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {newsLoading ?
-            Array.from({ length: 4 }).map((_, i) =>
-            <div key={i} className="rounded-2xl overflow-hidden border animate-pulse" style={{ borderColor: '#D4DFEF', backgroundColor: '#EDF1F9' }}>
+          Array.from({ length: 4 }).map((_, i) =>
+          <div key={i} className="rounded-2xl overflow-hidden border animate-pulse" style={{ borderColor: '#D4DFEF', backgroundColor: '#EDF1F9' }}>
                     <div className="h-28" style={{ backgroundColor: '#D4DFEF' }} />
                     <div className="p-3 space-y-2">
                       <div className="h-2 rounded" style={{ backgroundColor: '#D4DFEF', width: '60%' }} />
@@ -254,9 +254,9 @@ export default function LandingHero() {
                       <div className="h-3 rounded" style={{ backgroundColor: '#D4DFEF', width: '80%' }} />
                     </div>
                   </div>
-            ) :
-            news?.map((item) =>
-            <div key={item?.key} className="rounded-2xl overflow-hidden border" style={{ borderColor: '#D4DFEF', backgroundColor: '#F7F9FE', boxShadow: '0 1px 6px rgba(8,120,239,0.05)' }}>
+          ) :
+          news?.map((item) =>
+          <div key={item?.key} className="rounded-2xl overflow-hidden border" style={{ borderColor: '#D4DFEF', backgroundColor: '#F7F9FE', boxShadow: '0 1px 6px rgba(8,120,239,0.05)' }}>
                     <div className="h-28 overflow-hidden">
                       <img src={item?.img} alt={item?.alt} className="w-full h-full object-cover" />
                     </div>
@@ -268,11 +268,11 @@ export default function LandingHero() {
                       </span>
                     </div>
                   </div>
-            )
-            }
+          )
+          }
           </div>
         </div>
       </section>
-    </>);
+    </>;
 
 }
