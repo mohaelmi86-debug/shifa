@@ -4,6 +4,8 @@ import Icon from '@/components/ui/AppIcon';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+import { sendAccessVerificationLogEmail } from '@/lib/supabase/emailService';
+
 type AccessTab = 'verify' | 'logs' | 'permissions' | 'stats';
 
 interface VerificationResult {
@@ -123,7 +125,7 @@ export default function ShifaAccessContent() {
       const accessGranted = found && idStatus === 'active';
 
       // Log the verification
-      await supabase.from('shifa_access_verifications').insert({
+      const { data: verificationRecord } = await supabase.from('shifa_access_verifications').insert({
         patient_id: found ? patient!.id : null,
         verified_by: user?.id,
         verification_type: 'qr_scan',
@@ -134,7 +136,7 @@ export default function ShifaAccessContent() {
           verification_level: verificationLevel,
           id_status: idStatus,
         },
-      });
+      }).select('id').maybeSingle();
 
       // Also log to audit_logs
       if (found && patient) {
@@ -149,6 +151,25 @@ export default function ShifaAccessContent() {
             shifa_id: scanInput.trim(),
           },
         });
+
+        // Send access verification log email to the patient
+        const { data: patientUser } = await supabase
+          .from('users')
+          .select('email')
+          .eq('id', patient.id)
+          .maybeSingle();
+
+        const emailTarget = patientUser?.email;
+        if (emailTarget) {
+          sendAccessVerificationLogEmail(emailTarget, {
+            patientName: `${patient.first_name} ${patient.last_name}`,
+            professionalName: user?.email || 'Professionnel SHIFA',
+            accessDate: new Date().toLocaleString('fr-FR'),
+            accessType: purposeLabels[accessPurpose] || accessPurpose,
+            accessGranted,
+            verificationId: verificationRecord?.id || scanInput.trim(),
+          }).catch(() => {}); // fire-and-forget
+        }
       }
 
       setVerificationResult({

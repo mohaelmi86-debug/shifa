@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 
 export type TransactionalEmailType =
-  | 'password_reset' |'appointment_reminder' |'lab_result_notification' |'consultation_invitation';
+  | 'password_reset' |'appointment_reminder' |'appointment_confirmation' |'lab_result_notification' |'lab_result_ready' |'prescription_dispensed' |'shifa_card_shipped' |'access_verification_log' |'consultation_invitation';
 
 interface PasswordResetData {
   name: string;
@@ -16,6 +16,17 @@ interface AppointmentReminderData {
   location: string;
 }
 
+interface AppointmentConfirmationData {
+  patientName: string;
+  date: string;
+  time: string;
+  doctorName: string;
+  specialty?: string;
+  location: string;
+  appointmentType?: string;
+  appointmentId?: string;
+}
+
 interface LabResultNotificationData {
   patientName: string;
   testName: string;
@@ -23,6 +34,47 @@ interface LabResultNotificationData {
   date: string;
   hasAlert?: boolean;
   dossierUrl?: string;
+}
+
+interface LabResultReadyData {
+  patientName: string;
+  testName: string;
+  labName: string;
+  collectionDate?: string;
+  resultDate?: string;
+  hasAlert?: boolean;
+  dossierUrl?: string;
+}
+
+interface PrescriptionDispensedData {
+  patientName: string;
+  medicationName: string;
+  dosage?: string;
+  duration?: string;
+  pharmacyName?: string;
+  dispensedAt?: string;
+  prescribedBy?: string;
+  prescriptionId?: string;
+}
+
+interface ShifaCardShippedData {
+  patientName: string;
+  trackingNumber?: string;
+  carrier?: string;
+  deliveryAddress?: string;
+  estimatedDelivery?: string;
+  trackingUrl?: string;
+}
+
+interface AccessVerificationLogData {
+  patientName: string;
+  professionalName: string;
+  specialty?: string;
+  institution?: string;
+  accessDate: string;
+  accessType?: string;
+  accessGranted: boolean;
+  verificationId?: string;
 }
 
 interface ConsultationInvitationData {
@@ -38,7 +90,12 @@ interface ConsultationInvitationData {
 type EmailData =
   | PasswordResetData
   | AppointmentReminderData
+  | AppointmentConfirmationData
   | LabResultNotificationData
+  | LabResultReadyData
+  | PrescriptionDispensedData
+  | ShifaCardShippedData
+  | AccessVerificationLogData
   | ConsultationInvitationData;
 
 export async function sendTransactionalEmail(
@@ -68,7 +125,7 @@ export async function sendTransactionalEmail(
   }
 }
 
-// Convenience wrappers
+// ── Convenience wrappers ──────────────────────────────────────────────────────
 
 export async function sendPasswordResetEmail(
   to: string,
@@ -85,11 +142,46 @@ export async function sendAppointmentReminderEmail(
   return sendTransactionalEmail('appointment_reminder', to, data);
 }
 
+export async function sendAppointmentConfirmationEmail(
+  to: string,
+  data: AppointmentConfirmationData
+) {
+  return sendTransactionalEmail('appointment_confirmation', to, data);
+}
+
 export async function sendLabResultNotificationEmail(
   to: string,
   data: LabResultNotificationData
 ) {
   return sendTransactionalEmail('lab_result_notification', to, data);
+}
+
+export async function sendLabResultReadyEmail(
+  to: string,
+  data: LabResultReadyData
+) {
+  return sendTransactionalEmail('lab_result_ready', to, data);
+}
+
+export async function sendPrescriptionDispensedEmail(
+  to: string,
+  data: PrescriptionDispensedData
+) {
+  return sendTransactionalEmail('prescription_dispensed', to, data);
+}
+
+export async function sendShifaCardShippedEmail(
+  to: string,
+  data: ShifaCardShippedData
+) {
+  return sendTransactionalEmail('shifa_card_shipped', to, data);
+}
+
+export async function sendAccessVerificationLogEmail(
+  to: string,
+  data: AccessVerificationLogData
+) {
+  return sendTransactionalEmail('access_verification_log', to, data);
 }
 
 export async function sendConsultationInvitationEmail(

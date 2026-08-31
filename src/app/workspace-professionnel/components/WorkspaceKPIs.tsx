@@ -43,6 +43,22 @@ export default function WorkspaceKPIs() {
 
   const { count: totalPatients, loading: l3 } = useSupabaseCount('patients');
 
+  // Real-time listeners for vital_signs and prescriptions
+  const { data: recentVitals, loading: l4 } = useSupabaseRealtime({
+    table: 'vital_signs',
+    orderBy: { column: 'recorded_at', ascending: false },
+    limit: 20,
+    enabled: true,
+  });
+
+  const { data: activePrescriptions, loading: l5 } = useSupabaseRealtime({
+    table: 'prescriptions',
+    filter: { status: 'active' },
+    orderBy: { column: 'prescribed_at', ascending: false },
+    limit: 50,
+    enabled: true,
+  });
+
   const completedToday = todayAppts.filter((a: any) => a.status === 'completed').length;
   const upcomingToday = todayAppts.filter((a: any) => ['scheduled', 'confirmed'].includes(a.status)).length;
   const inProgress = todayAppts.filter((a: any) => a.status === 'in_progress').length;
@@ -79,6 +95,20 @@ export default function WorkspaceKPIs() {
       alert: pendingConsultations > 5,
     },
     {
+      key: 'kpi-prescriptions',
+      label: 'Ordonnances actives',
+      value: l5 ? '—' : String(activePrescriptions.length),
+      sub: l4 ? 'Chargement...' : `${recentVitals.length} constantes récentes`,
+      icon: 'DocumentCheckIcon',
+      color: '#7C3AED',
+      gradientFrom: '#7C3AED',
+      gradientTo: '#A78BFA',
+      trend: activePrescriptions.length > 0 ? 'Traitements actifs' : 'Aucun actif',
+      trendUp: true,
+      loading: l5,
+      liveIndicator: true,
+    },
+    {
       key: 'kpi-patients-total',
       label: 'Total patients',
       value: l3 ? '—' : String(totalPatients),
@@ -90,19 +120,6 @@ export default function WorkspaceKPIs() {
       trend: 'Base de données',
       trendUp: true,
       loading: l3,
-    },
-    {
-      key: 'kpi-duree',
-      label: 'Durée moy. consultation',
-      value: '18',
-      sub: 'minutes par patient',
-      icon: 'ChartBarIcon',
-      color: '#7C3AED',
-      gradientFrom: '#7C3AED',
-      gradientTo: '#A78BFA',
-      trend: '-2 min vs sem.',
-      trendUp: false,
-      loading: false,
     },
     {
       key: 'kpi-resultats',

@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 import PatientHeader from './PatientHeader';
 import QuickActions from './QuickActions';
+import VitalSignsAndPrescriptions from './VitalSignsAndPrescriptions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface NewsItem {
@@ -778,6 +779,11 @@ export default function PatientHomeContent() {
         <div className="mb-6">
           <QuickActions language={language} />
         </div>
+
+        {/* ── Constantes vitales & Ordonnances (Real-time) ──────────── */}
+        <section className="mb-6" aria-labelledby="vitals-rx-title">
+          <VitalSignsAndPrescriptions />
+        </section>
 
         {/* ── Mes documents ─────────────────────────────────────────── */}
         <section className="mb-6" aria-labelledby="docs-title">

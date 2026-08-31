@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +32,7 @@ interface CheckinStats {
 export default function ShifaKioskContent() {
   const { user } = useAuth();
   const supabase = createClient();
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const [step, setStep] = useState<KioskStep>('welcome');
   const [adminView, setAdminView] = useState(true);
@@ -106,6 +107,24 @@ export default function ShifaKioskContent() {
   useEffect(() => {
     fetchPatientData();
   }, [fetchPatientData]);
+
+  // Real-time subscription to appointments table for instant kiosk updates
+  useEffect(() => {
+    if (!user) return;
+    const channelName = `kiosk-appointments-${user.id}`;
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        fetchPatientData();
+      })
+      .subscribe();
+    realtimeChannelRef.current = channel;
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
+    };
+  }, [user, supabase, fetchPatientData]);
 
   const handleCheckin = async () => {
     if (!patient) return;

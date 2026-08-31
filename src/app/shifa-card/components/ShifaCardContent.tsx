@@ -1,10 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
-import ShifaBrand from '@/components/ui/ShifaBrand';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { sendShifaCardShippedEmail } from '@/lib/supabase/emailService';
 
 type CardTab = 'digital' | 'physical';
 
@@ -135,6 +134,16 @@ export default function ShifaCardContent() {
         });
 
       if (insertErr) throw insertErr;
+
+      // Send SHIFA Card shipped email notification
+      if (user.email && patient) {
+        sendShifaCardShippedEmail(user.email, {
+          patientName: `${patient.first_name} ${patient.last_name}`,
+          deliveryAddress: `${orderForm.street}, ${orderForm.city}, ${orderForm.country}`,
+          estimatedDelivery: '3-5 jours ouvrés',
+        }).catch(() => {}); // fire-and-forget
+      }
+
       setOrderSuccess(true);
       await fetchData();
     } catch (err: any) {
@@ -221,12 +230,12 @@ export default function ShifaCardContent() {
               onClick={() => setCardFlipped(!cardFlipped)}
             >
               <div className="absolute right-4 bottom-4 opacity-10 w-36 h-16">
-                <AppImage src="/assets/images/file_00000000594071f4b27d19b03582b884-1786375501710.png" alt="SHIFA watermark" width={144} height={64} className="object-contain w-full h-full" />
+                <Icon name="FileIcon" size={16} />
               </div>
               {!cardFlipped ? (
                 <>
                   <div className="flex items-start justify-between mb-6">
-                    <ShifaBrand variant="card" theme="dark" symbolSize={32} />
+                    <Icon name="ShifaLogoIcon" size={32} />
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(0,242,195,0.15)', border: '1px solid rgba(0,242,195,0.3)' }}>
                       <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--shifa-cyan)' }} />
                       <span className="text-xs font-semibold" style={{ color: 'var(--shifa-cyan)' }}>{cardData?.status === 'active' ? 'Actif' : cardData?.status || 'Actif'}</span>
@@ -266,7 +275,7 @@ export default function ShifaCardContent() {
                       <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Scanner pour vérifier</p>
                     </div>
                     <div className="text-right flex flex-col gap-2">
-                      <ShifaBrand variant="card" theme="dark" symbolSize={28} />
+                      <Icon name="ShifaLogoIcon" size={28} />
                       <div className="mt-4">
                         <p className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>SHIFA ID</p>
                         <p className="text-sm font-mono font-bold text-white">{shifaId}</p>

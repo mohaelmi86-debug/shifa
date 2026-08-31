@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { createClient } from '@/lib/supabase/client';
+import { sendAppointmentConfirmationEmail } from '@/lib/supabase/emailService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TimeSlot {
@@ -344,7 +345,7 @@ export default function AppointmentBookingContent() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
-      const { data: patientData } = await supabase.from('patients').select('id').eq('user_id', user.id).maybeSingle();
+      const { data: patientData } = await supabase.from('patients').select('id, first_name, last_name').eq('user_id', user.id).maybeSingle();
       if (!patientData) {
         setBookingError('Profil patient introuvable. Veuillez compléter votre profil.');
         setIsLoading(false);
@@ -368,7 +369,24 @@ export default function AppointmentBookingContent() {
         return;
       }
       await supabase.from('availability_slots').update({ is_available: false, appointment_id: appt.id }).eq('id', selectedSlot.id);
-      setBookingRef('RDV-' + appt.id.substring(0, 8).toUpperCase());
+      const ref = 'RDV-' + appt.id.substring(0, 8).toUpperCase();
+      setBookingRef(ref);
+
+      // Send appointment confirmation email
+      if (user.email) {
+        const apptDate = new Date(scheduledAt);
+        sendAppointmentConfirmationEmail(user.email, {
+          patientName: `${patientData.first_name} ${patientData.last_name}`,
+          date: apptDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+          time: `${String(apptDate.getHours()).padStart(2, '0')}h${String(apptDate.getMinutes()).padStart(2, '0')}`,
+          doctorName: selectedPro.name,
+          specialty: selectedPro.specialty,
+          location: consultationType === 'teleconsultation' ? 'Téléconsultation SHIFA' : selectedPro.location,
+          appointmentType: consultationType,
+          appointmentId: ref,
+        }).catch(() => {}); // fire-and-forget
+      }
+
       setStep('success');
     } catch (err: any) {
       // Fallback: generate a mock ref
