@@ -6,7 +6,24 @@
 -- ============================================================
 
 -- ============================================================
--- HELPER FUNCTIONS (created before policies that reference them)
+-- STEP 1: ADD MISSING COLUMNS FIRST (before policies reference them)
+-- ============================================================
+
+-- Add patient_user_id to kiosk_checkins if missing (for patient self-read)
+ALTER TABLE public.kiosk_checkins
+ADD COLUMN IF NOT EXISTS patient_user_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+
+-- Add patient_user_id to shifa_access_verifications if missing
+ALTER TABLE public.shifa_access_verifications
+ADD COLUMN IF NOT EXISTS patient_user_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+
+-- Add organization_id column to shifa_ids if missing
+-- (needed for org-scoped access)
+ALTER TABLE public.shifa_ids
+ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
+
+-- ============================================================
+-- STEP 2: HELPER FUNCTIONS (created before policies that reference them)
 -- ============================================================
 
 -- Check if current user is a platform admin (via auth metadata — no recursion)
@@ -62,7 +79,7 @@ AS $$
 $$;
 
 -- ============================================================
--- P0.3 — kiosk_checkins RLS
+-- STEP 3: P0.3 — kiosk_checkins RLS
 -- DENY BY DEFAULT — restrict to organization + role
 -- ============================================================
 
@@ -72,7 +89,6 @@ DROP POLICY IF EXISTS "kiosk_checkins_select" ON public.kiosk_checkins;
 DROP POLICY IF EXISTS "kiosk_checkins_update" ON public.kiosk_checkins;
 DROP POLICY IF EXISTS "kiosk_checkins_delete" ON public.kiosk_checkins;
 DROP POLICY IF EXISTS "kiosk_checkins_all" ON public.kiosk_checkins;
--- Drop any USING(true) policies by common naming patterns
 DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.kiosk_checkins;
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.kiosk_checkins;
 DROP POLICY IF EXISTS "Enable update for users based on email" ON public.kiosk_checkins;
@@ -98,7 +114,6 @@ USING (
 );
 
 -- INSERT: only org_admin/professional of the same org, or platform_admin
--- The organization_id in the new row must match the inserter's org
 DROP POLICY IF EXISTS "p0_kiosk_checkins_insert" ON public.kiosk_checkins;
 CREATE POLICY "p0_kiosk_checkins_insert"
 ON public.kiosk_checkins
@@ -142,7 +157,7 @@ TO authenticated
 USING (public.is_platform_admin());
 
 -- ============================================================
--- P0.4 — shifa_access_verifications RLS
+-- STEP 4: P0.4 — shifa_access_verifications RLS
 -- Treat as security/audit data — DENY BY DEFAULT
 -- ============================================================
 
@@ -210,7 +225,7 @@ TO authenticated
 USING (public.is_platform_admin());
 
 -- ============================================================
--- P0.5 — shifa_ids RLS
+-- STEP 5: P0.5 — shifa_ids RLS
 -- Restrict SELECT USING(true) — patients own their SHIFA ID
 -- ============================================================
 
@@ -279,22 +294,7 @@ TO authenticated
 USING (public.is_platform_admin());
 
 -- ============================================================
--- Add organization_id column to shifa_ids if missing
--- (needed for org-scoped access above)
--- ============================================================
-ALTER TABLE public.shifa_ids
-ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
-
--- Add patient_user_id to kiosk_checkins if missing (for patient self-read)
-ALTER TABLE public.kiosk_checkins
-ADD COLUMN IF NOT EXISTS patient_user_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL;
-
--- Add patient_user_id to shifa_access_verifications if missing
-ALTER TABLE public.shifa_access_verifications
-ADD COLUMN IF NOT EXISTS patient_user_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL;
-
--- ============================================================
--- Indexes for performance on new RLS filter columns
+-- STEP 6: Indexes for performance on RLS filter columns
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_kiosk_checkins_org_id ON public.kiosk_checkins(organization_id);
 CREATE INDEX IF NOT EXISTS idx_kiosk_checkins_patient_user_id ON public.kiosk_checkins(patient_user_id);

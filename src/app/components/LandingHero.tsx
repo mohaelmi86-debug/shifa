@@ -116,9 +116,9 @@ export default function LandingHero() {
 
 
 
+
         // Keep fallback news on error
       } finally {if (!cancelled) setNewsLoading(false);}}fetchNews();return () => {cancelled = true;};}, []);
-
   return (
     <>
       {/* Hero Section */}
@@ -198,7 +198,7 @@ export default function LandingHero() {
             <div className="flex-1 max-w-lg">
               <div className="rounded-3xl overflow-hidden" style={{ boxShadow: '0 24px 64px rgba(8,120,239,0.15)' }}>
                 <img
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_1cf96a2a6-1788184366370.png"
+                  src="https://img.rocket.new/generatedImages/rocket_gen_img_134368439-1788188159039.png"
                   alt="Médecin souriant utilisant l'application SHIFA Health OS sur son smartphone"
                   className="w-full h-80 object-cover" />
               </div>
