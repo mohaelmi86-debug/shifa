@@ -60,7 +60,7 @@ const fallbackNews: NewsItem[] = [
   tag: 'Prévention',
   tagColor: '#0878EF',
   tagBg: '#D8E8FB',
-  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1bbe42ba8-1772189214829.png",
+  img: "https://img.rocket.new/generatedImages/rocket_gen_img_1464d9c92-1766529742624.png",
   alt: 'Médecin mesurant la tension artérielle d\'un patient'
 },
 {
@@ -119,6 +119,7 @@ export default function LandingHero() {
 
 
 
+
         // Keep fallback news on error
       } finally {if (!cancelled) setNewsLoading(false);}}fetchNews();return () => {cancelled = true;};}, []);return <>
       {/* Hero Section */}
@@ -139,10 +140,9 @@ export default function LandingHero() {
                   </p>
                 </div>
                 <div className="w-28 h-28 rounded-2xl overflow-hidden shrink-0" style={{ boxShadow: '0 8px 24px rgba(8,120,239,0.15)' }}>
-                  <img
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_1e400d46f-1780212343912.png"
-                  alt="Médecin souriant tenant un smartphone affichant l'application SHIFA Health OS"
-                  className="w-full h-full object-cover" />
+                  <img src="https://img.rocket.new/generatedImages/rocket_gen_img_1adac3c0e-1788189500454.png"
+                alt="Médecin souriant tenant un smartphone affichant l'application SHIFA Health OS"
+                className="w-full h-full object-cover" />
                 </div>
               </div>
 
@@ -198,7 +198,7 @@ export default function LandingHero() {
             <div className="flex-1 max-w-lg">
               <div className="rounded-3xl overflow-hidden" style={{ boxShadow: '0 24px 64px rgba(8,120,239,0.15)' }}>
                 <img
-                src="https://img.rocket.new/generatedImages/rocket_gen_img_1c5ad95e4-1788189029227.png"
+                src="https://img.rocket.new/generatedImages/rocket_gen_img_1274769ec-1788189500426.png"
                 alt="Médecin souriant utilisant l'application SHIFA Health OS sur son smartphone"
                 className="w-full h-80 object-cover" />
               </div>

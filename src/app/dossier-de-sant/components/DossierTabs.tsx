@@ -371,7 +371,7 @@ export default function DossierTabs() {
         if (!patient) return;
         patientId = patient.id;
 
-        const pid: string = patientId;
+                const pid: string = patientId!;
         await Promise.all([
           fetchConsultations(pid),
           fetchPrescriptions(pid),
