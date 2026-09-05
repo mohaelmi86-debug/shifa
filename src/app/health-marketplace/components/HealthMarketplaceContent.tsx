@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Link from 'next/link';
 
-type Tab = 'catalog' | 'cart' | 'quote' | 'vendor' | 'reviews' | 'commissions';
+type Tab = 'catalog' | 'cart' | 'quote' | 'vendor' | 'reviews' | 'commissions' | 'supply-chain';
 
 const products = [
   { id: 1, name: 'Tensiomètre numérique Omron M3', category: 'Équipement', price: 45000, stock: 24, rating: 4.7, reviews: 89, seller: 'MedTech Dakar', certified: true, color: '#0ea5e9', bg: '#e0f2fe', description: 'Tensiomètre bras automatique, mémoire 60 mesures, détection arythmie' },
@@ -93,6 +94,7 @@ export default function HealthMarketplaceContent() {
     { key: 'vendor', label: 'Espace Vendeur', icon: 'BuildingStorefrontIcon' },
     { key: 'reviews', label: 'Avis & Notes', icon: 'StarIcon' },
     { key: 'commissions', label: 'Commissions', icon: 'BanknotesIcon' },
+    { key: 'supply-chain', label: 'Supply Chain & Finance', icon: 'ArrowsRightLeftIcon' },
   ];
 
   return (
@@ -542,6 +544,181 @@ export default function HealthMarketplaceContent() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── SUPPLY CHAIN & FINANCE ── */}
+        {activeTab === 'supply-chain' && (
+          <div className="space-y-6">
+            {/* Interconnect notice */}
+            <div className="flex items-start gap-3 p-4 rounded-2xl border" style={{ backgroundColor: 'rgba(14,165,233,0.06)', borderColor: 'rgba(14,165,233,0.2)' }}>
+              <Icon name="ArrowsRightLeftIcon" size={20} style={{ color: '#0ea5e9' }} className="shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Marketplace ↔ Supply Chain ↔ Finance — Workflow intégré</p>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Chaque commande Marketplace alimente automatiquement le stock Supply Chain et génère une écriture comptable dans Finance. Le workflow complet : Besoin → Devis → Commande → Paiement → Livraison → Stock → Facturation.
+                </p>
+              </div>
+            </div>
+
+            {/* Workflow */}
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Workflow Achat → Stock → Finance</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                {[
+                  { label: 'Besoin identifié', icon: 'ClipboardDocumentListIcon', color: '#64748b', bg: '#f1f5f9' },
+                  { label: 'Recherche fournisseur', icon: 'MagnifyingGlassIcon', color: '#0ea5e9', bg: '#e0f2fe' },
+                  { label: 'Devis reçu', icon: 'DocumentTextIcon', color: '#8b5cf6', bg: '#ede9fe' },
+                  { label: 'Commande validée', icon: 'CheckCircleIcon', color: '#16a34a', bg: '#dcfce7' },
+                  { label: 'Paiement', icon: 'BanknotesIcon', color: '#d97706', bg: '#fef3c7' },
+                  { label: 'Livraison → Stock', icon: 'TruckIcon', color: '#0891b2', bg: '#cffafe' },
+                  { label: 'Facture → Finance', icon: 'ReceiptPercentIcon', color: '#dc2626', bg: '#fee2e2' },
+                ].map((step, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 p-3 rounded-xl text-center" style={{ backgroundColor: step.bg }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: step.color + '20' }}>
+                      <Icon name={step.icon as any} size={16} style={{ color: step.color }} />
+                    </div>
+                    <p className="text-xs font-medium leading-tight" style={{ color: step.color }}>{step.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Module connections */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#e0f2fe' }}>
+                    <Icon name="ArchiveBoxIcon" size={20} style={{ color: '#0ea5e9' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Supply Chain</h3>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Gestion des stocks</p>
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4">
+                  {[
+                    { label: 'Articles en stock', value: '1 247', color: '#0ea5e9' },
+                    { label: 'Commandes en cours', value: '8', color: '#d97706' },
+                    { label: 'Alertes stock faible', value: '3', color: '#dc2626' },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center justify-between text-xs">
+                      <span style={{ color: 'var(--muted-foreground)' }}>{item.label}</span>
+                      <span className="font-bold" style={{ color: item.color }}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/org-supply-chain" className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-medium border" style={{ borderColor: '#0ea5e9', color: '#0ea5e9' }}>
+                  <Icon name="ArrowTopRightOnSquareIcon" size={13} />
+                  Ouvrir Supply Chain
+                </Link>
+              </div>
+
+              <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#dcfce7' }}>
+                    <Icon name="BanknotesIcon" size={20} style={{ color: '#16a34a' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Finance</h3>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Facturation & Comptabilité</p>
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4">
+                  {[
+                    { label: 'Factures générées (mois)', value: '18', color: '#16a34a' },
+                    { label: 'Montant total', value: '16,5M FCFA', color: '#16a34a' },
+                    { label: 'En attente de paiement', value: '3', color: '#d97706' },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center justify-between text-xs">
+                      <span style={{ color: 'var(--muted-foreground)' }}>{item.label}</span>
+                      <span className="font-bold" style={{ color: item.color }}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/finance-dashboard" className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-medium border" style={{ borderColor: '#16a34a', color: '#16a34a' }}>
+                  <Icon name="ArrowTopRightOnSquareIcon" size={13} />
+                  Ouvrir Finance
+                </Link>
+              </div>
+
+              <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#ede9fe' }}>
+                    <Icon name="BuildingStorefrontIcon" size={20} style={{ color: '#8b5cf6' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Fournisseurs</h3>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Vendeurs certifiés</p>
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4">
+                  {[
+                    { label: 'Fournisseurs actifs', value: '124', color: '#8b5cf6' },
+                    { label: 'Certifiés SHIFA', value: '89', color: '#16a34a' },
+                    { label: 'Nouveaux ce mois', value: '6', color: '#0891b2' },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center justify-between text-xs">
+                      <span style={{ color: 'var(--muted-foreground)' }}>{item.label}</span>
+                      <span className="font-bold" style={{ color: item.color }}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/marketplace-vendor" className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-medium border" style={{ borderColor: '#8b5cf6', color: '#8b5cf6' }}>
+                  <Icon name="ArrowTopRightOnSquareIcon" size={13} />
+                  Espace Vendeur
+                </Link>
+              </div>
+            </div>
+
+            {/* Recent orders with finance status */}
+            <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Commandes récentes — Statut Finance & Stock</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: 'var(--muted)' }}>
+                      {['Commande', 'Produit', 'Montant', 'Statut livraison', 'Statut stock', 'Statut finance', 'Actions'].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { id: 'CMD-2847', product: 'Tensiomètre Omron M3 ×3', amount: '135 000 FCFA', delivery: 'livré', stock: 'mis_a_jour', finance: 'facturé', color: '#16a34a' },
+                      { id: 'CMD-2831', product: 'Kit suture ×10', amount: '85 000 FCFA', delivery: 'en_transit', stock: 'en_attente', finance: 'en_attente', color: '#d97706' },
+                      { id: 'CMD-2819', product: 'ECG 12D ×2', amount: '2 500 000 FCFA', delivery: 'livré', stock: 'mis_a_jour', finance: 'facturé', color: '#16a34a' },
+                    ].map(order => (
+                      <tr key={order.id} className="border-t hover:bg-muted/40" style={{ borderColor: 'var(--border)' }}>
+                        <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: 'var(--shifa-blue)' }}>{order.id}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: 'var(--foreground)' }}>{order.product}</td>
+                        <td className="px-4 py-3 text-xs font-bold" style={{ color: 'var(--foreground)' }}>{order.amount}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: order.delivery === 'livré' ? '#dcfce7' : '#fef3c7', color: order.delivery === 'livré' ? '#16a34a' : '#d97706' }}>
+                            {order.delivery === 'livré' ? 'Livré' : 'En transit'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: order.stock === 'mis_a_jour' ? '#dcfce7' : '#fef3c7', color: order.stock === 'mis_a_jour' ? '#16a34a' : '#d97706' }}>
+                            {order.stock === 'mis_a_jour' ? 'Mis à jour' : 'En attente'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: order.finance === 'facturé' ? '#dcfce7' : '#fef3c7', color: order.finance === 'facturé' ? '#16a34a' : '#d97706' }}>
+                            {order.finance === 'facturé' ? 'Facturé' : 'En attente'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button className="text-xs px-2 py-1 rounded-lg hover:bg-muted" style={{ color: '#0ea5e9' }}>Voir</button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

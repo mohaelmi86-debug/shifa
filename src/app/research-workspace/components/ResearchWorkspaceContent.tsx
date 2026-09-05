@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
+import Link from 'next/link';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const tabs = [
@@ -11,7 +12,9 @@ const tabs = [
   { key: 'participants', label: 'Participants', icon: 'UsersIcon' },
   { key: 'ethics', label: 'Éthique & Autorisations', icon: 'ShieldCheckIcon' },
   { key: 'access', label: 'Demandes d\'accès', icon: 'KeyIcon' },
-  { key: 'reports', label: 'Rapports', icon: 'DocumentTextIcon' },
+  { key: 'publications', label: 'Publications', icon: 'DocumentTextIcon' },
+  { key: 'collaborations', label: 'Collaborations', icon: 'LinkIcon' },
+  { key: 'reports', label: 'Rapports', icon: 'ChartBarIcon' },
 ];
 
 const kpis = [
@@ -67,6 +70,157 @@ const accessRequests = [
   { id: 'req-004', requester: 'Dr. Marie Dupont — INSERM', dataset: 'Données biomarqueurs HTA', purpose: 'Méta-analyse HTA Afrique', submitted: '28 juil. 2026', status: 'refusé' },
 ];
 
+const publications = [
+  {
+    id: 'pub-001',
+    title: 'Téléconsultation et accès aux soins en Afrique subsaharienne : résultats préliminaires d\'une cohorte prospective',
+    authors: 'Diallo A., Traoré M., Koné F., et al.',
+    journal: 'The Lancet Digital Health',
+    status: 'soumis',
+    date: '15 juil. 2026',
+    doi: '—',
+    type: 'Article original',
+    project: 'proj-001',
+    openAccess: true,
+  },
+  {
+    id: 'pub-002',
+    title: 'Prévalence du diabète de type 2 en milieu urbain marocain : étude transversale multicentrique',
+    authors: 'Benali Y., Alaoui M., Chraibi A.',
+    journal: 'Diabetes & Metabolism',
+    status: 'publié',
+    date: '10 juin 2026',
+    doi: '10.1016/j.diabet.2026.06.001',
+    type: 'Article original',
+    project: 'proj-002',
+    openAccess: false,
+  },
+  {
+    id: 'pub-003',
+    title: 'Biomarqueurs prédictifs de l\'hypertension artérielle en Afrique : protocole d\'une étude cas-témoins multicentrique',
+    authors: 'Traoré M., Diallo A., Mensah K., et al.',
+    journal: 'BMC Cardiovascular Disorders',
+    status: 'publié',
+    date: '20 jan. 2026',
+    doi: '10.1186/s12872-026-00123-4',
+    type: 'Protocole',
+    project: 'proj-005',
+    openAccess: true,
+  },
+  {
+    id: 'pub-004',
+    title: 'Couverture vaccinale pédiatrique dans les zones rurales des Comores : analyse des déterminants',
+    authors: 'Madi F., Abdou H., Said M.',
+    journal: 'Vaccine',
+    status: 'en_revision',
+    date: '2 août 2026',
+    doi: '—',
+    type: 'Article original',
+    project: 'proj-003',
+    openAccess: false,
+  },
+  {
+    id: 'pub-005',
+    title: 'Parcours de soins maternels en Côte d\'Ivoire : barrières et facilitateurs — revue systématique',
+    authors: 'Koné A., Bamba I., Coulibaly D.',
+    journal: 'BMC Pregnancy and Childbirth',
+    status: 'preprint',
+    date: '5 août 2026',
+    doi: 'preprint/2026.08.05',
+    type: 'Revue systématique',
+    project: 'proj-004',
+    openAccess: true,
+  },
+];
+
+const collaborations = [
+  {
+    id: 'col-001',
+    name: 'INSERM — Institut National de la Santé et de la Recherche Médicale',
+    type: 'Institution de recherche',
+    country: 'France',
+    flag: '🇫🇷',
+    projects: ['proj-005'],
+    status: 'actif',
+    since: 'Jan 2026',
+    contact: 'Dr. Marie Dupont',
+    modules: ['Research', 'Academy', 'Innovation Center'],
+    color: '#2563eb',
+  },
+  {
+    id: 'col-002',
+    name: 'Université Cheikh Anta Diop de Dakar',
+    type: 'Université',
+    country: 'Sénégal',
+    flag: '🇸🇳',
+    projects: ['proj-001'],
+    status: 'actif',
+    since: 'Jan 2026',
+    contact: 'Pr. Aminata Diallo',
+    modules: ['Research', 'Academy'],
+    color: '#16a34a',
+  },
+  {
+    id: 'col-003',
+    name: 'OMS — Organisation Mondiale de la Santé',
+    type: 'Organisation internationale',
+    country: 'International',
+    flag: '🌍',
+    projects: ['proj-001', 'proj-003'],
+    status: 'actif',
+    since: 'Mar 2026',
+    contact: 'Dr. Laila Benkirane',
+    modules: ['Research', 'Santé Publique'],
+    color: '#0891b2',
+  },
+  {
+    id: 'col-004',
+    name: 'Université Mohammed V de Rabat',
+    type: 'Université',
+    country: 'Maroc',
+    flag: '🇲🇦',
+    projects: ['proj-002'],
+    status: 'actif',
+    since: 'Mar 2026',
+    contact: 'Dr. Youssef Benali',
+    modules: ['Research', 'Academy'],
+    color: '#7c3aed',
+  },
+  {
+    id: 'col-005',
+    name: 'UNICEF — Fonds des Nations Unies pour l\'Enfance',
+    type: 'Organisation internationale',
+    country: 'International',
+    flag: '🌍',
+    projects: ['proj-003'],
+    status: 'en_discussion',
+    since: '—',
+    contact: 'Dr. Kofi Mensah',
+    modules: ['Research', 'Pédiatrie'],
+    color: '#d97706',
+  },
+  {
+    id: 'col-006',
+    name: 'SHIFA Innovation Center',
+    type: 'Interne SHIFA',
+    country: 'SHIFA',
+    flag: '🏥',
+    projects: ['proj-001', 'proj-005'],
+    status: 'actif',
+    since: 'Jan 2026',
+    contact: 'Équipe Innovation SHIFA',
+    modules: ['Innovation', 'AI', 'Research'],
+    color: '#dc2626',
+  },
+];
+
+const pubStatusConfig: Record<string, { label: string; bg: string; text: string }> = {
+  publié: { label: 'Publié', bg: '#dcfce7', text: '#16a34a' },
+  soumis: { label: 'Soumis', bg: '#dbeafe', text: '#1d4ed8' },
+  en_revision: { label: 'En révision', bg: '#fef9c3', text: '#ca8a04' },
+  preprint: { label: 'Preprint', bg: '#ede9fe', text: '#7c3aed' },
+};
+
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   actif: { label: 'Actif', bg: '#dcfce7', text: '#16a34a' },
   recrutement: { label: 'Recrutement', bg: '#dbeafe', text: '#1d4ed8' },
@@ -80,10 +234,14 @@ const statusConfig: Record<string, { label: string; bg: string; text: string }> 
   en_cours: { label: 'En cours', bg: '#dbeafe', text: '#1d4ed8' },
   en_examen: { label: 'En examen', bg: '#fef9c3', text: '#ca8a04' },
   refusé: { label: 'Refusé', bg: '#fee2e2', text: '#dc2626' },
+  en_discussion: { label: 'En discussion', bg: '#fef9c3', text: '#ca8a04' },
 };
 
 export default function ResearchWorkspaceContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [pubFilter, setPubFilter] = useState('Tous');
+
+  const filteredPubs = pubFilter === 'Tous' ? publications : publications.filter(p => p.status === pubFilter);
 
   return (
     <div className="px-6 lg:px-8 xl:px-10 py-6 max-w-screen-2xl mx-auto">
@@ -98,9 +256,15 @@ export default function ResearchWorkspaceContent() {
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Projets, études, jeux de données autorisés et accès éthique</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #0F766E, #0891B2)' }}>
-          <Icon name="PlusIcon" size={16} /> Nouveau projet
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/innovation-center" className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}>
+            <Icon name="LightBulbIcon" size={14} />
+            Innovation Center
+          </Link>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #0F766E, #0891B2)' }}>
+            <Icon name="PlusIcon" size={16} /> Nouveau projet
+          </button>
+        </div>
       </div>
 
       {/* Privacy notice */}
@@ -174,6 +338,27 @@ export default function ResearchWorkspaceContent() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Interconnect panel */}
+          <div className="rounded-2xl p-5 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Interconnexions SHIFA Research</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: 'Innovation Center', icon: 'LightBulbIcon', color: '#dc2626', bg: '#fee2e2', href: '/innovation-center', desc: 'Projets pilotes & IA' },
+                { label: 'SHIFA Academy', icon: 'AcademicCapIcon', color: '#8b5cf6', bg: '#ede9fe', href: '/shifa-academy', desc: 'Publications → Formations' },
+                { label: 'Santé Publique', icon: 'BuildingLibraryIcon', color: '#0891b2', bg: '#cffafe', href: '/espace-sante-publique', desc: 'Données épidémio' },
+                { label: 'Ethics Board', icon: 'ShieldCheckIcon', color: '#16a34a', bg: '#dcfce7', href: '/research-ethics-board', desc: 'Autorisations éthiques' },
+              ].map(link => (
+                <Link key={link.label} href={link.href} className="flex items-center gap-3 p-3 rounded-xl border transition-all hover:shadow-sm" style={{ backgroundColor: link.bg, borderColor: link.color + '40' }}>
+                  <Icon name={link.icon as any} size={18} style={{ color: link.color }} />
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: link.color }}>{link.label}</p>
+                    <p className="text-xs" style={{ color: link.color + 'cc' }}>{link.desc}</p>
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
 
@@ -331,7 +516,12 @@ export default function ResearchWorkspaceContent() {
         <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
           <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
             <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Autorisations éthiques</h3>
-            <button className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#0F766E' }}>+ Nouvelle demande</button>
+            <div className="flex items-center gap-2">
+              <Link href="/research-ethics-board" className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}>
+                Ethics Board →
+              </Link>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#0F766E' }}>+ Nouvelle demande</button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -405,6 +595,182 @@ export default function ResearchWorkspaceContent() {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PUBLICATIONS TAB ── */}
+      {activeTab === 'publications' && (
+        <div className="space-y-5">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Publications totales', value: String(publications.length), icon: 'DocumentTextIcon', color: '#0F766E', bg: 'rgba(15,118,110,0.08)' },
+              { label: 'Publiées', value: String(publications.filter(p => p.status === 'publié').length), icon: 'CheckCircleIcon', color: '#16a34a', bg: '#dcfce7' },
+              { label: 'En cours de soumission', value: String(publications.filter(p => ['soumis', 'en_revision'].includes(p.status)).length), icon: 'ClockIcon', color: '#d97706', bg: '#fef3c7' },
+              { label: 'Open Access', value: String(publications.filter(p => p.openAccess).length), icon: 'GlobeAltIcon', color: '#2563eb', bg: '#dbeafe' },
+            ].map(kpi => (
+              <div key={kpi.label} className="rounded-2xl p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: kpi.bg }}>
+                  <Icon name={kpi.icon as any} size={18} style={{ color: kpi.color }} />
+                </div>
+                <p className="text-2xl font-bold mb-0.5" style={{ color: 'var(--shifa-dark)' }}>{kpi.value}</p>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Filter */}
+          <div className="flex gap-2 flex-wrap">
+            {['Tous', 'publié', 'soumis', 'en_revision', 'preprint'].map(f => (
+              <button key={f} onClick={() => setPubFilter(f)}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors"
+                style={{ backgroundColor: pubFilter === f ? '#0F766E' : 'var(--card)', color: pubFilter === f ? '#fff' : 'var(--muted-foreground)', borderColor: 'var(--border)' }}>
+                {f === 'Tous' ? 'Toutes' : pubStatusConfig[f]?.label || f}
+              </button>
+            ))}
+            <button className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium text-white" style={{ backgroundColor: '#0F766E' }}>
+              <Icon name="PlusIcon" size={13} /> Ajouter une publication
+            </button>
+          </div>
+
+          {/* Publications list */}
+          <div className="space-y-3">
+            {filteredPubs.map(pub => {
+              const s = pubStatusConfig[pub.status];
+              return (
+                <div key={pub.id} className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: s.bg, color: s.text }}>{s.label}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>{pub.type}</span>
+                        {pub.openAccess && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#dbeafe', color: '#1d4ed8' }}>🔓 Open Access</span>
+                        )}
+                      </div>
+                      <h3 className="text-sm font-semibold mb-1 leading-snug" style={{ color: 'var(--foreground)' }}>{pub.title}</h3>
+                      <p className="text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>{pub.authors}</p>
+                      <p className="text-xs font-medium" style={{ color: '#0F766E' }}>{pub.journal}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs mt-3" style={{ color: 'var(--muted-foreground)' }}>
+                    <span>📅 {pub.date}</span>
+                    {pub.doi !== '—' && (
+                      <span className="font-mono" style={{ color: '#2563eb' }}>DOI: {pub.doi}</span>
+                    )}
+                    <div className="ml-auto flex gap-2">
+                      <button className="px-3 py-1 rounded-lg text-xs font-medium border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                        Voir
+                      </button>
+                      <button className="px-3 py-1 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#0F766E' }}>
+                        Partager
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Academy link */}
+          <div className="rounded-2xl p-4 border flex items-center gap-4" style={{ backgroundColor: '#ede9fe', borderColor: '#8b5cf6' }}>
+            <Icon name="AcademicCapIcon" size={24} style={{ color: '#7c3aed' }} />
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: '#5b21b6' }}>Transformer une publication en formation SHIFA Academy</p>
+              <p className="text-xs" style={{ color: '#6d28d9' }}>Les résultats de recherche peuvent alimenter directement le catalogue de formations continues.</p>
+            </div>
+            <Link href="/shifa-academy" className="px-4 py-2 rounded-xl text-xs font-semibold text-white" style={{ backgroundColor: '#7c3aed' }}>
+              SHIFA Academy →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── COLLABORATIONS TAB ── */}
+      {activeTab === 'collaborations' && (
+        <div className="space-y-5">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Partenaires actifs', value: String(collaborations.filter(c => c.status === 'actif').length), icon: 'LinkIcon', color: '#0F766E', bg: 'rgba(15,118,110,0.08)' },
+              { label: 'Universités', value: String(collaborations.filter(c => c.type === 'Université').length), icon: 'BuildingLibraryIcon', color: '#8b5cf6', bg: '#ede9fe' },
+              { label: 'Organisations int.', value: String(collaborations.filter(c => c.type === 'Organisation internationale').length), icon: 'GlobeAltIcon', color: '#0891b2', bg: '#cffafe' },
+              { label: 'Pays représentés', value: '6', icon: 'MapPinIcon', color: '#d97706', bg: '#fef3c7' },
+            ].map(kpi => (
+              <div key={kpi.label} className="rounded-2xl p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: kpi.bg }}>
+                  <Icon name={kpi.icon as any} size={18} style={{ color: kpi.color }} />
+                </div>
+                <p className="text-2xl font-bold mb-0.5" style={{ color: 'var(--shifa-dark)' }}>{kpi.value}</p>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Partenaires de recherche</h3>
+            <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium text-white" style={{ backgroundColor: '#0F766E' }}>
+              <Icon name="PlusIcon" size={13} /> Ajouter un partenaire
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {collaborations.map(col => {
+              const s = statusConfig[col.status];
+              return (
+                <div key={col.id} className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl" style={{ backgroundColor: col.color + '15' }}>
+                      {col.flag}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{col.name}</h3>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: s.bg, color: s.text }}>{s.label}</span>
+                      </div>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{col.type} · {col.country}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    <div className="flex items-center gap-2">
+                      <Icon name="UserCircleIcon" size={12} />
+                      <span>Contact : {col.contact}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Icon name="CalendarDaysIcon" size={12} />
+                      <span>Depuis : {col.since}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Icon name="FolderOpenIcon" size={12} />
+                      <span>{col.projects.length} projet(s) commun(s)</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-3">
+                    {col.modules.map(mod => (
+                      <span key={mod} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: col.color + '15', color: col.color }}>
+                        {mod}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Innovation Center connection */}
+          <div className="rounded-2xl p-5 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground)' }}>Interconnexion Research ↔ Innovation Center</h3>
+            <div className="flex items-center gap-4 p-4 rounded-xl" style={{ backgroundColor: '#fee2e2', border: '1px solid #dc2626' }}>
+              <Icon name="LightBulbIcon" size={24} style={{ color: '#dc2626' }} />
+              <div className="flex-1">
+                <p className="text-sm font-semibold" style={{ color: '#991b1b' }}>2 projets de recherche liés à l'Innovation Center</p>
+                <p className="text-xs" style={{ color: '#b91c1c' }}>Les résultats de recherche alimentent les projets pilotes et les dispositifs médicaux en développement.</p>
+              </div>
+              <Link href="/innovation-center" className="px-4 py-2 rounded-xl text-xs font-semibold text-white shrink-0" style={{ backgroundColor: '#dc2626' }}>
+                Innovation Center →
+              </Link>
             </div>
           </div>
         </div>

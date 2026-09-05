@@ -39,9 +39,12 @@ module.exports = {
         shifa: {
           dark: 'var(--shifa-dark)',
           blue: 'var(--shifa-blue)',
+          'blue-light': 'var(--shifa-blue-light)',
+          'blue-deep': 'var(--shifa-blue-deep)',
           cyan: 'var(--shifa-cyan)',
           mid: 'var(--shifa-mid)',
           light: 'var(--shifa-light)',
+          surface: 'var(--shifa-surface)',
           purple: 'var(--shifa-purple)',
           green: 'var(--shifa-green)',
           amber: 'var(--shifa-amber)',
@@ -59,7 +62,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['var(--font-plus-jakarta-sans)', 'sans-serif'],
-        mono: ['var(--font-jetbrains-mono)', 'JetBrains Mono', 'monospace'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
       },
       boxShadow: {
         shifa: '0 4px 24px rgba(0, 102, 255, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06)',

@@ -1,7 +1,7 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-
+import { createClient } from '@/lib/supabase/client';
 
 type TabKey = 'requests' | 'sampling' | 'analysis' | 'results' | 'quality';
 
@@ -27,7 +27,7 @@ const specimens: Specimen[] = [
   { id: 'SP-2405', patient: 'Cheikh Mbaye', type: 'Sang veineux', tube: 'EDTA + Fluorure', collected: '08:48', technician: 'Tech. Diallo', status: 'archivé', temp: '-20°C' },
 ];
 
-const results: AnalysisResult[] = [
+const staticResults: AnalysisResult[] = [
   { id: 'R-001', patient: 'Oumar Diallo', test: 'CRP', value: '48.2', unit: 'mg/L', ref: '< 5', flag: 'critical' },
   { id: 'R-002', patient: 'Oumar Diallo', test: 'Glycémie', value: '1.12', unit: 'g/L', ref: '0.70–1.10', flag: 'high' },
   { id: 'R-003', patient: 'Oumar Diallo', test: 'Leucocytes', value: '12.4', unit: 'G/L', ref: '4.0–10.0', flag: 'high' },
@@ -77,338 +77,339 @@ const qcStatusConfig = {
   fail: { bg: 'rgba(239,68,68,0.12)', color: 'var(--shifa-red)', label: 'Non conforme' },
 };
 
-const kpis = [
-  { label: 'Demandes du jour', value: '47', icon: 'ClipboardDocumentListIcon', color: 'var(--shifa-blue)' },
-  { label: 'En attente prélèvement', value: '8', icon: 'BeakerIcon', color: 'var(--shifa-amber)' },
-  { label: 'En analyse', value: '14', icon: 'CpuChipIcon', color: 'var(--shifa-purple)' },
-  { label: 'Résultats à valider', value: '6', icon: 'ClipboardDocumentCheckIcon', color: 'var(--shifa-cyan)' },
-  { label: 'Résultats critiques', value: '2', icon: 'ExclamationTriangleIcon', color: 'var(--shifa-red)' },
-  { label: 'Livrés aujourd\'hui', value: '17', icon: 'CheckCircleIcon', color: 'var(--shifa-green)' },
-];
-
 const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: 'requests', label: 'Demandes', icon: 'ClipboardDocumentListIcon' },
-  { key: 'sampling', label: 'Prélèvements & Spécimens', icon: 'BeakerIcon' },
-  { key: 'analysis', label: 'Résultats & Validation', icon: 'ChartBarIcon' },
-  { key: 'results', label: 'Ordonnances', icon: 'DocumentTextIcon' },
-  { key: 'quality', label: 'Contrôle Qualité', icon: 'ShieldCheckIcon' },
+  { key: 'sampling', label: 'Prélèvements', icon: 'BeakerIcon' },
+  { key: 'analysis', label: 'Résultats', icon: 'ChartBarIcon' },
+  { key: 'results', label: 'Supabase', icon: 'CircleStackIcon' },
+  { key: 'quality', label: 'Contrôle qualité', icon: 'ShieldCheckIcon' },
 ];
 
 export default function LabDashboardContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('requests');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [dbResults, setDbResults] = useState<any[]>([]);
+  const [dbLoading, setDbLoading] = useState(false);
+  const [dbError, setDbError] = useState('');
 
-  const filteredRequests = filterStatus === 'all' ? labRequests : labRequests.filter(r => r.status === filterStatus);
+  useEffect(() => {
+    if (activeTab === 'results') {
+      fetchLabResults();
+    }
+  }, [activeTab]);
+
+  const fetchLabResults = async () => {
+    setDbLoading(true);
+    setDbError('');
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('lab_results')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setDbResults(data || []);
+    } catch (err: any) {
+      setDbError(err?.message || 'Erreur lors du chargement des résultats.');
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
+  const kpis = [
+    { label: 'Demandes du jour', value: String(labRequests.length), icon: 'ClipboardDocumentListIcon', color: 'var(--shifa-blue)', bg: 'rgba(0,102,255,0.08)' },
+    { label: 'En analyse', value: String(labRequests.filter(r => r.status === 'en analyse').length), icon: 'BeakerIcon', color: 'var(--shifa-amber)', bg: 'rgba(245,158,11,0.08)' },
+    { label: 'Résultats validés', value: String(labRequests.filter(r => r.status === 'validé').length), icon: 'CheckCircleIcon', color: 'var(--shifa-green)', bg: 'rgba(16,185,129,0.08)' },
+    { label: 'Résultats critiques', value: String(staticResults.filter(r => r.flag === 'critical').length), icon: 'ExclamationTriangleIcon', color: 'var(--shifa-red)', bg: 'rgba(239,68,68,0.08)' },
+  ];
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--background)' }}>
-      {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}>
-              <Icon name="BeakerIcon" size={18} className="text-white" />
+    <div className="px-6 lg:px-8 xl:px-10 py-6 max-w-screen-2xl mx-auto">
+      {/* Premium Page Header — SHIFA design tokens */}
+      <div
+        className="relative rounded-2xl overflow-hidden mb-8 p-6 lg:p-8"
+        style={{
+          background: 'linear-gradient(135deg, #1a0533 0%, #5B2D8E 55%, #7B5EA7 100%)',
+          boxShadow: '0 8px 32px rgba(91,45,142,0.3)',
+        }}
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.04)', transform: 'translate(30%, -30%)' }} />
+        <div className="absolute bottom-0 left-1/3 w-48 h-48 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.03)', transform: 'translateY(40%)' }} />
+
+        <div className="relative z-10 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
+            >
+              <Icon name="BeakerIcon" size={26} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-display)' }}>Laboratoire d'Analyses</h1>
-              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Tableau de bord — Lundi 10 août 2026</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)' }}>
+                  Laboratoire d'analyses médicales
+                </span>
+              </div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-white" style={{ letterSpacing: '-0.02em' }}>
+                Tableau de bord Labo
+              </h1>
+              <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                Demandes, prélèvements, résultats et contrôle qualité analytique
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn-secondary text-sm flex items-center gap-1.5 px-3 py-1.5">
-              <Icon name="PrinterIcon" size={14} /> Rapport journalier
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}>
+              <Icon name="ArrowDownTrayIcon" size={15} />
+              Exporter
             </button>
-            <button className="btn-primary text-sm flex items-center gap-1.5 px-3 py-1.5">
-              <Icon name="PlusIcon" size={14} /> Nouvelle demande
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.95)', color: '#5B2D8E' }}>
+              <Icon name="PlusIcon" size={15} />
+              Nouvelle demande
             </button>
           </div>
         </div>
-      </div>
 
-      {/* KPIs */}
-      <div className="px-6 py-4 grid grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpis.map((k) => (
-          <div key={k.label} className="card p-3 flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <Icon name={k.icon as any} size={16} style={{ color: k.color }} />
-              <span className="text-xl font-bold" style={{ color: k.color, fontFamily: 'var(--font-display)' }}>{k.value}</span>
+        {/* Quick stats bar */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          {kpis.map((kpi) => (
+            <div key={kpi.label} className="rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Icon name={kpi.icon as any} size={14} className="text-white opacity-80" />
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{kpi.label}</span>
+              </div>
+              <p className="text-xl font-bold text-white">{kpi.value}</p>
             </div>
-            <p className="text-xs leading-tight" style={{ color: 'var(--muted-foreground)' }}>{k.label}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="px-6 border-b flex gap-1" style={{ borderColor: 'var(--border)' }}>
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === t.key ? 'border-[var(--shifa-blue)] text-[var(--shifa-blue)]' : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
-          >
-            <Icon name={t.icon as any} size={14} />
-            {t.label}
+      <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin mb-6 pb-1">
+        {tabs.map((tab) => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-1.5 shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-150 ${activeTab === tab.key ? 'shadow-shifa' : ''}`}
+            style={{ backgroundColor: activeTab === tab.key ? 'var(--shifa-blue)' : 'var(--card)', color: activeTab === tab.key ? 'white' : 'var(--muted-foreground)', borderColor: activeTab === tab.key ? 'var(--shifa-blue)' : 'var(--border)' }}>
+            <Icon name={tab.icon as any} size={15} />{tab.label}
           </button>
         ))}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-
-        {/* REQUESTS TAB */}
-        {activeTab === 'requests' && (
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Filtrer :</span>
-              {['all', 'en attente', 'prélevé', 'en analyse', 'validé', 'livré'].map(s => (
-                <button key={s} onClick={() => setFilterStatus(s)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${filterStatus === s ? 'text-white' : 'hover:bg-muted'}`}
-                  style={filterStatus === s ? { backgroundColor: 'var(--shifa-blue)' } : { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                  {s === 'all' ? 'Tous' : s}
-                </button>
-              ))}
-            </div>
-            <div className="card overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Réf.', 'Patient', 'Médecin prescripteur', 'Analyses demandées', 'Priorité', 'Statut', 'Heure', 'Actions'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRequests.map((r, i) => (
-                    <tr key={r.id} style={{ borderBottom: i < filteredRequests.length - 1 ? '1px solid var(--border)' : 'none' }} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--shifa-blue)' }}>{r.id}</td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>{r.patient}</p>
-                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.age} ans</p>
-                      </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.doctor}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {r.tests.map(t => (
-                            <span key={t} className="px-1.5 py-0.5 rounded text-xs" style={{ backgroundColor: 'rgba(0,102,255,0.08)', color: 'var(--shifa-blue)' }}>{t}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: priorityConfig[r.priority].bg, color: priorityConfig[r.priority].color }}>{priorityConfig[r.priority].label}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: statusConfig[r.status].bg, color: statusConfig[r.status].color }}>{r.status}</span>
-                      </td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{r.date}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <button className="p-1 rounded hover:bg-muted transition-colors" title="Voir"><Icon name="EyeIcon" size={14} style={{ color: 'var(--shifa-blue)' }} /></button>
-                          <button className="p-1 rounded hover:bg-muted transition-colors" title="Prélever"><Icon name="BeakerIcon" size={14} style={{ color: 'var(--shifa-amber)' }} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Requests Tab */}
+      {activeTab === 'requests' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Demandes du jour</h3>
+            <button className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"><Icon name="PlusIcon" size={13} />Nouvelle demande</button>
           </div>
-        )}
-
-        {/* SAMPLING TAB */}
-        {activeTab === 'sampling' && (
-          <div>
-            <div className="grid grid-cols-4 gap-3 mb-4">
-              {[
-                { label: 'Reçus', count: 12, color: 'var(--shifa-blue)' },
-                { label: 'En traitement', count: 8, color: 'var(--shifa-amber)' },
-                { label: 'Analysés', count: 21, color: 'var(--shifa-green)' },
-                { label: 'Archivés', count: 6, color: 'var(--muted-foreground)' },
-              ].map(s => (
-                <div key={s.label} className="card p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${s.color}18` }}>
-                    <Icon name="BeakerIcon" size={18} style={{ color: s.color }} />
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+            {labRequests.map((req) => (
+              <div key={req.id} className="p-4 flex items-start justify-between gap-4 hover:bg-opacity-50 transition-colors" style={{ backgroundColor: 'transparent' }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: priorityConfig[req.priority].bg }}>
+                    <Icon name="BeakerIcon" size={16} style={{ color: priorityConfig[req.priority].color }} />
                   </div>
                   <div>
-                    <p className="text-xl font-bold" style={{ color: s.color, fontFamily: 'var(--font-display)' }}>{s.count}</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.label}</p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--shifa-dark)' }}>{req.patient}</p>
+                      <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{req.id}</span>
+                    </div>
+                    <p className="text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>{req.doctor} · {req.date}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {req.tests.map(t => (
+                        <span key={t} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'var(--shifa-surface)', color: 'var(--foreground)' }}>{t}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="card overflow-hidden">
-              <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-                <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Suivi des spécimens</h3>
-                <button className="btn-secondary text-xs px-2.5 py-1 flex items-center gap-1"><Icon name="QrCodeIcon" size={12} /> Scanner</button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: priorityConfig[req.priority].bg, color: priorityConfig[req.priority].color }}>
+                    {priorityConfig[req.priority].label}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: statusConfig[req.status]?.bg, color: statusConfig[req.status]?.color }}>
+                    {req.status}
+                  </span>
+                </div>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['ID Spécimen', 'Patient', 'Type', 'Tube(s)', 'Collecté à', 'Technicien', 'Temp.', 'Statut'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {specimens.map((s, i) => (
-                    <tr key={s.id} style={{ borderBottom: i < specimens.length - 1 ? '1px solid var(--border)' : 'none' }} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--shifa-blue)' }}>{s.id}</td>
-                      <td className="px-4 py-3 font-medium text-sm" style={{ color: 'var(--foreground)' }}>{s.patient}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.type}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--foreground)' }}>{s.tube}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{s.collected}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.technician}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--shifa-cyan)' }}>{s.temp}</td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: statusConfig[s.status].bg, color: statusConfig[s.status].color }}>{s.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ANALYSIS / RESULTS TAB */}
-        {activeTab === 'analysis' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 card overflow-hidden">
-              <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-                <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Résultats en attente de validation</h3>
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: 'var(--shifa-red)' }}>6 à valider</span>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Patient', 'Analyse', 'Résultat', 'Unité', 'Valeurs réf.', 'Flag', 'Action'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((r, i) => (
-                    <tr key={r.id} style={{ borderBottom: i < results.length - 1 ? '1px solid var(--border)' : 'none', backgroundColor: r.flag === 'critical' ? 'rgba(239,68,68,0.04)' : 'transparent' }} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-medium text-sm" style={{ color: 'var(--foreground)' }}>{r.patient}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.test}</td>
-                      <td className="px-4 py-3 font-bold text-sm" style={{ color: flagConfig[r.flag].color }}>{r.value}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{r.unit}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{r.ref}</td>
-                      <td className="px-4 py-3">
-                        <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: flagConfig[r.flag].color }}>{flagConfig[r.flag].label}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button className="px-2.5 py-1 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: 'var(--shifa-green)' }}>Valider</button>
-                      </td>
-                    </tr>
+      {/* Sampling Tab */}
+      {activeTab === 'sampling' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Suivi des prélèvements</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                  {['ID', 'Patient', 'Type', 'Tube', 'Collecté', 'Technicien', 'Statut', 'Temp.'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="card p-4">
-              <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--foreground)' }}>Résultats critiques</h3>
-              <div className="space-y-3">
-                {results.filter(r => r.flag === 'critical').map(r => (
-                  <div key={r.id} className="p-3 rounded-xl border" style={{ borderColor: 'rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)' }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon name="ExclamationTriangleIcon" size={14} style={{ color: 'var(--shifa-red)' }} />
-                      <span className="font-semibold text-sm" style={{ color: 'var(--shifa-red)' }}>Valeur critique</span>
-                    </div>
-                    <p className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>{r.patient}</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.test} : <strong style={{ color: 'var(--shifa-red)' }}>{r.value} {r.unit}</strong></p>
-                    <button className="mt-2 w-full py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: 'var(--shifa-red)' }}>Notifier le médecin</button>
-                  </div>
+                </tr>
+              </thead>
+              <tbody>
+                {specimens.map((sp, i) => (
+                  <tr key={sp.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                    <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{sp.id}</td>
+                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: 'var(--shifa-dark)' }}>{sp.patient}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{sp.type}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{sp.tube}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{sp.collected}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{sp.technician}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: statusConfig[sp.status]?.bg, color: statusConfig[sp.status]?.color }}>
+                        {sp.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{sp.temp}</td>
+                  </tr>
                 ))}
-              </div>
-              <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-                <h4 className="text-xs font-semibold mb-2" style={{ color: 'var(--muted-foreground)' }}>RÉPARTITION DES FLAGS</h4>
-                {(['normal', 'high', 'low', 'critical'] as const).map(f => {
-                  const count = results.filter(r => r.flag === f).length;
-                  return (
-                    <div key={f} className="flex items-center gap-2 mb-1.5">
-                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: flagConfig[f].color }}>{flagConfig[f].label}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${(count / results.length) * 100}%`, backgroundColor: flagConfig[f].color }} />
-                      </div>
-                      <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* PRESCRIPTIONS TAB */}
-        {activeTab === 'results' && (
-          <div className="card p-6 flex flex-col items-center justify-center" style={{ minHeight: '300px' }}>
-            <Icon name="DocumentTextIcon" size={40} style={{ color: 'var(--muted-foreground)' }} />
-            <p className="mt-3 font-semibold" style={{ color: 'var(--foreground)' }}>Ordonnances & Prescriptions biologiques</p>
-            <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Accédez aux ordonnances liées aux demandes d'analyses</p>
-            <div className="mt-4 grid grid-cols-3 gap-3 w-full max-w-lg">
-              {labRequests.slice(0, 3).map(r => (
-                <div key={r.id} className="p-3 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-                  <p className="font-medium text-sm" style={{ color: 'var(--foreground)' }}>{r.patient}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{r.doctor}</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--shifa-blue)' }}>{r.tests.join(', ')}</p>
-                  <button className="mt-2 w-full py-1 rounded-lg text-xs font-medium" style={{ backgroundColor: 'rgba(0,102,255,0.1)', color: 'var(--shifa-blue)' }}>Voir</button>
-                </div>
-              ))}
-            </div>
+      {/* Analysis Tab — static results */}
+      {activeTab === 'analysis' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Résultats d'analyses</h3>
           </div>
-        )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                  {['Patient', 'Analyse', 'Valeur', 'Unité', 'Référence', 'Flag'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {staticResults.map((r, i) => (
+                  <tr key={r.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                    <td className="px-4 py-3 font-semibold text-sm" style={{ color: 'var(--shifa-dark)' }}>{r.patient}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.test}</td>
+                    <td className="px-4 py-3 text-sm font-bold" style={{ color: flagConfig[r.flag].color }}>{r.value}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.unit}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.ref}</td>
+                    <td className="px-4 py-3">
+                      <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: flagConfig[r.flag].color }}>
+                        {flagConfig[r.flag].label}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-        {/* QUALITY CONTROL TAB */}
-        {activeTab === 'quality' && (
-          <div>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {[
-                { label: 'Conformes', count: qcRecords.filter(q => q.status === 'pass').length, color: 'var(--shifa-green)' },
-                { label: 'Avertissements', count: qcRecords.filter(q => q.status === 'warning').length, color: 'var(--shifa-amber)' },
-                { label: 'Non conformes', count: qcRecords.filter(q => q.status === 'fail').length, color: 'var(--shifa-red)' },
-              ].map(s => (
-                <div key={s.label} className="card p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${s.color}18` }}>
-                    <Icon name="ShieldCheckIcon" size={18} style={{ color: s.color }} />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold" style={{ color: s.color, fontFamily: 'var(--font-display)' }}>{s.count}</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.label}</p>
-                  </div>
-                </div>
-              ))}
+      {/* Supabase Results Tab */}
+      {activeTab === 'results' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Résultats Supabase (lab_results)</h3>
+            <button onClick={fetchLabResults} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
+              <Icon name="ArrowPathIcon" size={13} className={dbLoading ? 'animate-spin' : ''} />
+              Actualiser
+            </button>
+          </div>
+
+          {dbLoading && (
+            <div className="p-12 flex flex-col items-center justify-center gap-3">
+              <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--shifa-blue)', borderTopColor: 'transparent' }} />
+              <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Chargement des résultats…</p>
             </div>
-            <div className="card overflow-hidden">
-              <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-                <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>Registre des contrôles qualité — Aujourd'hui</h3>
+          )}
+
+          {!dbLoading && dbError && (
+            <div className="p-8 flex flex-col items-center justify-center gap-3">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(239,68,68,0.1)' }}>
+                <Icon name="ExclamationCircleIcon" size={24} style={{ color: 'var(--shifa-red)' }} />
               </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--shifa-red)' }}>Erreur de chargement</p>
+              <p className="text-xs text-center" style={{ color: 'var(--muted-foreground)' }}>{dbError}</p>
+              <button onClick={fetchLabResults} className="btn-primary text-xs px-4 py-2">Réessayer</button>
+            </div>
+          )}
+
+          {!dbLoading && !dbError && dbResults.length === 0 && (
+            <div className="p-12 flex flex-col items-center justify-center gap-3">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(0,102,255,0.08)' }}>
+                <Icon name="CircleStackIcon" size={26} style={{ color: 'var(--shifa-blue)' }} />
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--shifa-dark)' }}>Aucun résultat en base</p>
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>La table lab_results est vide pour le moment.</p>
+            </div>
+          )}
+
+          {!dbLoading && !dbError && dbResults.length > 0 && (
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Analyseur', 'Niveau de contrôle', 'Heure', 'Résultat obtenu', 'Cible ± tolérance', 'CV%', 'Statut'].map(h => (
+                  <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                    {['ID', 'Statut', 'Créé le'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {qcRecords.map((q, i) => (
-                    <tr key={q.id} style={{ borderBottom: i < qcRecords.length - 1 ? '1px solid var(--border)' : 'none' }} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-medium text-sm" style={{ color: 'var(--foreground)' }}>{q.analyzer}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{q.control}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{q.date}</td>
-                      <td className="px-4 py-3 font-bold text-sm" style={{ color: qcStatusConfig[q.status].color }}>{q.result}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{q.target}</td>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: q.status === 'fail' ? 'var(--shifa-red)' : 'var(--foreground)' }}>{q.cv}</td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: qcStatusConfig[q.status].bg, color: qcStatusConfig[q.status].color }}>{qcStatusConfig[q.status].label}</span>
-                      </td>
+                  {dbResults.map((r: any, i: number) => (
+                    <tr key={r.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{r.id?.slice(0, 8)}…</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.status || '—'}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Quality Tab */}
+      {activeTab === 'quality' && (
+        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-dark)' }}>Contrôle qualité analytique</h3>
           </div>
-        )}
-      </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ backgroundColor: 'var(--shifa-surface)' }}>
+                  {['Analyseur', 'Contrôle', 'Heure', 'Résultat', 'Cible', 'CV', 'Statut'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {qcRecords.map((qc, i) => (
+                  <tr key={qc.id} className="border-t" style={{ borderColor: 'var(--border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--shifa-surface)' }}>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: 'var(--shifa-dark)' }}>{qc.analyzer}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{qc.control}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{qc.date}</td>
+                    <td className="px-4 py-3 text-xs font-mono font-semibold" style={{ color: 'var(--foreground)' }}>{qc.result}</td>
+                    <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>{qc.target}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>{qc.cv}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: qcStatusConfig[qc.status].bg, color: qcStatusConfig[qc.status].color }}>
+                        {qcStatusConfig[qc.status].label}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

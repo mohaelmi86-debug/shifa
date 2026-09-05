@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-type Tab = 'overview' | 'countries' | 'integrations' | 'config' | 'identity';
+type Tab = 'overview' | 'countries' | 'integrations' | 'config' | 'identity' | 'connectors';
 
 interface Country {
   code: string;
@@ -124,6 +124,7 @@ export default function LocalHealthServicesContent() {
     { id: 'overview', label: 'Vue d\'ensemble', icon: 'GlobeAltIcon' },
     { id: 'countries', label: 'Par pays', icon: 'MapPinIcon' },
     { id: 'integrations', label: 'Modes d\'intégration', icon: 'ArrowsRightLeftIcon' },
+    { id: 'connectors', label: 'Connecteurs actifs', icon: 'BoltIcon' },
     { id: 'config', label: 'Configuration', icon: 'Cog6ToothIcon' },
     { id: 'identity', label: 'Identité SHIFA', icon: 'ShieldCheckIcon' },
   ];
@@ -432,6 +433,138 @@ export default function LocalHealthServicesContent() {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONNECTORS TAB ── */}
+      {activeTab === 'connectors' && (
+        <div className="space-y-5">
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Connecteurs locaux actifs</h2>
+            <div className="space-y-3">
+              {[
+                {
+                  name: 'CNAM Sénégal — Assurance maladie',
+                  type: 'Assurance',
+                  country: '🇸🇳 Sénégal',
+                  protocol: 'REST API + OAuth 2.0',
+                  status: 'connected',
+                  lastSync: 'Il y a 2 min',
+                  dataFlow: 'SHIFA → Déclaration → CNAM → Remboursement → SHIFA',
+                  scopes: ['Déclaration actes', 'Vérification droits', 'Remboursements'],
+                  color: '#16a34a',
+                },
+                {
+                  name: 'Orange Money — Paiement mobile',
+                  type: 'Paiement',
+                  country: '🇸🇳 Sénégal / 🇨🇮 CI',
+                  protocol: 'REST API + Webhook',
+                  status: 'connected',
+                  lastSync: 'Il y a 5 min',
+                  dataFlow: 'SHIFA → Initiation paiement → Orange Money → Confirmation → SHIFA Finance',
+                  scopes: ['Initiation paiement', 'Vérification statut', 'Remboursement'],
+                  color: '#f59e0b',
+                },
+                {
+                  name: 'Carte Vitale / CPAM — France',
+                  type: 'Assurance',
+                  country: '🇫🇷 France',
+                  protocol: 'SESAM-Vitale + REST',
+                  status: 'connected',
+                  lastSync: 'Il y a 1 min',
+                  dataFlow: 'SHIFA → Lecture carte → CPAM → Droits → SHIFA',
+                  scopes: ['Lecture droits', 'Télétransmission', 'Feuille de soins'],
+                  color: '#2563eb',
+                },
+                {
+                  name: 'CNOPS / CNSS — Maroc',
+                  type: 'Assurance',
+                  country: '🇲🇦 Maroc',
+                  protocol: 'SOAP/XML + REST',
+                  status: 'connected',
+                  lastSync: 'Il y a 8 min',
+                  dataFlow: 'SHIFA → Vérification adhérent → CNOPS → Prise en charge → SHIFA',
+                  scopes: ['Vérification adhérent', 'Taux remboursement', 'Accord préalable'],
+                  color: '#dc2626',
+                },
+                {
+                  name: 'Hôpital El Maarouf — Comores',
+                  type: 'Établissement',
+                  country: '🇰🇲 Comores',
+                  protocol: 'HL7 FHIR R4',
+                  status: 'connected',
+                  lastSync: 'Il y a 15 min',
+                  dataFlow: 'SHIFA → Demande admission → HIS El Maarouf → Confirmation → SHIFA',
+                  scopes: ['Admissions', 'Résultats', 'Transferts'],
+                  color: '#0891b2',
+                },
+                {
+                  name: 'Registre vaccination MSAS — Sénégal',
+                  type: 'Santé publique',
+                  country: '🇸🇳 Sénégal',
+                  protocol: 'REST API',
+                  status: 'available',
+                  lastSync: '—',
+                  dataFlow: 'SHIFA → Déclaration vaccination → MSAS → Mise à jour registre national',
+                  scopes: ['Déclaration vaccinations', 'Consultation carnet'],
+                  color: '#7c3aed',
+                },
+              ].map(connector => (
+                <div key={connector.name} className="rounded-xl border p-4" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{connector.name}</h3>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: connector.status === 'connected' ? '#dcfce7' : '#fef3c7', color: connector.status === 'connected' ? '#16a34a' : '#d97706' }}>
+                          {connector.status === 'connected' ? '● Connecté' : '○ Disponible'}
+                        </span>
+                      </div>
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{connector.country} · {connector.type} · {connector.protocol}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Dernière sync</p>
+                      <p className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{connector.lastSync}</p>
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-lg mb-3 font-mono text-xs" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
+                    {connector.dataFlow}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {connector.scopes.map(scope => (
+                      <span key={scope} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: connector.color + '15', color: connector.color }}>
+                        {scope}
+                      </span>
+                    ))}
+                    <div className="ml-auto flex gap-2">
+                      <button className="text-xs px-3 py-1 rounded-lg border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>Config</button>
+                      <button className="text-xs px-3 py-1 rounded-lg border" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>Tester</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Add connector */}
+          <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--foreground)' }}>Ajouter un nouveau connecteur local</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { label: 'Nom du service', placeholder: 'Ex: CNAM Côte d\'Ivoire' },
+                { label: 'Pays', placeholder: 'Ex: Côte d\'Ivoire' },
+                { label: 'Type', placeholder: 'Assurance / Paiement / Établissement / Santé publique' },
+                { label: 'Protocole', placeholder: 'REST API / HL7 FHIR / SOAP / Webhook' },
+              ].map(f => (
+                <div key={f.label}>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted-foreground)' }}>{f.label}</label>
+                  <input placeholder={f.placeholder} className="w-full px-3 py-2 text-sm rounded-xl border outline-none" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
+                </div>
+              ))}
+            </div>
+            <button className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>
+              <Icon name="PlusIcon" size={14} /> Ajouter le connecteur
+            </button>
           </div>
         </div>
       )}
