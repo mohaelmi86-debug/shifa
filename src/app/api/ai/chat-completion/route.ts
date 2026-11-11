@@ -43,8 +43,21 @@ export async function POST(request: NextRequest) {
 
     const contentLength = Number(request.headers.get('content-length') || 0);
     if (contentLength > MAX_BODY_BYTES) return jsonError('Requête trop volumineuse.', 413);
-
-    const body = await request.json();
+    // Enforce the limit on actual bytes too; Content-Length is optional/untrusted.
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
+      return jsonError('Requête trop volumineuse.', 413);
+    }
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return jsonError('JSON invalide.', 400);
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return jsonError('Corps de requête invalide.', 400);
+    }
+    body = body as Record<string, unknown>;
     const providerName = body?.provider as keyof typeof PROVIDERS;
     const provider = PROVIDERS[providerName];
     const model = body?.model;
