@@ -100,7 +100,7 @@ export default function ProBillingContent() {
             </div>
             <div className="min-w-0">
               {stat.currency ? (
-                <CurrencyDisplay amount={stat.value} className="text-sm font-bold" style={{ color: 'var(--foreground)' }} />
+                <CurrencyDisplay amount={stat.value} currency="XOF" className="text-sm font-bold" style={{ color: 'var(--foreground)' }} />
               ) : (
                 <p className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{stat.value}</p>
               )}
@@ -175,7 +175,7 @@ export default function ProBillingContent() {
                         <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{act.patient}</p>
                         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{act.type} · {act.date}</p>
                       </div>
-                      <CurrencyDisplay amount={act.amount} className="text-sm font-bold shrink-0" style={{ color: 'var(--foreground)' }} />
+                      <CurrencyDisplay amount={act.amount} currency="XOF" className="text-sm font-bold shrink-0" style={{ color: 'var(--foreground)' }} />
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: s.bg, color: s.color }}>{s.label}</span>
                     </div>
                   );
@@ -261,7 +261,7 @@ export default function ProBillingContent() {
                         <span className="text-xs font-mono px-2 py-0.5 rounded-lg" style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}>{act.code}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <CurrencyDisplay amount={act.amount} className="text-sm font-bold" style={{ color: 'var(--foreground)' }} />
+                        <CurrencyDisplay amount={act.amount} currency="XOF" className="text-sm font-bold" style={{ color: 'var(--foreground)' }} />
                       </td>
                       <td className="px-4 py-3 text-sm" style={{ color: act.covered ? '#16a34a' : 'var(--muted-foreground)' }}>
                         {act.covered ? `${act.insurer} — ${act.covered.toLocaleString()} FCFA` : '—'}
@@ -296,7 +296,7 @@ export default function ProBillingContent() {
                   </div>
                   <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{inv.patient} · {inv.date} · {inv.items} ligne{inv.items > 1 ? 's' : ''}</p>
                 </div>
-                <CurrencyDisplay amount={inv.amount} className="text-sm font-bold shrink-0" style={{ color: 'var(--foreground)' }} />
+                <CurrencyDisplay amount={inv.amount} currency="XOF" className="text-sm font-bold shrink-0" style={{ color: 'var(--foreground)' }} />
                 <div className="flex items-center gap-2 shrink-0">
                   <button className="p-2 rounded-lg hover:bg-muted transition-all">
                     <Icon name="EyeIcon" size={14} className="text-muted-foreground" />
@@ -348,7 +348,7 @@ export default function ProBillingContent() {
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{act.type} · {act.insurer}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <CurrencyDisplay amount={act.covered || 0} className="text-sm font-bold" style={{ color: '#16a34a' }} />
+                    <CurrencyDisplay amount={act.covered || 0} currency="XOF" className="text-sm font-bold" style={{ color: '#16a34a' }} />
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>à rembourser</p>
                   </div>
                   <button className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>
