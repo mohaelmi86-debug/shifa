@@ -216,7 +216,7 @@ export default function TeleconsultationSessionContent() {
                     value={motif}
                     onChange={e => setMotif(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg text-sm text-white border outline-none focus:ring-1"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', focusRingColor: '#60a5fa' }}
+                    style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', outlineColor: '#60a5fa' }}
                     placeholder="Motif de consultation..."
                   />
                 </div>
