@@ -57,7 +57,7 @@ export default function ShifaAIPharmacyContent() {
       const result = await getChatCompletion('GEMINI', 'gemini-2.5-flash', [{ role: 'user', content: fullPrompt }]);
       const aiResponse = result?.choices?.[0]?.message?.content;
       if (typeof aiResponse !== 'string') throw new Error('Réponse IA invalide');
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Erreur lors de la génération de la réponse. Veuillez réessayer.' }]);
     } finally {
