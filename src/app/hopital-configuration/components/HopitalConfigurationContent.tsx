@@ -166,7 +166,7 @@ function DepartmentModal({ dept, onClose, onSave }: { dept: Department | null; o
                 value={form[key] as string | number}
                 onChange={e => set(key, type === 'number' ? Number(e.target.value) : e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2"
-                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)', focusRingColor: 'var(--shifa-blue)' }}
+                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)', outlineColor: 'var(--shifa-blue)' }}
               />
             </div>
           ))}
