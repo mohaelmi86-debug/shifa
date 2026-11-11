@@ -57,21 +57,22 @@ export async function POST(request: NextRequest) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
       return jsonError('Corps de requête invalide.', 400);
     }
-    body = body as Record<string, unknown>;
-    const providerName = body?.provider as keyof typeof PROVIDERS;
+    const payload = body as Record<string, unknown>;
+    const providerName = payload.provider as keyof typeof PROVIDERS;
     const provider = PROVIDERS[providerName];
-    const model = body?.model;
-    const messages = body?.messages;
-    const stream = body?.stream === true;
-    const parameters = body?.parameters ?? {};
+    const model = payload.model;
+    const messages = payload.messages;
+    const stream = payload.stream === true;
+    const rawParameters = payload.parameters ?? {};
+    if (typeof rawParameters !== 'object' || rawParameters === null || Array.isArray(rawParameters)) {
+      return jsonError('Paramètres invalides.', 400);
+    }
+    const parameters = rawParameters as Record<string, unknown>;
 
     if (!provider || typeof model !== 'string' || !provider.models.includes(model as never)) {
       return jsonError('Fournisseur ou modèle non autorisé.', 400);
     }
     if (!validateMessages(messages)) return jsonError('Messages invalides ou trop volumineux.', 400);
-    if (parameters && (typeof parameters !== 'object' || Array.isArray(parameters))) {
-      return jsonError('Paramètres invalides.', 400);
-    }
     const temperature = parameters.temperature;
     const maxTokens = parameters.max_tokens ?? parameters.maxTokens;
     if (temperature !== undefined && (typeof temperature !== 'number' || temperature < 0 || temperature > 1.5)) {
