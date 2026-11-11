@@ -306,7 +306,7 @@ export default function PatientChronicDiseaseContent() {
               { title: 'Bilan HbA1c en retard', desc: 'Dernier bilan il y a 4 mois — recommandé tous les 3 mois', severity: 'medium', date: 'Il y a 3 jours', action: 'Programmer laboratoire' },
               { title: 'Poids stable — objectif non atteint', desc: 'IMC 27.4 — objectif < 25', severity: 'low', date: 'Il y a 1 semaine', action: 'Consultation diététique' },
             ].map((alert, i) => {
-              const sc = ({ high: { bg: 'bg-red-50', border: 'border-red-200', icon: 'text-red-600', badge: 'bg-red-100 text-red-700', label: 'Haute' }, medium: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'text-amber-600', badge: 'bg-amber-100 text-amber-700', label: 'Moyenne' }, low: { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600', badge: 'bg-blue-100 text-blue-700', label: 'Basse' } } as const)[alert.severity];
+              const sc = ({ high: { bg: 'bg-red-50', border: 'border-red-200', icon: 'text-red-600', badge: 'bg-red-100 text-red-700', label: 'Haute' }, medium: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'text-amber-600', badge: 'bg-amber-100 text-amber-700', label: 'Moyenne' }, low: { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600', badge: 'bg-blue-100 text-blue-700', label: 'Basse' } } as const)[alert.severity] ?? { bg: 'bg-gray-50', border: 'border-gray-200', icon: 'text-gray-600', badge: 'bg-gray-100 text-gray-700', label: 'Inconnue' };
               return (
                 <div key={i} className={`border rounded-xl p-4 ${sc.bg} ${sc.border}`}>
                   <div className="flex items-start justify-between">
