@@ -93,7 +93,7 @@ export default function TeleconsultationWaitingContent() {
               key={patient.id}
               onClick={() => setSelectedId(patient.id)}
               className={`w-full text-left card-base p-4 transition-all hover:shadow-md ${selectedId === patient.id ? 'ring-2' : ''}`}
-              style={selectedId === patient.id ? { ringColor: 'var(--shifa-blue)', borderColor: 'var(--shifa-blue)' } : {}}
+              style={selectedId === patient.id ? { outlineColor: 'var(--shifa-blue)', borderColor: 'var(--shifa-blue)' } : {}}
             >
               <div className="flex items-center gap-3">
                 <div className="relative">
