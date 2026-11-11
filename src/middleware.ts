@@ -29,7 +29,7 @@ function requiredRoles(pathname: string): string[] | null {
   if (ADMIN_ROUTES.some((route) => matchesPath(pathname, route))) return ['org_admin', 'platform_admin'];
   if (ORG_ROUTES.some((route) => matchesPath(pathname, route))) return ['org_admin', 'platform_admin'];
   if (PARTNER_ROUTES.some((route) => matchesPath(pathname, route))) {
-    return ['ministry', 'insurer', 'university', 'ngo', 'public_health', 'platform_admin'];
+    return ['org_admin', 'platform_admin'];
   }
   return null;
 }
