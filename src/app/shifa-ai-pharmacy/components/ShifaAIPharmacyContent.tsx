@@ -38,7 +38,7 @@ export default function ShifaAIPharmacyContent() {
   const [loading, setLoading] = useState(false);
   const [showAlerts, setShowAlerts] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage } = useChat();
+  const { sendMessage, response: aiResponse } = useChat('GEMINI', 'gemini-2.5-flash', false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,7 +54,7 @@ export default function ShifaAIPharmacyContent() {
     setInput('');
     setLoading(true);
     try {
-      const response = await sendMessage(fullPrompt);
+      await sendMessage([{ role: 'user', content: fullPrompt }]);
       setMessages(prev => [...prev, { role: 'assistant', content: response }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Erreur lors de la génération de la réponse. Veuillez réessayer.' }]);
