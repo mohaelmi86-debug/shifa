@@ -21,13 +21,14 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
-function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
+type ChatRole = 'system' | 'user' | 'assistant';
+function validateMessages(messages: unknown): messages is Array<{ role: ChatRole; content: string }> {
   if (!Array.isArray(messages) || messages.length < 1 || messages.length > MAX_MESSAGES) return false;
   let total = 0;
   for (const message of messages) {
     if (!message || typeof message !== 'object') return false;
     const m = message as Record<string, unknown>;
-    if (!['system', 'user', 'assistant'].includes(String(m.role))) return false;
+    if (typeof m.role !== 'string' || !(['system', 'user', 'assistant'] as const).includes(m.role as ChatRole)) return false;
     if (typeof m.content !== 'string' || !m.content.trim()) return false;
     total += m.content.length;
     if (total > MAX_CONTENT_CHARS) return false;
@@ -75,17 +76,18 @@ export async function POST(request: NextRequest) {
     if (!validateMessages(messages)) return jsonError('Messages invalides ou trop volumineux.', 400);
     const temperature = parameters.temperature;
     const maxTokens = parameters.max_tokens ?? parameters.maxTokens;
+    const validMaxTokens = typeof maxTokens === 'number' && Number.isInteger(maxTokens) && maxTokens >= 1 && maxTokens <= MAX_TOKENS;
     if (temperature !== undefined && (typeof temperature !== 'number' || temperature < 0 || temperature > 1.5)) {
       return jsonError('temperature hors limites.', 400);
     }
-    if (maxTokens !== undefined && (!Number.isInteger(maxTokens) || maxTokens < 1 || maxTokens > MAX_TOKENS)) {
+    if (maxTokens !== undefined && !validMaxTokens) {
       return jsonError('max_tokens hors limites.', 400);
     }
     if (!provider.key) return jsonError('Fournisseur IA indisponible.', 503);
 
     const safeParameters = {
       ...(temperature !== undefined ? { temperature } : {}),
-      ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
+      ...(validMaxTokens ? { max_tokens: maxTokens as number } : {}),
     };
     const result = await completion({
       model,
