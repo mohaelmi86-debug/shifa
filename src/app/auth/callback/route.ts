@@ -5,7 +5,7 @@ import { type NextRequest } from 'next/server';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/patient-home';
+  const requestedNext = searchParams.get('next') ?? '/patient-home';\n  // Only allow same-origin relative paths; reject protocol-relative and absolute URLs.\n  const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') && !requestedNext.includes('\\\\')\n    ? requestedNext\n    : '/patient-home';
 
   if (code) {
     const supabase = await createClient();
