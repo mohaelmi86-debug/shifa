@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { useChat } from '@/lib/hooks/useChat';
+import { getChatCompletion } from '@/lib/ai/chatCompletion';
 
 type Tool = 'interactions' | 'substitutions' | 'dosage' | 'contraindications' | 'pregnancy' | 'renal';
 
@@ -38,7 +38,7 @@ export default function ShifaAIPharmacyContent() {
   const [loading, setLoading] = useState(false);
   const [showAlerts, setShowAlerts] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage, response: aiResponse } = useChat('GEMINI', 'gemini-2.5-flash', false);
+  
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,7 +54,9 @@ export default function ShifaAIPharmacyContent() {
     setInput('');
     setLoading(true);
     try {
-      await sendMessage([{ role: 'user', content: fullPrompt }]);
+      const result = await getChatCompletion('GEMINI', 'gemini-2.5-flash', [{ role: 'user', content: fullPrompt }]);
+      const aiResponse = result?.choices?.[0]?.message?.content;
+      if (typeof aiResponse !== 'string') throw new Error('Réponse IA invalide');
       setMessages(prev => [...prev, { role: 'assistant', content: response }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Erreur lors de la génération de la réponse. Veuillez réessayer.' }]);
