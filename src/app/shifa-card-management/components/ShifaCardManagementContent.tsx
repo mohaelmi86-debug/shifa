@@ -330,7 +330,7 @@ export default function ShifaCardManagementContent() {
               <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Historique d'activation</h3>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {activationHistory.map(act => {
                   const s = statusConfig[act.statut];
                   return (
@@ -405,7 +405,7 @@ export default function ShifaCardManagementContent() {
               <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Historique des scans QR</h3>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {qrScans.map(scan => {
                   const s = statusConfig[scan.statut];
                   return (

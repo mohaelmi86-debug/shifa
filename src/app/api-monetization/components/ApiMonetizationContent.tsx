@@ -176,7 +176,7 @@ export default function ApiMonetizationContent() {
           <div className="px-4 py-3 border-b" style={{ background: 'var(--muted)', borderColor: 'var(--border)' }}>
             <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Standards d'interopérabilité supportés</span>
           </div>
-          <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {PROTOCOLS.map(proto => (
               <div key={proto.name} className="px-4 py-4 flex items-center gap-4">
                 <div className="w-24 shrink-0">

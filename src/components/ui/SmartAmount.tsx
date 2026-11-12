@@ -25,6 +25,7 @@ export interface SmartAmountProps {
   className?: string;
   /** Override main amount text color */
   color?: string;
+  style?: React.CSSProperties;
 }
 
 const SIZE_MAP: Record<string, { main: string; ref: string; badge: string }> = {
@@ -64,6 +65,7 @@ export default function SmartAmount({
   referenceLabel,
   className = '',
   color,
+  style,
 }: SmartAmountProps) {
   const cls = SIZE_MAP[size] || SIZE_MAP.md;
 
@@ -89,7 +91,7 @@ export default function SmartAmount({
 
   if (inline) {
     return (
-      <span className={`inline-flex items-baseline gap-1.5 flex-wrap ${className}`}>
+      <span className={`inline-flex items-baseline gap-1.5 flex-wrap ${className}`} style={style}>
         <span className={cls.main} style={{ color: mainColor }}>{formattedMain}</span>
         {hasReference && (
           <span className={`${cls.ref} flex items-center gap-1`} style={{ color: refColor }}>
@@ -104,7 +106,7 @@ export default function SmartAmount({
   }
 
   return (
-    <div className={`inline-flex flex-col ${className}`}>
+    <div className={`inline-flex flex-col ${className}`} style={style}>
       <span className={cls.main} style={{ color: mainColor }}>{formattedMain}</span>
       {hasReference && (
         <span className={`${cls.ref} flex items-center gap-1 flex-wrap mt-0.5`} style={{ color: refColor }}>
