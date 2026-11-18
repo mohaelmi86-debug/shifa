@@ -56,14 +56,21 @@ export default function ProfessionalCredentialReviewPanel() {
 
   const openDocument = async (row: CredentialRow) => {
     setError('');
+    const previewWindow = window.open('about:blank', '_blank');
     const { data, error: signedError } = await supabase.storage
       .from('professional-credentials')
       .createSignedUrl(row.storage_path, 60);
     if (signedError || !data?.signedUrl) {
+      previewWindow?.close();
       setError('Impossible de générer un accès temporaire au document.');
       return;
     }
-    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    if (previewWindow) {
+      previewWindow.opener = null;
+      previewWindow.location.href = data.signedUrl;
+    } else {
+      setError('Autorisez les fenêtres contextuelles pour consulter ce justificatif.');
+    }
   };
 
   const review = async (row: CredentialRow, decision: 'approve' | 'reject') => {
