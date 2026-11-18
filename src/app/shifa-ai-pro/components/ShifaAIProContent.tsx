@@ -64,7 +64,7 @@ export default function ShifaAIProContent() {
           module: 'professional',
           messages: [
             ...messages.map(m => ({ role: m.role, content: m.content })),
-            { role: 'user', content: text },
+            { role: 'user', content: `Mode demandé : ${activeTool_.label}.\nQuestion : ${text}` },
           ],
         }),
       });
