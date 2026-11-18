@@ -26,8 +26,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS registration_applications_one_open_per_type_id
 
 ALTER TABLE public.registration_applications ENABLE ROW LEVEL SECURITY;
 
-REVOKE ALL ON TABLE public.registration_applications FROM anon, authenticated;
-GRANT SELECT ON TABLE public.registration_applications TO authenticated;
+REVOKE ALL ON TABLE public.registration_applications FROM PUBLIC, anon, authenticated;
+-- Applicants can read their own status and submitted data, but not internal review notes.
+GRANT SELECT (
+  id, applicant_id, application_type, payload, status, submitted_at, reviewed_at
+) ON TABLE public.registration_applications TO authenticated;
 
 DROP POLICY IF EXISTS registration_applications_read_own_or_platform_admin
   ON public.registration_applications;
