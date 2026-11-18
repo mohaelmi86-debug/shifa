@@ -14,9 +14,12 @@ const ADMIN_ROUTES = [
   '/admin-professionnels', '/admin-utilisateurs', '/admin-activite', '/admin-parametres',
 ];
 const ORGANIZATION_ROUTES = ['/org-onboarding'];
-const PARTNER_ROUTES = [
-  '/espace-ministere', '/espace-assurance', '/espace-universite',
-  '/espace-ong', '/espace-sante-publique',
+const PARTNER_ROLE_ROUTES: Array<{ path: string; roles: string[] }> = [
+  { path: '/espace-ministere', roles: ['ministry', 'platform_admin'] },
+  { path: '/espace-assurance', roles: ['insurance', 'platform_admin'] },
+  { path: '/espace-universite', roles: ['university', 'platform_admin'] },
+  { path: '/espace-ong', roles: ['ngo', 'platform_admin'] },
+  { path: '/espace-sante-publique', roles: ['public_health', 'platform_admin'] },
 ];
 
 function matchesPath(pathname: string, route: string): boolean {
@@ -28,7 +31,8 @@ function requiredRoles(pathname: string): string[] | null {
   if (PROFESSIONAL_ROUTES.some((route) => matchesPath(pathname, route))) return ['professional'];
   if (ADMIN_ROUTES.some((route) => matchesPath(pathname, route))) return ['org_admin', 'platform_admin'];
   if (ORGANIZATION_ROUTES.some((route) => matchesPath(pathname, route))) return ['org_admin', 'platform_admin'];
-  if (PARTNER_ROUTES.some((route) => matchesPath(pathname, route))) return ['org_admin', 'platform_admin'];
+  const partnerRoute = PARTNER_ROLE_ROUTES.find(({ path }) => matchesPath(pathname, path));
+  if (partnerRoute) return partnerRoute.roles;
   return null;
 }
 
