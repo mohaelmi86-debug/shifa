@@ -7,7 +7,7 @@ const COUNTRIES = [
   { code: 'KM', name: 'Comores', currency: 'KMF', flag: '🇰🇲' },
   { code: 'SN', name: 'Sénégal', currency: 'XOF', flag: '🇸🇳' },
   { code: 'MA', name: 'Maroc', currency: 'MAD', flag: '🇲🇦' },
-  { code: 'CI', name: "Côte d\'Ivoire", currency: 'XOF', flag: '🇨🇮' },
+  { code: 'CI', name: "Côte d'Ivoire", currency: 'XOF', flag: '🇨🇮' },
   { code: 'TN', name: 'Tunisie', currency: 'TND', flag: '🇹🇳' },
   { code: 'FR', name: 'France', currency: 'EUR', flag: '🇫🇷' },
   { code: 'DZ', name: 'Algérie', currency: 'DZD', flag: '🇩🇿' },
@@ -43,7 +43,7 @@ const ORDERS = [
   { id: 'ORD-001', patient: 'Aïcha Diallo', country: '🇰🇲 Comores', type: 'Standard', fees: ['Fabrication', 'Livraison standard'], total: 4000, currency: 'KMF', status: 'En livraison', date: '2025-01-08' },
   { id: 'ORD-002', patient: 'Mohamed Sy', country: '🇸🇳 Sénégal', type: 'Premium', fees: ['Fabrication', 'Activation', 'Livraison standard'], total: 8500, currency: 'XOF', status: 'Activée', date: '2025-01-05' },
   { id: 'ORD-003', patient: 'Fatima Benali', country: '🇲🇦 Maroc', type: 'Standard', fees: ['Remplacement'], total: 120, currency: 'MAD', status: 'En traitement', date: '2025-01-10' },
-  { id: 'ORD-004', patient: 'Dr. Koné Ibrahima', country: "🇨🇮 Côte d\'Ivoire", type: 'Professionnel', fees: ['Fabrication', 'Activation', 'Livraison express'], total: 18000, currency: 'XOF', status: 'Commandée', date: '2025-01-11' },
+  { id: 'ORD-004', patient: 'Dr. Koné Ibrahima', country: "🇨🇮 Côte d'Ivoire", type: 'Professionnel', fees: ['Fabrication', 'Activation', 'Livraison express'], total: 18000, currency: 'XOF', status: 'Commandée', date: '2025-01-11' },
 ];
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
