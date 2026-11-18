@@ -60,6 +60,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
       country?: string;
       phone?: string;
+      registrationType?: 'professional' | 'organization';
+      registrationData?: Record<string, string>;
     } = {}
   ) => {
     // Only profile fields are forwarded. Authorization roles are never accepted
@@ -76,7 +78,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           date_of_birth: metadata.dateOfBirth || '',
           gender: metadata.gender || '',
           country: metadata.country || '',
-          phone: metadata.phone || ''
+          phone: metadata.phone || '',
+          // These fields are untrusted application details, never authorization claims.
+          registration_type: metadata.registrationType || '',
+          registration_data: metadata.registrationData || {}
         },
         emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`
       }
