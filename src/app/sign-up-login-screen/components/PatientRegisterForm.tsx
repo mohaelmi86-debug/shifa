@@ -33,7 +33,7 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
     setIsLoading(true);
     setRegisterError('');
     try {
-      await signUp(data.email, data.password, {
+      const result = await signUp(data.email, data.password, {
         fullName: `${data.firstName.trim()} ${data.lastName.trim()}`,
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
@@ -42,7 +42,7 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
         country: data.country,
         phone: data.phone.trim(),
       });
-      router.push('/registration-pending');
+      router.push(result.session ? '/patient-home' : '/registration-pending');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
