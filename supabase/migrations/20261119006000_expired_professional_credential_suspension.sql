@@ -3,6 +3,12 @@
 -- It does not alter other active memberships; global profile deactivation occurs only
 -- when no accepted active organization membership remains (legacy memberships included).
 
+CREATE INDEX IF NOT EXISTS idx_professional_credentials_expiry_scan
+  ON public.professional_credentials (expires_at, organization_id, professional_id)
+  WHERE status = 'approved'
+    AND credential_type IN ('professional_license', 'professional_registration')
+    AND expires_at IS NOT NULL;
+
 CREATE OR REPLACE FUNCTION public.process_expired_professional_credentials()
 RETURNS integer
 LANGUAGE plpgsql
