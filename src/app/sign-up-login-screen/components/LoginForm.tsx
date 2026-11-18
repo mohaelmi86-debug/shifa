@@ -42,13 +42,19 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           .eq('id', user.id)
           .single();
         const role = profile?.role || 'patient';
-        if (role === 'admin') {
-          router.push('/administration-tablissement');
-        } else if (role === 'professional') {
-          router.push('/workspace-professionnel');
-        } else {
-          router.push('/patient-home');
-        }
+        const roleRoutes: Record<string, string> = {
+          platform_admin: '/administration-generale',
+          org_admin: '/administration-tablissement',
+          professional: '/workspace-professionnel',
+          ministry: '/portail-ministere',
+          insurance: '/portail-assurance',
+          ngo: '/portail-ong',
+          university: '/portail-universite',
+          public_health: '/portail-sante-publique',
+          patient: '/patient-home',
+          guest: '/patient-home',
+        };
+        router.replace(roleRoutes[role] || '/patient-home');
       } else {
         router.push('/patient-home');
       }
