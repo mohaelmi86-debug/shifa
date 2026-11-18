@@ -81,15 +81,9 @@ BEGIN
       AND NOT EXISTS (
         SELECT 1
         FROM public.professional_organizations active_po
-        JOIN public.professional_credentials valid_pc
-          ON valid_pc.professional_id = active_po.professional_id
-         AND valid_pc.organization_id = active_po.organization_id
         WHERE active_po.professional_id = p.id
           AND active_po.status = 'active'::public.professional_status
           AND active_po.invitation_status = 'accepted'::public.invitation_status
-          AND valid_pc.status = 'approved'
-          AND valid_pc.credential_type IN ('professional_license', 'professional_registration')
-          AND (valid_pc.expires_at IS NULL OR valid_pc.expires_at >= current_date)
       )
     RETURNING p.id, p.user_id
   )
@@ -103,7 +97,7 @@ BEGIN
     'professional',
     dp.id,
     jsonb_build_object(
-      'reason', 'No active organization membership has a currently valid approved license or registration',
+      'reason', 'No active organization membership remains after expiry processing',
       'processed_on', current_date
     )
   FROM deactivated_profiles dp;
@@ -119,4 +113,4 @@ REVOKE ALL ON FUNCTION public.process_expired_professional_credentials() FROM PU
 GRANT EXECUTE ON FUNCTION public.process_expired_professional_credentials() TO service_role;
 
 COMMENT ON FUNCTION public.process_expired_professional_credentials() IS
-  'Service-role-only expiry processor. Suspends organization memberships lacking a current approved license/registration and globally deactivates a professional only when no active membership has valid credentials. Must be invoked by a trusted scheduler.';
+  'Service-role-only expiry processor. Suspends organization memberships lacking a current approved license/registration and globally deactivates a professional only when no active organization membership remains. Must be invoked by a trusted scheduler.';
