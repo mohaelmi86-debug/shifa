@@ -152,7 +152,7 @@ export default function ApiMonetizationContent() {
               </div>
 
               <div>
-                <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--muted-foreground)' }}>Cas d'usage</p>
+                <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--muted-foreground)' }}>Cas d&apos;usage</p>
                 <ul className="space-y-1">
                   {plan.useCases.slice(0, 3).map(u => (
                     <li key={u} className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--foreground)' }}>
@@ -174,7 +174,7 @@ export default function ApiMonetizationContent() {
       {tab === 'protocols' && (
         <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
           <div className="px-4 py-3 border-b" style={{ background: 'var(--muted)', borderColor: 'var(--border)' }}>
-            <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Standards d'interopérabilité supportés</span>
+            <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Standards d&apos;interopérabilité supportés</span>
           </div>
           <div className="divide-y" >
             {PROTOCOLS.map(proto => (
