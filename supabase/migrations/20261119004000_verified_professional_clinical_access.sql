@@ -24,6 +24,46 @@ $function$;
 REVOKE ALL ON FUNCTION private.is_verified_active_professional() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION private.is_verified_active_professional() TO authenticated;
 
+CREATE OR REPLACE FUNCTION private.org_admin_can_access_professional(p_professional_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_profiles up
+    JOIN public.organizations org
+      ON org.id = up.organization_id
+     AND org.is_active IS TRUE
+    JOIN public.professional_organizations po
+      ON po.organization_id = up.organization_id
+    WHERE up.id = (SELECT auth.uid())
+      AND up.role::text = 'org_admin'
+      AND up.is_active IS TRUE
+      AND po.professional_id = p_professional_id
+  );
+$function$;
+
+REVOKE ALL ON FUNCTION private.org_admin_can_access_professional(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.org_admin_can_access_professional(uuid) TO authenticated;
+
+-- Keep the public directory limited to active, verified professionals while
+-- scoping organization-admin visibility to actual membership rows.
+DROP POLICY IF EXISTS professionals_tenant_read_guard ON public.professionals;
+CREATE POLICY professionals_tenant_read_guard
+ON public.professionals
+AS RESTRICTIVE
+FOR SELECT
+TO authenticated
+USING (
+  user_id = (SELECT auth.uid())
+  OR private.is_platform_admin()
+  OR (status = 'active'::public.professional_status AND is_verified IS TRUE)
+  OR private.org_admin_can_access_professional(id)
+);
+
 CREATE OR REPLACE FUNCTION private.is_clinical_role()
 RETURNS boolean
 LANGUAGE sql
@@ -165,6 +205,8 @@ BEGIN
 END;
 $guard$;
 
+COMMENT ON FUNCTION private.org_admin_can_access_professional(uuid) IS
+  'Organization admins can read professional profiles only through their own organization membership.';
 COMMENT ON FUNCTION private.is_verified_active_professional() IS
   'True only for an active account with a verified active professional record.';
 COMMENT ON FUNCTION private.owns_professional_record(uuid) IS
