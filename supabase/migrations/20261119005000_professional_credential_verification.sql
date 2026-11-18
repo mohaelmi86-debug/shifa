@@ -87,6 +87,16 @@ USING (
   )
 );
 
+-- The submit page removes an uploaded object if metadata registration fails.
+DROP POLICY IF EXISTS professional_credentials_storage_delete ON storage.objects;
+CREATE POLICY professional_credentials_storage_delete
+ON storage.objects
+FOR DELETE TO authenticated
+USING (
+  bucket_id = 'professional-credentials'
+  AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+);
+
 -- Restrictive guards ensure other permissive Storage policies cannot widen access
 -- to this private bucket.
 DROP POLICY IF EXISTS professional_credentials_storage_upload_guard ON storage.objects;
@@ -95,6 +105,16 @@ ON storage.objects
 AS RESTRICTIVE
 FOR INSERT TO authenticated
 WITH CHECK (
+  bucket_id = 'professional-credentials'
+  AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+);
+
+DROP POLICY IF EXISTS professional_credentials_storage_delete_guard ON storage.objects;
+CREATE POLICY professional_credentials_storage_delete_guard
+ON storage.objects
+AS RESTRICTIVE
+FOR DELETE TO authenticated
+USING (
   bucket_id = 'professional-credentials'
   AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
 );
