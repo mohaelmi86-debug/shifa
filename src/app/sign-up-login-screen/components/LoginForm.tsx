@@ -43,14 +43,14 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           .single();
         const role = profile?.role || 'patient';
         const roleRoutes: Record<string, string> = {
-          platform_admin: '/administration-generale',
+          platform_admin: '/platform-admin',
           org_admin: '/administration-tablissement',
           professional: '/workspace-professionnel',
-          ministry: '/portail-ministere',
-          insurance: '/portail-assurance',
-          ngo: '/portail-ong',
-          university: '/portail-universite',
-          public_health: '/portail-sante-publique',
+          ministry: '/espace-ministere',
+          insurance: '/assurance-workspace',
+          ngo: '/espace-ong',
+          university: '/espace-universite',
+          public_health: '/espace-sante-publique',
           patient: '/patient-home',
           guest: '/patient-home',
         };
