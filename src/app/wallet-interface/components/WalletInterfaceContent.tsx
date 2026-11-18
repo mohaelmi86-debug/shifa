@@ -184,9 +184,9 @@ export default function WalletInterfaceContent() {
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Google Wallet — Pixel 8 Pro</h3>
-                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>3 cartes · Solde: 48 500 FCFA · Dernière utilisation: Aujourd'hui 14h32</p>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>3 cartes · Solde: 48 500 FCFA · Dernière utilisation: Aujourd&apos;hui 14h32</p>
               </div>
-              <button className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#4285F4' }}>Gérer l'appareil</button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#4285F4' }}>Gérer l&apos;appareil</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {googleCards.map(card => (
@@ -243,7 +243,7 @@ export default function WalletInterfaceContent() {
                 <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Apple Wallet — iPhone 15 Pro</h3>
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>2 cartes · Solde: 22 000 FCFA · Dernière utilisation: Hier 09h15</p>
               </div>
-              <button className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#000' }}>Gérer l'appareil</button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#000' }}>Gérer l&apos;appareil</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {appleCards.map(card => (
