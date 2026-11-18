@@ -42,7 +42,7 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
         country: data.country,
         phone: data.phone.trim(),
       });
-      router.push('/patient-home');
+      router.push('/registration-pending');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
