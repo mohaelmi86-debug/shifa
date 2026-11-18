@@ -73,7 +73,7 @@ export default function PricingPlansContent() {
   const [actorFilter, setActorFilter] = useState<ActorFilter>('all');
   const [activeTab, setActiveTab] = useState<'features' | 'modules'>('features');
 
-  const visiblePlans = actorFilter === 'all' ? plans : plans.filter(p => p.actor === actorFilter || actorFilter === 'all');
+  const visiblePlans = actorFilter === 'all' ? plans : plans.filter(p => p.actor === actorFilter);
 
   return (
     <div className="px-6 lg:px-8 xl:px-10 py-6 max-w-screen-xl mx-auto">
