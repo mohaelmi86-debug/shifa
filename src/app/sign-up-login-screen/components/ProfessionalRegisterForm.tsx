@@ -34,9 +34,25 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
     setRegisterError('');
     try {
       await signUp(data.email, data.password, {
-        fullName: `${data.firstName} ${data.lastName}`,
+        fullName: `${data.firstName.trim()} ${data.lastName.trim()}`,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        country: data.country,
+        phone: data.phone.trim(),
+        registrationType: 'professional',
+        registrationData: {
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+          profession: data.profession,
+          specialty: data.specialty?.trim() || '',
+          licenseNumber: data.licenseNumber.trim(),
+          country: data.country,
+          phone: data.phone.trim(),
+          email: data.email.trim().toLowerCase(),
+          professionalType: data.professionalType || 'liberal',
+        },
       });
-      router.push('/workspace-professionnel');
+      router.push('/registration-pending');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
