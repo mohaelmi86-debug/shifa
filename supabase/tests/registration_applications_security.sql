@@ -130,7 +130,27 @@ BEGIN
     RAISE EXCEPTION 'FAIL: authenticated users need invitation RPC grants (authorization remains enforced inside functions)';
   END IF;
 
+  IF position('professional_organizations' IN pg_get_functiondef(
+    'public.accept_professional_invitation(text)'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: accepting an invitation must persist the organization membership row';
+  END IF;
+
   -- Verified-professional clinical access checks (requires migration 20261119004000).
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'professionals'
+      AND policyname = 'professionals_tenant_read_guard'
+      AND permissive = 'RESTRICTIVE'
+      AND cmd = 'SELECT'
+  ) OR position('private.org_admin_can_access_professional(uuid)' IN pg_get_functiondef(
+    'private.org_admin_can_access_professional(uuid)'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: professional directory reads must be restricted to self, verified public profiles, platform admins, or the owning organization';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM pg_policies
