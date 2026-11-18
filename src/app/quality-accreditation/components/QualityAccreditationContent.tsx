@@ -366,7 +366,7 @@ export default function QualityAccreditationContent() {
         {activeTab === 'audits' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Programme d'audits</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Programme d&apos;audits</h3>
               <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>
                 <Icon name="PlusIcon" size={14} />
                 Planifier un audit
