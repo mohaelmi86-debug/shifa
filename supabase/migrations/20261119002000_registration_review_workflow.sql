@@ -28,7 +28,7 @@ BEGIN
     RAISE EXCEPTION 'FORBIDDEN' USING ERRCODE = '42501';
   END IF;
 
-  IF p_decision NOT IN ('approve', 'reject') THEN
+  IF p_decision IS NULL OR p_decision NOT IN ('approve', 'reject') THEN
     RAISE EXCEPTION 'INVALID_DECISION' USING ERRCODE = '22023';
   END IF;
 
