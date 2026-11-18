@@ -73,15 +73,16 @@ export default function ShifaAIOrgContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          module: 'organization',
           messages: [
-            { role: 'system', content: 'Tu es SHIFA AI Organisation, un assistant IA spécialisé dans l\'analyse opérationnelle des établissements de santé. Tu fournis des insights sur la performance, les ressources humaines, les finances et la qualité. Tu ne donnes jamais accès à des données médicales individuelles. Réponds en français, de manière concise et actionnable.' },
             ...messages.map(m => ({ role: m.role, content: m.content })),
             { role: 'user', content: msg }
           ]
         })
       });
       const data = await res.json();
-      const reply = data?.choices?.[0]?.message?.content || data?.content || 'Je n\'ai pas pu générer une réponse.';
+      if (!res.ok) throw new Error(data?.error || 'AI request failed');
+      const reply = data?.output || 'Je n\'ai pas pu générer une réponse.';
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Une erreur est survenue. Veuillez réessayer.' }]);
