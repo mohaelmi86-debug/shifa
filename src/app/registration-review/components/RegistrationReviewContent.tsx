@@ -65,11 +65,11 @@ export default function RegistrationReviewContent() {
     void loadApplications();
   }, [loadApplications]);
 
-  const review = async (application: RegistrationApplication, decision: 'approve' | 'reject') => {
+  const review = async (application: RegistrationApplication, decision: 'start_review' | 'approve' | 'reject') => {
     const confirmation = decision === 'approve'
       ? 'Approuver ce dossier et activer les droits correspondants ?'
-      : 'Rejeter cette candidature ?';
-    if (!window.confirm(confirmation)) return;
+      : decision === 'reject' ? 'Rejeter cette candidature ?' : '';
+    if (confirmation && !window.confirm(confirmation)) return;
 
     setBusyId(application.id);
     setError('');
@@ -87,7 +87,7 @@ export default function RegistrationReviewContent() {
     } else {
       setNotice(decision === 'approve'
         ? 'Dossier approuvé. Les droits ont été attribués.'
-        : 'Candidature rejetée.');
+        : decision === 'reject' ? 'Candidature rejetée.' : 'Dossier pris en charge pour vérification.');
       setReviewNotes(current => ({ ...current, [application.id]: '' }));
       await loadApplications();
     }
@@ -168,6 +168,11 @@ export default function RegistrationReviewContent() {
                   placeholder="Motif, vérifications effectuées, références de contrôle…"
                 />
                 <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  {application.status === 'pending' && (
+                    <button type="button" disabled={busyId !== null} onClick={() => void review(application, 'start_review')} className="rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ borderColor: 'var(--border)', color: 'var(--shifa-blue)' }}>
+                      Prendre en charge
+                    </button>
+                  )}
                   <button type="button" disabled={busyId !== null} onClick={() => void review(application, 'reject')} className="rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ borderColor: 'var(--border)', color: 'var(--shifa-red)' }}>
                     Rejeter
                   </button>
