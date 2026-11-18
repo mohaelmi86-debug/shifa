@@ -28,7 +28,7 @@ BEGIN
     RAISE EXCEPTION 'FORBIDDEN' USING ERRCODE = '42501';
   END IF;
 
-  IF p_decision IS NULL OR p_decision NOT IN ('approve', 'reject') THEN
+  IF p_decision IS NULL OR p_decision NOT IN ('start_review', 'approve', 'reject') THEN
     RAISE EXCEPTION 'INVALID_DECISION' USING ERRCODE = '22023';
   END IF;
 
@@ -47,6 +47,16 @@ BEGIN
   END IF;
 
   v_payload := v_application.payload;
+
+  IF p_decision = 'start_review' THEN
+    UPDATE public.registration_applications
+    SET status = 'in_review',
+        reviewed_by = v_admin_id,
+        review_note = NULLIF(left(trim(COALESCE(p_review_note, '')), 2000), '')
+    WHERE id = p_application_id;
+
+    RETURN p_application_id;
+  END IF;
 
   IF p_decision = 'reject' THEN
     UPDATE public.registration_applications
