@@ -81,7 +81,9 @@ export default function RegistrationReviewContent() {
     });
 
     if (reviewError) {
-      setError('La décision n’a pas été enregistrée. Le dossier reste inchangé.');
+      setError(reviewError.message.includes('PROFESSIONAL_REQUIRES_ORGANIZATION_INVITATION')
+        ? 'Ce professionnel est déclaré salarié ou rattaché : son activation doit passer par une invitation de son établissement.'
+        : 'La décision n’a pas été enregistrée. Le dossier reste inchangé.');
     } else {
       setNotice(decision === 'approve'
         ? 'Dossier approuvé. Les droits ont été attribués.'
