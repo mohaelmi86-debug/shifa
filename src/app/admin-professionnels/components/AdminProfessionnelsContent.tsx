@@ -90,7 +90,7 @@ export default function AdminProfessionnelsContent() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--shifa-dark)' }}>Professionnels de santé</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-            Gestion des membres de l'équipe soignante — CHU Saint-Louis
+            Gestion des membres de l&apos;équipe soignante — CHU Saint-Louis
           </p>
         </div>
         <button
