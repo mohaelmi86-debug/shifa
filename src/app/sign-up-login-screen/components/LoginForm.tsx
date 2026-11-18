@@ -32,6 +32,10 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     setLoginError('');
     try {
       await signIn(data.email, data.password);
+      const requestedRedirect = new URLSearchParams(window.location.search).get('redirectTo');
+      const safeRedirect = requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\\\')
+        ? requestedRedirect
+        : null;
       // Fetch user profile to determine role-based redirection
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -54,9 +58,9 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           patient: '/patient-home',
           guest: '/patient-home',
         };
-        router.replace(roleRoutes[role] || '/patient-home');
+        router.replace(safeRedirect || roleRoutes[role] || '/patient-home');
       } else {
-        router.push('/patient-home');
+        router.replace(safeRedirect || '/patient-home');
       }
     } catch (err: any) {
       const msg = err?.message || '';
