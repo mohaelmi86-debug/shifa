@@ -96,3 +96,6 @@ La branche `main` contient toujours le mécanisme historique `x-sb-token` : le c
 
 La PR #5 ne doit donc pas être considérée comme ayant déjà supprimé ce transport. Avant toute mise en production, il faut réconcilier les deux branches et décider d'une migration de session qui ne casse pas les sessions existantes. Ne pas supprimer ce mécanisme à l'aveugle : le fallback localStorage actuel peut en dépendre dans les navigateurs où le test de cookie partitionné échoue.
 
+
+- Le middleware a également été renforcé sur les portails protégés : contrôle du rôle et du statut actif depuis `user_profiles`, avec correspondance des routes par segment complet (pas de simple préfixe). Les pages patient, professionnel, administration et partenaires sont séparées par rôle.
+- Le transport transitoire `x-sb-token` a été conservé pour ne pas casser le fallback localStorage, mais son ajout global à `fetch` vérifie désormais l'origine exacte via `new URL(...).origin`. Un appel vers une origine externe, y compris une URL protocol-relative (`//...`), ne reçoit plus le jeton.
