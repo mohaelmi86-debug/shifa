@@ -114,7 +114,7 @@ export default function InteroperabilityHubContent() {
               <Icon name="ArrowsRightLeftIcon" size={20} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)', fontFamily: 'DM Sans, sans-serif' }}>Hub d'Interopérabilité</h1>
+              <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)', fontFamily: 'DM Sans, sans-serif' }}>Hub d&apos;Interopérabilité</h1>
               <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>FHIR R4 · HL7 v2 · DICOM · APIs · Webhooks</p>
             </div>
           </div>
