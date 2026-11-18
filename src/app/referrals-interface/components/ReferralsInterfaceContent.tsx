@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-type Tab = 'outgoing' | 'incoming' | 'network' | 'history';
+type Tab = 'outgoing' | 'incoming' | 'network' | 'secure' | 'history';
 type RefStatus = 'draft' | 'sent' | 'accepted' | 'scheduled' | 'completed' | 'declined';
 
 interface Referral {
@@ -21,6 +21,7 @@ interface Referral {
   appointmentDate?: string;
   notes?: string;
   direction: 'out' | 'in';
+  dataShared?: string[];
 }
 
 interface SpecialistContact {
@@ -35,13 +36,26 @@ interface SpecialistContact {
   rating: number;
 }
 
+interface SecureShare {
+  id: string;
+  patient: string;
+  sharedWith: string;
+  sharedBy: string;
+  dataScope: string[];
+  createdAt: string;
+  expiresAt: string;
+  status: 'active' | 'expired' | 'revoked';
+  accessCount: number;
+  consentObtained: boolean;
+}
+
 const referrals: Referral[] = [
-  { id: 'REF-2026-0421', patientName: 'Aïcha Diallo', patientId: 'PAT-7K4D', fromDoctor: 'Dr. Mohamed Sy', fromSpecialty: 'Médecine générale', toDoctor: 'Dr. Aminata Kouyaté', toSpecialty: 'Cardiologie', toInstitution: 'CHU Aristide Le Dantec', reason: 'Douleurs thoraciques récurrentes, ECG anormal', urgency: 'urgent', status: 'accepted', sentDate: '2026-08-08', appointmentDate: '2026-08-15', direction: 'out' },
-  { id: 'REF-2026-0418', patientName: 'Oumar Ndiaye', patientId: 'PAT-3M2K', fromDoctor: 'Dr. Mohamed Sy', fromSpecialty: 'Médecine générale', toDoctor: 'Dr. Fatou Mbaye', toSpecialty: 'Pédiatrie', toInstitution: 'Hôpital Principal', reason: 'Retard de croissance, bilan nutritionnel', urgency: 'routine', status: 'scheduled', sentDate: '2026-08-06', appointmentDate: '2026-08-20', direction: 'out' },
-  { id: 'REF-2026-0415', patientName: 'Mariama Ba', patientId: 'PAT-9P1R', fromDoctor: 'Dr. Mohamed Sy', fromSpecialty: 'Médecine générale', toDoctor: 'Dr. Ibrahima Diallo', toSpecialty: 'Neurologie', toInstitution: 'Clinique Pasteur', reason: 'Céphalées chroniques, IRM recommandée', urgency: 'urgent', status: 'sent', sentDate: '2026-08-09', direction: 'out' },
-  { id: 'REF-2026-0410', patientName: 'Cheikh Fall', patientId: 'PAT-2L8S', fromDoctor: 'Dr. Fatou Mbaye', fromSpecialty: 'Pédiatrie', toDoctor: 'Dr. Mohamed Sy', toSpecialty: 'Médecine générale', toInstitution: 'Cabinet Dr. Sy', reason: 'Suivi post-hospitalisation, contrôle vaccins', urgency: 'routine', status: 'completed', sentDate: '2026-07-28', appointmentDate: '2026-08-05', direction: 'in' },
-  { id: 'REF-2026-0408', patientName: 'Rokhaya Seck', patientId: 'PAT-5N7T', fromDoctor: 'Dr. Aminata Kouyaté', fromSpecialty: 'Cardiologie', toDoctor: 'Dr. Mohamed Sy', toSpecialty: 'Médecine générale', toInstitution: 'Cabinet Dr. Sy', reason: 'Suivi traitement antihypertenseur', urgency: 'routine', status: 'accepted', sentDate: '2026-08-07', appointmentDate: '2026-08-18', direction: 'in' },
-  { id: 'REF-2026-0405', patientName: 'Lamine Diop', patientId: 'PAT-4Q6V', fromDoctor: 'Dr. Mohamed Sy', fromSpecialty: 'Médecine générale', toDoctor: 'Dr. Moussa Sarr', toSpecialty: 'Chirurgie', toInstitution: 'Clinique du Cap', reason: 'Hernie inguinale, évaluation chirurgicale', urgency: 'routine', status: 'declined', sentDate: '2026-08-01', notes: 'Spécialiste indisponible, rediriger vers CHU', direction: 'out' },
+  { id: 'REF-2026-0421', patientName: 'Aïcha Diallo', patientId: 'PAT-7K4D', fromDoctor: 'Dr. Mohamed Sy', fromSpecialty: 'Médecine générale', toDoctor: 'Dr. Aminata Kouyaté', toSpecialty: 'Cardiologie', toInstitution: 'CHU Aristide Le Dantec', reason: 'Douleurs thoraciques récurrentes, ECG anormal', urgency: 'urgent', status: 'accepted', sentDate: '2026-08-08', appointmentDate: '2026-08-15', direction: 'out', dataShared: ['Résumé clinique', 'ECG', 'Constantes'] },
+  { id: 'REF-2026-0418', patientName: 'Oumar Ndiaye', patientId: 'PAT-3M2K', fromDoctor: 'Dr. Mohamed Sy', fromSpecialty: 'Médecine générale', toDoctor: 'Dr. Fatou Mbaye', toSpecialty: 'Pédiatrie', toInstitution: 'Hôpital Principal', reason: 'Retard de croissance, bilan nutritionnel', urgency: 'routine', status: 'scheduled', sentDate: '2026-08-06', appointmentDate: '2026-08-20', direction: 'out', dataShared: ['Résumé clinique', 'Courbe de croissance'] },
+  { id: 'REF-2026-0415', patientName: 'Mariama Ba', patientId: 'PAT-9P1R', fromDoctor: 'Dr. Mohamed Sy', fromSpecialty: 'Médecine générale', toDoctor: 'Dr. Ibrahima Diallo', toSpecialty: 'Neurologie', toInstitution: 'Clinique Pasteur', reason: 'Céphalées chroniques, IRM recommandée', urgency: 'urgent', status: 'sent', sentDate: '2026-08-09', direction: 'out', dataShared: ['Résumé clinique', 'Antécédents'] },
+  { id: 'REF-2026-0410', patientName: 'Cheikh Fall', patientId: 'PAT-2L8S', fromDoctor: 'Dr. Fatou Mbaye', fromSpecialty: 'Pédiatrie', toDoctor: 'Dr. Mohamed Sy', toSpecialty: 'Médecine générale', toInstitution: 'Cabinet Dr. Sy', reason: 'Suivi post-hospitalisation, contrôle vaccins', urgency: 'routine', status: 'completed', sentDate: '2026-07-28', appointmentDate: '2026-08-05', direction: 'in', dataShared: ['Compte-rendu hospitalisation', 'Carnet vaccinal'] },
+  { id: 'REF-2026-0408', patientName: 'Rokhaya Seck', patientId: 'PAT-5N7T', fromDoctor: 'Dr. Aminata Kouyaté', fromSpecialty: 'Cardiologie', toDoctor: 'Dr. Mohamed Sy', toSpecialty: 'Médecine générale', toInstitution: 'Cabinet Dr. Sy', reason: 'Suivi traitement antihypertenseur', urgency: 'routine', status: 'accepted', sentDate: '2026-08-07', appointmentDate: '2026-08-18', direction: 'in', dataShared: ['Résumé cardiologique', 'Prescriptions'] },
+  { id: 'REF-2026-0405', patientName: 'Lamine Diop', patientId: 'PAT-4Q6V', fromDoctor: 'Dr. Mohamed Sy', fromSpecialty: 'Médecine générale', toDoctor: 'Dr. Moussa Sarr', toSpecialty: 'Chirurgie', toInstitution: 'Clinique du Cap', reason: 'Hernie inguinale, évaluation chirurgicale', urgency: 'routine', status: 'declined', sentDate: '2026-08-01', notes: 'Spécialiste indisponible, rediriger vers CHU', direction: 'out', dataShared: ['Résumé clinique'] },
 ];
 
 const specialists: SpecialistContact[] = [
@@ -50,6 +64,13 @@ const specialists: SpecialistContact[] = [
   { id: 'SP003', name: 'Dr. Ibrahima Diallo', specialty: 'Neurologie', institution: 'Clinique Pasteur', city: 'Dakar', availability: 'available', avgWait: '5 jours', referralsReceived: 31, rating: 4.5 },
   { id: 'SP004', name: 'Dr. Aïssatou Ndiaye', specialty: 'Gynécologie', institution: 'Maternité Roi Baudouin', city: 'Dakar', availability: 'unavailable', avgWait: '14 jours', referralsReceived: 28, rating: 4.7 },
   { id: 'SP005', name: 'Dr. Moussa Sarr', specialty: 'Chirurgie', institution: 'Clinique du Cap', city: 'Dakar', availability: 'available', avgWait: '10 jours', referralsReceived: 19, rating: 3.9 },
+];
+
+const secureShares: SecureShare[] = [
+  { id: 'SS-001', patient: 'Aïcha Diallo', sharedWith: 'Dr. Aminata Kouyaté (Cardiologie)', sharedBy: 'Dr. Mohamed Sy', dataScope: ['Résumé clinique', 'ECG', 'Constantes'], createdAt: '2026-08-08 10:30', expiresAt: '2026-08-22 23:59', status: 'active', accessCount: 2, consentObtained: true },
+  { id: 'SS-002', patient: 'Mariama Ba', sharedWith: 'Dr. Ibrahima Diallo (Neurologie)', sharedBy: 'Dr. Mohamed Sy', dataScope: ['Résumé clinique', 'Antécédents'], createdAt: '2026-08-09 14:00', expiresAt: '2026-08-23 23:59', status: 'active', accessCount: 0, consentObtained: true },
+  { id: 'SS-003', patient: 'Cheikh Fall', sharedWith: 'Dr. Mohamed Sy (Médecine générale)', sharedBy: 'Dr. Fatou Mbaye', dataScope: ['Compte-rendu hospitalisation', 'Carnet vaccinal'], createdAt: '2026-07-28 09:00', expiresAt: '2026-08-11 23:59', status: 'expired', accessCount: 3, consentObtained: true },
+  { id: 'SS-004', patient: 'Rokhaya Seck', sharedWith: 'Dr. Mohamed Sy (Médecine générale)', sharedBy: 'Dr. Aminata Kouyaté', dataScope: ['Résumé cardiologique', 'Prescriptions'], createdAt: '2026-08-07 11:00', expiresAt: '2026-08-21 23:59', status: 'active', accessCount: 1, consentObtained: true },
 ];
 
 const statusConfig: Record<RefStatus, { label: string; bg: string; text: string }> = {
@@ -73,6 +94,12 @@ const availConfig = {
   unavailable: { label: 'Indisponible', color: '#dc2626', bg: '#fee2e2' },
 };
 
+const shareStatusConfig = {
+  active: { label: 'Actif', color: '#16a34a', bg: '#dcfce7', icon: 'CheckCircleIcon' },
+  expired: { label: 'Expiré', color: '#64748b', bg: '#f1f5f9', icon: 'ClockIcon' },
+  revoked: { label: 'Révoqué', color: '#dc2626', bg: '#fee2e2', icon: 'XCircleIcon' },
+};
+
 export default function ReferralsInterfaceContent() {
   const [activeTab, setActiveTab] = useState<Tab>('outgoing');
   const [showNewForm, setShowNewForm] = useState(false);
@@ -81,6 +108,7 @@ export default function ReferralsInterfaceContent() {
     { id: 'outgoing', label: 'Adressages sortants', icon: 'ArrowUpRightIcon' },
     { id: 'incoming', label: 'Adressages reçus', icon: 'ArrowDownLeftIcon' },
     { id: 'network', label: 'Réseau spécialistes', icon: 'UsersIcon' },
+    { id: 'secure', label: 'Partages sécurisés', icon: 'LockClosedIcon' },
     { id: 'history', label: 'Historique complet', icon: 'ClipboardDocumentListIcon' },
   ];
 
@@ -100,17 +128,23 @@ export default function ReferralsInterfaceContent() {
               Adressages & Références
             </h1>
             <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-              Gestion des adressages patients entre professionnels et spécialistes
+              Réseau de soins sécurisé — partage contrôlé, traçable et consenti
             </p>
           </div>
-          <button
-            onClick={() => setShowNewForm(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
-            style={{ backgroundColor: 'var(--shifa-blue)' }}
-          >
-            <Icon name="PlusIcon" size={16} />
-            Nouvel adressage
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium" style={{ backgroundColor: '#dbeafe', color: '#1d4ed8' }}>
+              <Icon name="ShieldCheckIcon" size={12} />
+              Partage sécurisé SHIFA
+            </div>
+            <button
+              onClick={() => setShowNewForm(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
+              style={{ backgroundColor: 'var(--shifa-blue)' }}
+            >
+              <Icon name="PlusIcon" size={16} />
+              Nouvel adressage
+            </button>
+          </div>
         </div>
 
         {/* KPIs */}
@@ -119,7 +153,7 @@ export default function ReferralsInterfaceContent() {
             { label: 'Adressages actifs', value: referrals.filter(r => ['sent', 'accepted', 'scheduled'].includes(r.status)).length, color: 'var(--shifa-blue)' },
             { label: 'En attente réponse', value: referrals.filter(r => r.status === 'sent').length, color: '#f59e0b' },
             { label: 'Planifiés', value: referrals.filter(r => r.status === 'scheduled').length, color: '#16a34a' },
-            { label: 'Ce mois', value: referrals.length, color: '#7c3aed' },
+            { label: 'Partages actifs', value: secureShares.filter(s => s.status === 'active').length, color: '#7c3aed' },
           ].map((kpi, i) => (
             <div key={i} className="rounded-lg p-3 border" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
               <p className="text-xl font-bold" style={{ color: kpi.color, fontFamily: 'var(--font-display)' }}>{kpi.value}</p>
@@ -144,7 +178,8 @@ export default function ReferralsInterfaceContent() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
-        {activeTab !== 'network' ? (
+        {/* Referral list tabs */}
+        {(activeTab === 'outgoing' || activeTab === 'incoming' || activeTab === 'history') && (
           <div className="space-y-3">
             {displayList.map(ref => {
               const scfg = statusConfig[ref.status];
@@ -176,6 +211,16 @@ export default function ReferralsInterfaceContent() {
                           </div>
                         </div>
                         <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{ref.toInstitution}</p>
+                        {/* Data shared */}
+                        {ref.dataShared && (
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            <Icon name="LockClosedIcon" size={11} style={{ color: '#7c3aed' }} />
+                            <span className="text-xs" style={{ color: '#7c3aed' }}>Données partagées :</span>
+                            {ref.dataShared.map(d => (
+                              <span key={d} className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#ede9fe', color: '#7c3aed' }}>{d}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
@@ -205,7 +250,10 @@ export default function ReferralsInterfaceContent() {
               );
             })}
           </div>
-        ) : (
+        )}
+
+        {/* Network tab */}
+        {activeTab === 'network' && (
           <div className="space-y-3">
             <div className="flex items-center gap-3 mb-4">
               <div className="relative flex-1 max-w-sm">
@@ -257,6 +305,118 @@ export default function ReferralsInterfaceContent() {
             })}
           </div>
         )}
+
+        {/* Secure shares tab */}
+        {activeTab === 'secure' && (
+          <div className="space-y-5">
+            {/* Security notice */}
+            <div className="rounded-xl border p-4" style={{ backgroundColor: '#dbeafe', borderColor: '#2563eb' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name="ShieldCheckIcon" size={16} style={{ color: '#1d4ed8' }} />
+                <h3 className="font-semibold text-sm" style={{ color: '#1e3a8a' }}>Règle absolue — Partage de données médicales</h3>
+              </div>
+              <p className="text-xs" style={{ color: '#1e3a8a' }}>
+                Les données médicales (dossier, ordonnance, résultats, imagerie) ne peuvent JAMAIS être partagées sur les réseaux sociaux. Seul le partage sécurisé SHIFA est autorisé. Chaque partage est limité dans le temps, consenti, traçable et révocable.
+              </p>
+            </div>
+
+            {/* Share KPIs */}
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: 'Partages actifs', value: secureShares.filter(s => s.status === 'active').length, color: '#16a34a', bg: '#dcfce7', icon: 'LockClosedIcon' },
+                { label: 'Expirés', value: secureShares.filter(s => s.status === 'expired').length, color: '#64748b', bg: '#f1f5f9', icon: 'ClockIcon' },
+                { label: 'Révoqués', value: secureShares.filter(s => s.status === 'revoked').length, color: '#dc2626', bg: '#fee2e2', icon: 'XCircleIcon' },
+              ].map(kpi => (
+                <div key={kpi.label} className="rounded-xl border p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: kpi.bg }}>
+                    <Icon name={kpi.icon as any} size={20} style={{ color: kpi.color }} />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold" style={{ color: kpi.color }}>{kpi.value}</p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{kpi.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Active shares */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold" style={{ color: 'var(--foreground)' }}>Partages sécurisés SHIFA</h3>
+                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>
+                  <Icon name="PlusIcon" size={13} />
+                  Nouveau partage sécurisé
+                </button>
+              </div>
+              {secureShares.map(share => {
+                const sc = shareStatusConfig[share.status];
+                return (
+                  <div key={share.id} className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: '#ede9fe' }}>
+                          <Icon name="LockClosedIcon" size={18} style={{ color: '#7c3aed' }} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{share.id}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.color }}>{sc.label}</span>
+                            {share.consentObtained && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#dcfce7', color: '#16a34a' }}>✓ Consentement</span>
+                            )}
+                          </div>
+                          <h3 className="font-semibold" style={{ color: 'var(--foreground)' }}>{share.patient}</h3>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                            Partagé par <span className="font-medium" style={{ color: 'var(--foreground)' }}>{share.sharedBy}</span> avec <span className="font-medium" style={{ color: 'var(--shifa-blue)' }}>{share.sharedWith}</span>
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {share.dataScope.map(d => (
+                              <span key={d} className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#ede9fe', color: '#7c3aed' }}>{d}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <div className="text-right">
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Créé : {share.createdAt}</p>
+                          <p className="text-xs" style={{ color: share.status === 'expired' ? '#dc2626' : 'var(--muted-foreground)' }}>Expire : {share.expiresAt}</p>
+                          <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{share.accessCount} accès enregistré{share.accessCount > 1 ? 's' : ''}</p>
+                        </div>
+                        {share.status === 'active' && (
+                          <button className="px-3 py-1.5 rounded-lg border text-xs font-medium" style={{ borderColor: '#dc2626', color: '#dc2626' }}>
+                            Révoquer
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Audit trail for shares */}
+            <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Règles de partage SHIFA</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { rule: 'Consentement patient obligatoire', icon: 'DocumentCheckIcon', ok: true },
+                  { rule: 'Données médicales jamais sur réseaux sociaux', icon: 'ShieldCheckIcon', ok: true },
+                  { rule: 'Expiration automatique configurable', icon: 'ClockIcon', ok: true },
+                  { rule: 'Révocation possible à tout moment', icon: 'XCircleIcon', ok: true },
+                  { rule: 'Historique d\'accès complet', icon: 'ClipboardDocumentListIcon', ok: true },
+                  { rule: 'Chiffrement bout-en-bout', icon: 'LockClosedIcon', ok: true },
+                  { rule: 'Notification au patient', icon: 'BellIcon', ok: true },
+                  { rule: 'Minimisation des données partagées', icon: 'FunnelIcon', ok: true },
+                ].map(rule => (
+                  <div key={rule.rule} className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: '#dcfce7' }}>
+                    <Icon name={rule.icon as any} size={14} style={{ color: '#16a34a' }} />
+                    <span className="text-xs font-medium" style={{ color: '#15803d' }}>{rule.rule}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* New referral modal */}
@@ -264,7 +424,7 @@ export default function ReferralsInterfaceContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-lg rounded-2xl border p-6" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-lg" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-display)' }}>Nouvel adressage</h2>
+              <h2 className="font-bold text-lg" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-display)' }}>Nouvel adressage sécurisé</h2>
               <button onClick={() => setShowNewForm(false)} className="p-1.5 rounded-lg hover:bg-muted">
                 <Icon name="XMarkIcon" size={18} className="text-muted-foreground" />
               </button>
@@ -298,9 +458,24 @@ export default function ReferralsInterfaceContent() {
                 <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--muted-foreground)' }}>Motif de l'adressage</label>
                 <textarea rows={3} placeholder="Décrire le motif clinique..." className="w-full px-3 py-2 rounded-lg border text-sm resize-none" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
               </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--muted-foreground)' }}>Données à partager (NEED-TO-KNOW)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Résumé clinique', 'Résultats biologiques', 'Imagerie', 'Prescriptions', 'Constantes', 'Antécédents'].map(d => (
+                    <label key={d} className="flex items-center gap-2 text-xs cursor-pointer">
+                      <input type="checkbox" className="rounded" />
+                      <span style={{ color: 'var(--foreground)' }}>{d}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: '#fef3c7' }}>
+                <Icon name="ShieldCheckIcon" size={14} style={{ color: '#d97706' }} />
+                <span className="text-xs" style={{ color: '#92400e' }}>Le consentement du patient sera requis avant l'envoi</span>
+              </div>
               <div className="flex gap-3">
                 <button onClick={() => setShowNewForm(false)} className="flex-1 py-2 rounded-lg border text-sm font-medium hover:bg-muted" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>Annuler</button>
-                <button className="flex-1 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>Envoyer adressage</button>
+                <button className="flex-1 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>Envoyer adressage sécurisé</button>
               </div>
             </div>
           </div>

@@ -2,13 +2,15 @@ import { imageHosts } from './image-hosts.config.mjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false,
   distDir: process.env.DIST_DIR || '.next',
   typescript: {
-    ignoreBuildErrors: true,
+    // P0.1: ignoreBuildErrors set to false — TypeScript errors must be resolved
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    // P0.2: ignoreDuringBuilds set to false — ESLint errors must be resolved
+    ignoreDuringBuilds: false,
   },
   images: {
     remotePatterns: imageHosts,

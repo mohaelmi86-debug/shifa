@@ -1,57 +1,95 @@
 'use client';
-import React from 'react';
-import Icon from '@/components/ui/AppIcon';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getTranslations } from '@/lib/i18n';
+import { createClient } from '@/lib/supabase/client';
+
+const HEADER_STRINGS: Record<string, { greeting: (name: string) => string; subtitle: string; notifLabel: string }> = {
+  fr: { greeting: (n) => n ? `Bonjour, ${n}` : 'Bonjour', subtitle: 'Votre espace santé', notifLabel: 'Voir les notifications' },
+  en: { greeting: (n) => n ? `Hello, ${n}` : 'Hello', subtitle: 'Your health space', notifLabel: 'View notifications' },
+  es: { greeting: (n) => n ? `Hola, ${n}` : 'Hola', subtitle: 'Tu espacio de salud', notifLabel: 'Ver notificaciones' },
+  pt: { greeting: (n) => n ? `Olá, ${n}` : 'Olá', subtitle: 'Seu espaço de saúde', notifLabel: 'Ver notificações' },
+  ar: { greeting: (n) => n ? `مرحباً، ${n}` : 'مرحباً', subtitle: 'مساحتك الصحية', notifLabel: 'عرض الإشعارات' },
+  zh: { greeting: (n) => n ? `你好，${n}` : '你好', subtitle: '您的健康空间', notifLabel: '查看通知' },
+};
+
+function BellIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+    </svg>
+  );
+}
 
 export default function PatientHeader() {
+  const { user } = useAuth();
   const { language } = useLanguage();
-  const tr = getTranslations(language);
+  const [firstName, setFirstName] = useState<string>('');
+  const hs = HEADER_STRINGS[language] || HEADER_STRINGS['fr'];
 
-  const greetings: Record<string, string> = {
-    fr: 'Bonjour, Aïcha 👋',
-    en: 'Hello, Aïcha 👋',
-    es: 'Hola, Aïcha 👋',
-    pt: 'Olá, Aïcha 👋',
-    ar: 'مرحباً، عائشة 👋',
-    zh: '你好，Aïcha 👋',
-  };
-
-  const subtitles: Record<string, string> = {
-    fr: 'Prenez soin de vous. Votre prochain rendez-vous est dans 2 jours.',
-    en: 'Take care of yourself. Your next appointment is in 2 days.',
-    es: 'Cuídate. Tu próxima cita es en 2 días.',
-    pt: 'Cuide-se. Sua próxima consulta é em 2 dias.',
-    ar: 'اعتنِ بصحتك. موعدك القادم بعد يومين.',
-    zh: '保重身体。您的下一次预约在2天后。',
-  };
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from('user_profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.full_name) {
+          setFirstName(data.full_name.split(' ')[0]);
+        } else if (user.email) {
+          setFirstName(user.email.split('@')[0]);
+        }
+      });
+  }, [user]);
 
   return (
-    <div className="flex items-start justify-between flex-wrap gap-4">
-      <div>
-        <p className="text-sm font-medium mb-1" style={{ color: 'var(--muted-foreground)' }}>
-          {tr.today} · 10 août 2026
-        </p>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--shifa-dark)' }}>
-          {greetings[language] || greetings.fr}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-          {subtitles[language] || subtitles.fr}
-        </p>
-      </div>
+    <header
+      className="sticky top-0 z-40 flex items-center justify-between px-4 py-3"
+      style={{
+        backgroundColor: 'var(--shifa-surface-2)',
+        borderBottom: '1px solid var(--border)',
+        boxShadow: '0 1px 8px rgba(21,88,214,0.06)',
+      }}
+      role="banner"
+    >
       <div className="flex items-center gap-3">
         <div
-          className="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium"
-          style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
+          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'linear-gradient(135deg, #1252B0 0%, #1565D8 100%)' }}
+          aria-hidden="true"
         >
-          <Icon name="MapPinIcon" size={15} style={{ color: 'var(--shifa-blue)' } as any} className="" />
-          <span style={{ color: 'var(--foreground)' }}>Paris, France</span>
+          <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
+            <path d="M12 3C7.03 3 3 7.03 3 12s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9zm0 2c1.85 0 3.55.63 4.9 1.68L5.68 16.9A6.965 6.965 0 015 12c0-3.87 3.13-7 7-7zm0 14c-1.85 0-3.55-.63-4.9-1.68L18.32 7.1A6.965 6.965 0 0119 12c0 3.87-3.13 7-7 7z" fill="white" />
+          </svg>
         </div>
-        <button className="relative p-2.5 rounded-xl border transition-colors hover:bg-muted" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-          <Icon name="BellIcon" size={18} className="text-muted-foreground" />
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--shifa-blue)' }} />
-        </button>
+        <div>
+          <p className="text-xs font-medium leading-none mb-0.5" style={{ color: 'var(--shifa-gray)' }}>
+            {hs.greeting(firstName)} 👋
+          </p>
+          <p className="font-bold text-sm leading-none" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
+            {hs.subtitle}
+          </p>
+        </div>
       </div>
-    </div>
+
+      <div className="flex items-center gap-2">
+        <Link
+          href="/patient-notifications"
+          className="w-9 h-9 rounded-xl flex items-center justify-center relative transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{ backgroundColor: 'var(--shifa-light)' }}
+          aria-label={hs.notifLabel}
+        >
+          <BellIcon className="w-5 h-5" style={{ color: 'var(--shifa-blue)' } as React.CSSProperties} />
+          <span
+            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white"
+            style={{ backgroundColor: 'var(--shifa-red)' }}
+            aria-hidden="true"
+          />
+        </Link>
+      </div>
+    </header>
   );
 }

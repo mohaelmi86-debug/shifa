@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-type Tab = 'plans' | 'tasks' | 'handoffs' | 'team' | 'timeline';
+type Tab = 'plans' | 'tasks' | 'handoffs' | 'team' | 'timeline' | 'pathway';
 
 interface CarePlan {
   id: string;
@@ -14,6 +14,7 @@ interface CarePlan {
   progress: number;
   nextAction: string;
   updated: string;
+  modules: string[];
 }
 
 interface Task {
@@ -26,6 +27,7 @@ interface Task {
   due: string;
   status: 'todo' | 'in_progress' | 'done';
   planId: string;
+  module?: string;
 }
 
 interface Handoff {
@@ -40,26 +42,51 @@ interface Handoff {
   urgency: 'routine' | 'urgent' | 'critical';
 }
 
+interface PathwayStep {
+  id: string;
+  patient: string;
+  step: string;
+  module: string;
+  moduleRoute: string;
+  moduleIcon: string;
+  moduleColor: string;
+  status: 'done' | 'active' | 'pending' | 'blocked';
+  actor: string;
+  date: string;
+  output?: string;
+  nextStep?: string;
+}
+
 const plans: CarePlan[] = [
-  { id: 'CP-001', patient: 'Aïcha Diallo', condition: 'Diabète type 2 + HTA', lead: 'Dr. Sy', team: ['Dr. Sy', 'Inf. Fatou', 'Diét. Koné', 'Cardio. Diop'], status: 'active', progress: 68, nextAction: 'Bilan HbA1c — 15 août', updated: 'Aujourd\'hui' },
-  { id: 'CP-002', patient: 'Moussa Traoré', condition: 'Insuffisance cardiaque', lead: 'Dr. Diop', team: ['Dr. Diop', 'Dr. Sy', 'Inf. Aminata'], status: 'active', progress: 45, nextAction: 'Échocardiographie — 18 août', updated: 'Hier' },
-  { id: 'CP-003', patient: 'Mariama Bah', condition: 'Cancer du sein — suivi', lead: 'Dr. Camara', team: ['Dr. Camara', 'Onco. Ndiaye', 'Psy. Sow', 'Inf. Kadiatou'], status: 'active', progress: 82, nextAction: 'Séance chimio — 20 août', updated: '2j' },
-  { id: 'CP-004', patient: 'Ibrahima Kouyaté', condition: 'AVC — rééducation', lead: 'Dr. Baldé', team: ['Dr. Baldé', 'Kiné. Diallo', 'Ortho. Bah'], status: 'pending', progress: 12, nextAction: 'Bilan initial — 16 août', updated: '3j' },
+  { id: 'CP-001', patient: 'Aïcha Diallo', condition: 'Diabète type 2 + HTA', lead: 'Dr. Sy', team: ['Dr. Sy', 'Inf. Fatou', 'Diét. Koné', 'Cardio. Diop'], status: 'active', progress: 68, nextAction: 'Bilan HbA1c — 15 août', updated: 'Aujourd\'hui', modules: ['Consultation', 'Laboratoire', 'Pharmacie', 'Cardiologie'] },
+  { id: 'CP-002', patient: 'Moussa Traoré', condition: 'Insuffisance cardiaque', lead: 'Dr. Diop', team: ['Dr. Diop', 'Dr. Sy', 'Inf. Aminata'], status: 'active', progress: 45, nextAction: 'Échocardiographie — 18 août', updated: 'Hier', modules: ['Consultation', 'Imagerie', 'Pharmacie'] },
+  { id: 'CP-003', patient: 'Mariama Bah', condition: 'Cancer du sein — suivi', lead: 'Dr. Camara', team: ['Dr. Camara', 'Onco. Ndiaye', 'Psy. Sow', 'Inf. Kadiatou'], status: 'active', progress: 82, nextAction: 'Séance chimio — 20 août', updated: '2j', modules: ['Oncologie', 'Laboratoire', 'Pharmacie', 'Psychologie'] },
+  { id: 'CP-004', patient: 'Ibrahima Kouyaté', condition: 'AVC — rééducation', lead: 'Dr. Baldé', team: ['Dr. Baldé', 'Kiné. Diallo', 'Ortho. Bah'], status: 'pending', progress: 12, nextAction: 'Bilan initial — 16 août', updated: '3j', modules: ['Neurologie', 'Kinésithérapie', 'Orthophonie'] },
 ];
 
 const tasks: Task[] = [
-  { id: 'T-001', title: 'Ajuster dose metformine', patient: 'Aïcha Diallo', assignedTo: 'Dr. Sy', role: 'Médecin', priority: 'high', due: 'Aujourd\'hui', status: 'in_progress', planId: 'CP-001' },
-  { id: 'T-002', title: 'Éducation thérapeutique diabète', patient: 'Aïcha Diallo', assignedTo: 'Diét. Koné', role: 'Diététicien', priority: 'medium', due: 'Demain', status: 'todo', planId: 'CP-001' },
-  { id: 'T-003', title: 'Contrôle tension artérielle x3/j', patient: 'Moussa Traoré', assignedTo: 'Inf. Aminata', role: 'Infirmier', priority: 'high', due: 'Aujourd\'hui', status: 'in_progress', planId: 'CP-002' },
-  { id: 'T-004', title: 'Bilan biologique complet', patient: 'Mariama Bah', assignedTo: 'Dr. Camara', role: 'Oncologue', priority: 'medium', due: '15 août', status: 'todo', planId: 'CP-003' },
-  { id: 'T-005', title: 'Séance kinésithérapie', patient: 'Ibrahima Kouyaté', assignedTo: 'Kiné. Diallo', role: 'Kinésithérapeute', priority: 'high', due: '16 août', status: 'todo', planId: 'CP-004' },
-  { id: 'T-006', title: 'Évaluation psychologique', patient: 'Mariama Bah', assignedTo: 'Psy. Sow', role: 'Psychologue', priority: 'low', due: '20 août', status: 'todo', planId: 'CP-003' },
+  { id: 'T-001', title: 'Ajuster dose metformine', patient: 'Aïcha Diallo', assignedTo: 'Dr. Sy', role: 'Médecin', priority: 'high', due: 'Aujourd\'hui', status: 'in_progress', planId: 'CP-001', module: 'Consultation' },
+  { id: 'T-002', title: 'Éducation thérapeutique diabète', patient: 'Aïcha Diallo', assignedTo: 'Diét. Koné', role: 'Diététicien', priority: 'medium', due: 'Demain', status: 'todo', planId: 'CP-001', module: 'Nutrition' },
+  { id: 'T-003', title: 'Contrôle tension artérielle x3/j', patient: 'Moussa Traoré', assignedTo: 'Inf. Aminata', role: 'Infirmier', priority: 'high', due: 'Aujourd\'hui', status: 'in_progress', planId: 'CP-002', module: 'Soins' },
+  { id: 'T-004', title: 'Bilan biologique complet', patient: 'Mariama Bah', assignedTo: 'Dr. Camara', role: 'Oncologue', priority: 'medium', due: '15 août', status: 'todo', planId: 'CP-003', module: 'Laboratoire' },
+  { id: 'T-005', title: 'Séance kinésithérapie', patient: 'Ibrahima Kouyaté', assignedTo: 'Kiné. Diallo', role: 'Kinésithérapeute', priority: 'high', due: '16 août', status: 'todo', planId: 'CP-004', module: 'Kinésithérapie' },
+  { id: 'T-006', title: 'Évaluation psychologique', patient: 'Mariama Bah', assignedTo: 'Psy. Sow', role: 'Psychologue', priority: 'low', due: '20 août', status: 'todo', planId: 'CP-003', module: 'Psychologie' },
 ];
 
 const handoffs: Handoff[] = [
   { id: 'H-001', patient: 'Aïcha Diallo', from: 'Dr. Sy (Généraliste)', to: 'Cardio. Diop', type: 'Consultation spécialisée', notes: 'HTA résistante — évaluation cardiologique nécessaire. Dernière TA : 165/95.', status: 'pending', date: 'Aujourd\'hui 14h', urgency: 'urgent' },
   { id: 'H-002', patient: 'Moussa Traoré', from: 'Urgences', to: 'Dr. Diop (Cardiologue)', type: 'Transfert de service', notes: 'Décompensation cardiaque stabilisée. Transfert en cardiologie pour suivi.', status: 'accepted', date: 'Hier 09h', urgency: 'critical' },
   { id: 'H-003', patient: 'Mariama Bah', from: 'Dr. Camara (Oncologue)', to: 'Psy. Sow', type: 'Orientation psychologique', notes: 'Anxiété importante avant chimio. Soutien psychologique recommandé.', status: 'completed', date: '12 août', urgency: 'routine' },
+];
+
+const pathwaySteps: PathwayStep[] = [
+  { id: 'PS-001', patient: 'Aïcha Diallo', step: 'Consultation initiale', module: 'Consultation', moduleRoute: '/consultation-workspace', moduleIcon: 'UserCircleIcon', moduleColor: '#2563eb', status: 'done', actor: 'Dr. Sy', date: '08/08/2026', output: 'Diagnostic : Diabète T2 + HTA', nextStep: 'Demande bilan biologique' },
+  { id: 'PS-002', patient: 'Aïcha Diallo', step: 'Bilan biologique', module: 'Laboratoire', moduleRoute: '/lab-dashboard', moduleIcon: 'BeakerIcon', moduleColor: '#7c3aed', status: 'done', actor: 'Lab. Diallo', date: '09/08/2026', output: 'HbA1c : 8.2% — Créatinine : 95 µmol/L', nextStep: 'Prescription traitement' },
+  { id: 'PS-003', patient: 'Aïcha Diallo', step: 'Prescription traitement', module: 'Pharmacie', moduleRoute: '/pharmacy-dashboard', moduleIcon: 'ArchiveBoxIcon', moduleColor: '#059669', status: 'done', actor: 'Dr. Sy', date: '09/08/2026', output: 'Metformine 500mg + Amlodipine 5mg', nextStep: 'Dispensation pharmacie' },
+  { id: 'PS-004', patient: 'Aïcha Diallo', step: 'Dispensation pharmacie', module: 'Pharmacie', moduleRoute: '/pharmacy-pos', moduleIcon: 'ShoppingBagIcon', moduleColor: '#059669', status: 'done', actor: 'Ph. Koné', date: '09/08/2026', output: 'Médicaments dispensés — Éducation patient', nextStep: 'Consultation cardiologique' },
+  { id: 'PS-005', patient: 'Aïcha Diallo', step: 'Adressage cardiologie', module: 'Adressages', moduleRoute: '/referrals-interface', moduleIcon: 'ArrowUpRightIcon', moduleColor: '#dc2626', status: 'active', actor: 'Dr. Sy', date: '12/08/2026', output: 'Adressage envoyé — En attente RDV', nextStep: 'Consultation cardiologique' },
+  { id: 'PS-006', patient: 'Aïcha Diallo', step: 'Consultation cardiologique', module: 'Cardiologie', moduleRoute: '/cardiology-workspace', moduleIcon: 'HeartIcon', moduleColor: '#e11d48', status: 'pending', actor: 'Cardio. Diop', date: '15/08/2026', output: '—', nextStep: 'Bilan HbA1c contrôle' },
+  { id: 'PS-007', patient: 'Aïcha Diallo', step: 'Bilan HbA1c contrôle', module: 'Laboratoire', moduleRoute: '/lab-dashboard', moduleIcon: 'BeakerIcon', moduleColor: '#7c3aed', status: 'pending', actor: 'Lab. Diallo', date: '15/08/2026', output: '—', nextStep: 'Consultation de suivi' },
 ];
 
 const statusColors = {
@@ -86,9 +113,17 @@ const handoffStatusColors = {
   completed: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Complété' },
 };
 
+const pathwayStatusConfig = {
+  done: { color: '#16a34a', bg: '#dcfce7', icon: 'CheckCircleIcon', label: 'Terminé' },
+  active: { color: '#2563eb', bg: '#dbeafe', icon: 'PlayCircleIcon', label: 'En cours' },
+  pending: { color: '#d97706', bg: '#fef3c7', icon: 'ClockIcon', label: 'À venir' },
+  blocked: { color: '#dc2626', bg: '#fee2e2', icon: 'XCircleIcon', label: 'Bloqué' },
+};
+
 export default function ProCareCoordinationContent() {
   const [activeTab, setActiveTab] = useState<Tab>('plans');
   const [selectedPlan, setSelectedPlan] = useState<CarePlan | null>(null);
+  const [selectedPathwayPatient, setSelectedPathwayPatient] = useState<string>('Aïcha Diallo');
 
   const tabs: { key: Tab; label: string; icon: string; count?: number }[] = [
     { key: 'plans', label: 'Plans de soins partagés', icon: 'ClipboardDocumentListIcon', count: plans.length },
@@ -96,6 +131,7 @@ export default function ProCareCoordinationContent() {
     { key: 'handoffs', label: 'Transmissions', icon: 'ArrowsRightLeftIcon', count: handoffs.filter(h => h.status === 'pending').length },
     { key: 'team', label: 'Équipe soignante', icon: 'UsersIcon' },
     { key: 'timeline', label: 'Chronologie', icon: 'CalendarDaysIcon' },
+    { key: 'pathway', label: 'Parcours inter-modules', icon: 'ArrowPathIcon' },
   ];
 
   return (
@@ -105,7 +141,7 @@ export default function ProCareCoordinationContent() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-foreground">Coordination des soins</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Plans partagés, tâches et transmissions inter-professionnelles</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Plans partagés, tâches, transmissions et parcours inter-modules</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: 'var(--primary)' }}>
             <Icon name="PlusIcon" size={16} />
@@ -134,12 +170,12 @@ export default function ProCareCoordinationContent() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mt-5 border-b border-border -mb-5">
+        <div className="flex gap-1 mt-5 border-b border-border -mb-5 overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
             >
               <Icon name={tab.icon} size={15} />
               {tab.label}
@@ -181,6 +217,14 @@ export default function ProCareCoordinationContent() {
                             <span key={m} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{m}</span>
                           ))}
                         </div>
+                        {/* Module badges */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {plan.modules.map(mod => (
+                            <span key={mod} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#dbeafe', color: '#1d4ed8' }}>
+                              {mod}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right min-w-[140px]">
@@ -208,10 +252,19 @@ export default function ProCareCoordinationContent() {
                         ))}
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-2">ACTIONS RAPIDES</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-2">MODULES CONNECTÉS</p>
                         <div className="space-y-1.5">
-                          {['Ajouter une tâche', 'Créer une transmission', 'Voir le dossier', 'Envoyer un message'].map(a => (
-                            <button key={a} className="w-full text-left text-xs text-primary hover:underline py-0.5">{a}</button>
+                          {[
+                            { label: 'Voir DPI patient', href: '/hopital-dpi', icon: 'FolderOpenIcon' },
+                            { label: 'Résultats labo', href: '/lab-dashboard', icon: 'BeakerIcon' },
+                            { label: 'Imagerie', href: '/imaging-dashboard', icon: 'PhotoIcon' },
+                            { label: 'Pharmacie', href: '/pharmacy-dashboard', icon: 'ArchiveBoxIcon' },
+                            { label: 'Adressages', href: '/referrals-interface', icon: 'ArrowUpRightIcon' },
+                          ].map(a => (
+                            <a key={a.label} href={a.href} className="flex items-center gap-1.5 text-xs text-primary hover:underline py-0.5">
+                              <Icon name={a.icon as any} size={12} />
+                              {a.label}
+                            </a>
                           ))}
                         </div>
                       </div>
@@ -219,6 +272,12 @@ export default function ProCareCoordinationContent() {
                         <p className="text-xs font-medium text-muted-foreground mb-2">DERNIÈRES NOTES</p>
                         <p className="text-xs text-muted-foreground italic">Aucune note récente. Cliquez pour ajouter une note clinique partagée.</p>
                         <button className="mt-2 text-xs text-primary hover:underline">+ Ajouter une note</button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedPathwayPatient(plan.patient); setActiveTab('pathway'); }}
+                          className="mt-2 block text-xs text-primary hover:underline"
+                        >
+                          → Voir parcours inter-modules
+                        </button>
                       </div>
                     </div>
                   )}
@@ -240,7 +299,7 @@ export default function ProCareCoordinationContent() {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  {['Tâche', 'Patient', 'Assigné à', 'Priorité', 'Échéance', 'Statut'].map(h => (
+                  {['Tâche', 'Patient', 'Assigné à', 'Module', 'Priorité', 'Échéance', 'Statut'].map(h => (
                     <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>
                   ))}
                 </tr>
@@ -260,6 +319,11 @@ export default function ProCareCoordinationContent() {
                       <td className="px-4 py-3">
                         <p className="text-sm text-foreground">{task.assignedTo}</p>
                         <p className="text-xs text-muted-foreground">{task.role}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {task.module && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#dbeafe', color: '#1d4ed8' }}>{task.module}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pc.bg} ${pc.text}`}>{pc.label}</span>
@@ -393,6 +457,121 @@ export default function ProCareCoordinationContent() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Pathway Tab — Inter-module patient pathway */}
+        {activeTab === 'pathway' && (
+          <div className="space-y-5">
+            {/* Patient selector */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Patient :</span>
+              <div className="flex gap-2">
+                {plans.map(p => (
+                  <button
+                    key={p.patient}
+                    onClick={() => setSelectedPathwayPatient(p.patient)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                    style={{
+                      backgroundColor: selectedPathwayPatient === p.patient ? 'var(--shifa-blue)' : 'var(--card)',
+                      borderColor: selectedPathwayPatient === p.patient ? 'var(--shifa-blue)' : 'var(--border)',
+                      color: selectedPathwayPatient === p.patient ? 'white' : 'var(--muted-foreground)',
+                    }}
+                  >
+                    {p.patient}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* NEED-TO-KNOW notice */}
+            <div className="rounded-xl border p-4" style={{ backgroundColor: '#dbeafe', borderColor: '#2563eb' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Icon name="ShieldCheckIcon" size={16} style={{ color: '#1d4ed8' }} />
+                <h3 className="font-semibold text-sm" style={{ color: '#1e3a8a' }}>Principe NEED-TO-KNOW</h3>
+              </div>
+              <p className="text-xs" style={{ color: '#1e3a8a' }}>
+                Chaque module ne reçoit que les données nécessaires à son fonctionnement. Le pharmacien reçoit la prescription, pas le dossier complet. Le laborantin reçoit la demande d'analyse, pas les notes cliniques. La coordination est assurée sans ouvrir les droits.
+              </p>
+            </div>
+
+            {/* Pathway visualization */}
+            <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="font-semibold mb-5" style={{ color: 'var(--foreground)' }}>
+                Parcours inter-modules — {selectedPathwayPatient}
+              </h3>
+              <div className="relative">
+                <div className="absolute left-6 top-0 bottom-0 w-0.5" style={{ backgroundColor: 'var(--border)' }} />
+                <div className="space-y-4">
+                  {pathwaySteps.filter(s => s.patient === selectedPathwayPatient).map((step, i) => {
+                    const sc = pathwayStatusConfig[step.status];
+                    return (
+                      <div key={step.id} className="flex items-start gap-4 pl-14 relative">
+                        <div className="absolute left-4 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center" style={{ backgroundColor: sc.color }}>
+                          <Icon name={sc.icon as any} size={10} style={{ color: 'white' }} />
+                        </div>
+                        <div className="flex-1 rounded-xl border p-4" style={{ backgroundColor: step.status === 'done' ? 'var(--muted)' : 'var(--background)', borderColor: step.status === 'active' ? step.moduleColor : 'var(--border)', borderWidth: step.status === 'active' ? '2px' : '1px', opacity: step.status === 'done' ? 0.75 : 1 }}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: step.moduleColor + '20' }}>
+                                <Icon name={step.moduleIcon as any} size={16} style={{ color: step.moduleColor }} />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{step.step}</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.color }}>{sc.label}</span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-xs font-medium" style={{ color: step.moduleColor }}>{step.module}</span>
+                                  <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>· {step.actor} · {step.date}</span>
+                                </div>
+                                {step.output && step.output !== '—' && (
+                                  <p className="text-xs mt-1 italic" style={{ color: 'var(--foreground)' }}>{step.output}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2 shrink-0">
+                              <a href={step.moduleRoute} className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg border hover:bg-muted transition-colors" style={{ borderColor: step.moduleColor, color: step.moduleColor }}>
+                                <Icon name="ArrowTopRightOnSquareIcon" size={11} />
+                                Ouvrir
+                              </a>
+                              {step.nextStep && step.status !== 'done' && (
+                                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>→ {step.nextStep}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Module interaction matrix */}
+            <div className="rounded-xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h3 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Flux de données inter-modules (NEED-TO-KNOW)</h3>
+              <div className="space-y-2">
+                {[
+                  { from: 'Consultation', to: 'Laboratoire', data: 'Demande d\'analyse (sans notes cliniques)', icon: 'BeakerIcon', color: '#7c3aed' },
+                  { from: 'Consultation', to: 'Pharmacie', data: 'Prescription (sans diagnostic complet)', icon: 'ArchiveBoxIcon', color: '#059669' },
+                  { from: 'Consultation', to: 'Imagerie', data: 'Demande d\'examen (motif uniquement)', icon: 'PhotoIcon', color: '#0891b2' },
+                  { from: 'Laboratoire', to: 'DPI Patient', data: 'Résultats validés (accès médecin uniquement)', icon: 'FolderOpenIcon', color: '#2563eb' },
+                  { from: 'Pharmacie', to: 'Facturation', data: 'Acte de dispensation (sans données cliniques)', icon: 'CurrencyDollarIcon', color: '#d97706' },
+                  { from: 'Adressages', to: 'Coordination', data: 'Résumé de transfert (données minimales)', icon: 'ArrowsRightLeftIcon', color: '#dc2626' },
+                ].map((flow, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--background)' }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: flow.color + '20' }}>
+                      <Icon name={flow.icon as any} size={14} style={{ color: flow.color }} />
+                    </div>
+                    <span className="text-xs font-semibold w-28 shrink-0" style={{ color: 'var(--foreground)' }}>{flow.from}</span>
+                    <Icon name="ArrowRightIcon" size={12} style={{ color: 'var(--muted-foreground)' }} />
+                    <span className="text-xs font-semibold w-28 shrink-0" style={{ color: flow.color }}>{flow.to}</span>
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{flow.data}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

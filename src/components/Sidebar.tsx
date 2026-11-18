@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ShifaBrand from '@/components/ui/ShifaBrand';
@@ -7,6 +7,7 @@ import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import LanguageSelector from '@/components/ui/LanguageSelector';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { createClient } from '@/lib/supabase/client';
 
 interface NavItem {
   key: string;
@@ -19,27 +20,30 @@ interface NavItem {
 }
 
 const patientNav: NavItem[] = [
-  { key: 'nav-accueil', label: 'Accueil', icon: 'HomeIcon', href: '/patient-home', group: 'principal' },
+  { key: 'nav-accueil', label: 'Vue d\'ensemble', icon: 'HomeIcon', href: '/patient-home', group: 'principal' },
   { key: 'nav-explorer', label: 'Explorer', icon: 'MagnifyingGlassIcon', href: '/patient-explorer', group: 'principal' },
   { key: 'nav-rdv', label: 'Rendez-vous', icon: 'CalendarDaysIcon', href: '/appointment-booking', badge: 2, group: 'principal' },
-  { key: 'nav-sante', label: 'Ma Santé', icon: 'HeartIcon', href: '/dossier-de-sant', group: 'principal' },
-  { key: 'nav-messages', label: 'Messages', icon: 'ChatBubbleLeftRightIcon', href: '/patient-messages', badge: 3, group: 'principal' },
-  { key: 'nav-community-hub-pat', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'principal' },
-  { key: 'nav-documents', label: 'Documents', icon: 'DocumentTextIcon', href: '/patient-documents', group: 'sante' },
-  { key: 'nav-consultations', label: 'Consultations', icon: 'ClipboardDocumentListIcon', href: '/patient-consultations', group: 'sante' },
-  { key: 'nav-results', label: 'Résultats', icon: 'BeakerIcon', href: '/patient-results', group: 'sante' },
-  { key: 'nav-follow-up', label: 'Suivi & Soins', icon: 'ChartBarIcon', href: '/patient-follow-up', group: 'sante' },
-  { key: 'nav-vaccination', label: 'Vaccination', icon: 'ShieldCheckIcon', href: '/patient-vaccination', group: 'sante' },
-  { key: 'nav-pat-health-programs', label: 'Programmes de santé', icon: 'ShieldCheckIcon', href: '/patient-health-programs', group: 'sante' },
-  { key: 'nav-pat-chronic-disease', label: 'Maladies chroniques', icon: 'HeartIcon', href: '/patient-chronic-disease', group: 'sante' },
-  { key: 'nav-prevention', label: 'Prévention', icon: 'SparklesIcon', href: '/patient-prevention', group: 'sante' },
-  { key: 'nav-urgences', label: 'Urgences', icon: 'ExclamationTriangleIcon', href: '/patient-emergency', group: 'sante' },
-  { key: 'nav-urgences-contacts', label: 'Contacts d\'urgence', icon: 'PhoneIcon', href: '/patient-emergency-contacts', group: 'sante' },
-  { key: 'nav-map', label: 'Carte de santé', icon: 'MapPinIcon', href: '/patient-map', group: 'sante' },
-  { key: 'nav-family', label: 'Famille & Dépendants', icon: 'UsersIcon', href: '/patient-family', group: 'sante' },
-  { key: 'nav-pat-teleconsult', label: 'Mes téléconsultations', icon: 'VideoCameraIcon', href: '/patient-teleconsultation', badge: 1, group: 'teleconsult' },
-  { key: 'nav-pat-precall', label: 'Préparer la session', icon: 'HeartIcon', href: '/patient-precall-vitals', group: 'teleconsult' },
-  { key: 'nav-pat-ordonnance', label: 'Ordonnances reçues', icon: 'DocumentCheckIcon', href: '/patient-prescription-receipt', group: 'teleconsult' },
+  { key: 'nav-rdv-history', label: 'Mon historique', icon: 'ClockIcon', href: '/appointment-history', group: 'principal' },
+  { key: 'nav-sante', label: 'Mon espace santé', icon: 'HeartIcon', href: '/dossier-de-sant', group: 'masante' },
+  { key: 'nav-documents', label: 'Documents', icon: 'DocumentTextIcon', href: '/patient-documents', group: 'masante' },
+  { key: 'nav-consultations', label: 'Consultations', icon: 'ClipboardDocumentListIcon', href: '/patient-consultations', group: 'masante' },
+  { key: 'nav-results', label: 'Résultats', icon: 'BeakerIcon', href: '/patient-results', group: 'masante' },
+  { key: 'nav-follow-up', label: 'Suivi & Soins', icon: 'ChartBarIcon', href: '/patient-follow-up', group: 'masante' },
+  { key: 'nav-vaccination', label: 'Vaccinations', icon: 'ShieldCheckIcon', href: '/patient-vaccination', group: 'prevention' },
+  { key: 'nav-pat-health-programs', label: 'Programmes de santé', icon: 'SparklesIcon', href: '/patient-health-programs', group: 'prevention' },
+  { key: 'nav-prevention', label: 'Prévention', icon: 'ShieldCheckIcon', href: '/patient-prevention', group: 'prevention' },
+  { key: 'nav-pat-chronic-disease', label: 'Maladies chroniques', icon: 'HeartIcon', href: '/patient-chronic-disease', group: 'prevention' },
+  { key: 'nav-messages', label: 'Messages', icon: 'ChatBubbleLeftRightIcon', href: '/patient-messages', badge: 3, group: 'communication' },
+  { key: 'nav-community-hub-pat', label: 'Communauté', icon: 'GlobeAltIcon', href: '/community-hub', group: 'communication' },
+  { key: 'nav-shifa-share-pat', label: 'SHIFA Share', icon: 'ShareIcon', href: '/shifa-share', group: 'communication' },
+  { key: 'nav-pat-teleconsult', label: 'Téléconsultations', icon: 'VideoCameraIcon', href: '/patient-teleconsultation', badge: 1, group: 'communication' },
+  { key: 'nav-urgences', label: 'Urgences', icon: 'ExclamationTriangleIcon', href: '/patient-emergency', group: 'communication' },
+  { key: 'nav-map', label: 'Carte de santé', icon: 'MapPinIcon', href: '/patient-map', group: 'communication' },
+  { key: 'nav-family', label: 'Famille & Dépendants', icon: 'UsersIcon', href: '/patient-family', group: 'communication' },
+  { key: 'nav-maternal-child', label: 'Santé Maternelle & Infantile', icon: 'HeartIcon', href: '/patient-maternal-child', group: 'communication' },
+  { key: 'nav-pat-rehabilitation', label: 'Rééducation', icon: 'BoltIcon', href: '/patient-rehabilitation', group: 'communication' },
+  { key: 'nav-pat-precall', label: 'Préparer la session', icon: 'HeartIcon', href: '/patient-precall-vitals', group: 'communication' },
+  { key: 'nav-pat-ordonnance', label: 'Ordonnances reçues', icon: 'DocumentCheckIcon', href: '/patient-prescription-receipt', group: 'communication' },
   { key: 'nav-carte', label: 'Carte SHIFA', icon: 'CreditCardIcon', href: '/shifa-card', group: 'compte' },
   { key: 'nav-shifa-id', label: 'Mon SHIFA ID', icon: 'IdentificationIcon', href: '/patient-shifa-id', group: 'compte' },
   { key: 'nav-carte-gestion', label: 'Gestion Carte SHIFA', icon: 'IdentificationIcon', href: '/shifa-card-management', group: 'compte' },
@@ -54,15 +58,20 @@ const patientNav: NavItem[] = [
   { key: 'nav-devices-health', label: 'Santé connectée', icon: 'HeartIcon', href: '/patient-devices-health', group: 'compte' },
   { key: 'nav-shifa-ai-patient', label: 'SHIFA AI', icon: 'CpuChipIcon', href: '/shifa-ai-patient', group: 'compte' },
   { key: 'nav-notifications', label: 'Notifications', icon: 'BellIcon', href: '/patient-notifications', badge: 3, group: 'compte' },
+  { key: 'nav-urgences-contacts', label: 'Contacts d\'urgence', icon: 'PhoneIcon', href: '/patient-emergency-contacts', group: 'compte' },
   { key: 'nav-parametres', label: 'Paramètres', icon: 'Cog6ToothIcon', href: '/patient-settings', group: 'compte' },
+  { key: 'nav-settings-global', label: 'Langue & Région', icon: 'GlobeAltIcon', href: '/settings', group: 'compte' },
 ];
 
 const professionalNav: NavItem[] = [
   { key: 'nav-pro-dashboard', label: 'Tableau de bord', icon: 'Squares2X2Icon', href: '/workspace-professionnel', group: 'principal' },
+  { key: 'nav-pro-workspace-engine', label: 'Workspace Métier', icon: 'AdjustmentsHorizontalIcon', href: '/workspace', group: 'principal' },
   { key: 'nav-pro-patients', label: 'Patients', icon: 'UsersIcon', href: '/pro-patients', badge: 5, group: 'principal' },
   { key: 'nav-pro-agenda', label: 'Agenda', icon: 'CalendarDaysIcon', href: '/pro-agenda', group: 'principal' },
   { key: 'nav-pro-consultations', label: 'Consultations', icon: 'ClipboardDocumentListIcon', href: '/consultation-workspace', group: 'principal' },
   { key: 'nav-community-hub-pro', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'principal' },
+  { key: 'nav-pro-shifa-share', label: 'SHIFA Share', icon: 'ShareIcon', href: '/shifa-share', group: 'principal' },
+  { key: 'nav-pro-my-workspace', label: 'Mon Espace Employé', icon: 'UserCircleIcon', href: '/my-workspace', group: 'principal' },
   { key: 'nav-pro-dossiers', label: 'Dossiers', icon: 'FolderOpenIcon', href: '/dossier-de-sant', group: 'clinique' },
   { key: 'nav-pro-prescriptions', label: 'Prescriptions', icon: 'DocumentCheckIcon', href: '/pro-prescriptions', group: 'clinique' },
   { key: 'nav-pro-resultats', label: 'Résultats', icon: 'BeakerIcon', href: '/pro-resultats', badge: 4, group: 'clinique' },
@@ -78,6 +87,9 @@ const professionalNav: NavItem[] = [
   { key: 'nav-pro-teleconsultation', label: 'Téléconsultation Pro', icon: 'VideoCameraIcon', href: '/pro-teleconsultation', group: 'teleconsultation' },
   { key: 'nav-pro-lab', label: 'Laboratoire', icon: 'BeakerIcon', href: '/lab-dashboard', group: 'specialites' },
   { key: 'nav-pro-lab-lms', label: 'Laboratoire LMS', icon: 'CpuChipIcon', href: '/laboratory-lms', group: 'specialites' },
+  { key: 'nav-pro-lab-transfer', label: 'Transfert Échantillons', icon: 'TruckIcon', href: '/lab-sample-transfer', group: 'specialites' },
+  { key: 'nav-pro-lab-intl', label: 'Transfert International Labo', icon: 'GlobeAltIcon', href: '/lab-international-transfer', group: 'specialites' },
+  { key: 'nav-pro-lab-lis', label: 'LIS/LIMS Connector', icon: 'PuzzlePieceIcon', href: '/lab-lis-connector', group: 'specialites' },
   { key: 'nav-pro-pharmacy', label: 'Pharmacie', icon: 'ArchiveBoxIcon', href: '/pharmacy-dashboard', group: 'specialites' },
   { key: 'nav-pro-shifa-ai-pharmacy', label: 'SHIFA AI Pharmacie', icon: 'BeakerIcon', href: '/shifa-ai-pharmacy', group: 'specialites' },
   { key: 'nav-pro-imaging', label: 'Imagerie', icon: 'PhotoIcon', href: '/imaging-dashboard', group: 'specialites' },
@@ -102,14 +114,40 @@ const professionalNav: NavItem[] = [
   { key: 'nav-pro-dental-care', label: 'Soins Dentaires', icon: 'SparklesIcon', href: '/dental-care', group: 'specialites' },
   { key: 'nav-pro-ophthalmology', label: 'Ophtalmologie', icon: 'EyeIcon', href: '/ophthalmology', group: 'specialites' },
   { key: 'nav-pro-dermatology', label: 'Dermatologie', icon: 'SunIcon', href: '/dermatology', group: 'specialites' },
+  { key: 'nav-pro-cardiology', label: 'Cardiologie', icon: 'HeartIcon', href: '/cardiology-workspace', group: 'specialites' },
+  { key: 'nav-pro-icu', label: 'Réanimation & Soins Intensifs', icon: 'BoltIcon', href: '/icu-workspace', group: 'specialites' },
+  { key: 'nav-pro-neurology', label: 'Neurologie', icon: 'CpuChipIcon', href: '/neurology-workspace', group: 'specialites' },
+  { key: 'nav-pro-nephrology', label: 'Néphrologie & Dialyse', icon: 'BeakerIcon', href: '/nephrology-workspace', group: 'specialites' },
+  { key: 'nav-pro-gastroenterology', label: 'Gastroentérologie & Hépatologie', icon: 'BeakerIcon', href: '/gastroenterology-workspace', group: 'specialites' },
+  { key: 'nav-pro-rheumatology', label: 'Rhumatologie', icon: 'SparklesIcon', href: '/rheumatology-workspace', group: 'specialites' },
+  { key: 'nav-pro-anesthesia', label: 'Anesthésie & Bloc Opératoire', icon: 'ScissorsIcon', href: '/pro-anesthesia', group: 'specialites' },
+  { key: 'nav-pro-oncology', label: 'Oncologie & Chimiothérapie', icon: 'BeakerIcon', href: '/pro-oncology', group: 'specialites' },
+  { key: 'nav-pro-endoscopy', label: 'Endoscopie & Explorations', icon: 'EyeIcon', href: '/pro-endoscopy', group: 'specialites' },
+  { key: 'nav-pro-pneumology', label: 'Pneumologie & Respiratoire', icon: 'BoltIcon', href: '/pneumology-workspace', group: 'specialites' },
+  { key: 'nav-pro-endocrinology', label: 'Endocrinologie & Diabétologie', icon: 'BeakerIcon', href: '/endocrinology-workspace', group: 'specialites' },
+  { key: 'nav-pro-hematology', label: 'Hématologie & Transfusion', icon: 'HeartIcon', href: '/hematology-workspace', group: 'specialites' },
+  { key: 'nav-pro-infectiology', label: 'Infectiologie & Maladies Tropicales', icon: 'ShieldCheckIcon', href: '/infectiology-workspace', group: 'specialites' },
+  { key: 'nav-pro-urology', label: 'Urologie & Andrologie', icon: 'BeakerIcon', href: '/urology-workspace', group: 'specialites' },
+  { key: 'nav-pro-geriatrics', label: 'Gériatrie & Personnes Âgées', icon: 'UsersIcon', href: '/geriatrics-workspace', group: 'specialites' },
+  { key: 'nav-pro-psychiatry', label: 'Psychiatrie & Santé Mentale', icon: 'CpuChipIcon', href: '/psychiatry-workspace', group: 'specialites' },
+  { key: 'nav-pro-emergency-workspace', label: 'Urgences — SAU', icon: 'BoltIcon', href: '/emergency-workspace', group: 'specialites' },
+  { key: 'nav-pro-orthopedics', label: 'Orthopédie & Traumatologie', icon: 'WrenchScrewdriverIcon', href: '/orthopedics-workspace', group: 'specialites' },
+  { key: 'nav-pro-gynecology', label: 'Gynécologie-Obstétrique', icon: 'HeartIcon', href: '/gynecology-workspace', group: 'specialites' },
+  { key: 'nav-pro-palliative-care-workspace', label: 'Soins Palliatifs (Workspace)', icon: 'HeartIcon', href: '/palliative-care-workspace', group: 'specialites' },
   { key: 'nav-pro-shifa-ai', label: 'SHIFA AI', icon: 'CpuChipIcon', href: '/shifa-ai-workspace', group: 'outils' },
+  { key: 'nav-pro-innovation', label: 'Innovation Center', icon: 'LightBulbIcon', href: '/innovation-center', group: 'outils' },
   { key: 'nav-pro-academy-dashboard', label: 'Mon espace Academy', icon: 'AcademicCapIcon', href: '/academy-dashboard', group: 'outils' },
   { key: 'nav-pro-academy', label: 'Académie', icon: 'AcademicCapIcon', href: '/shifa-academy', group: 'outils' },
+  { key: 'nav-pro-entretiens-annuels', label: 'Entretiens annuels', icon: 'UserGroupIcon', href: '/entretiens-annuels', group: 'outils' },
+  { key: 'nav-pro-entretiens-recrutement', label: 'Recrutement & Stages', icon: 'BriefcaseIcon', href: '/entretiens-recrutement', group: 'outils' },
+  { key: 'nav-pro-emploi-stage', label: 'Emploi & Stages', icon: 'BriefcaseIcon', href: '/shifa-emploi-stage', group: 'outils' },
   { key: 'nav-pro-marketplace', label: 'Marketplace', icon: 'ShoppingBagIcon', href: '/health-marketplace', group: 'outils' },
   { key: 'nav-pro-notifications', label: 'Notifications', icon: 'BellIcon', href: '/notifications-center', badge: 3, group: 'outils' },
   { key: 'nav-pro-support', label: 'Support & Aide', icon: 'LifebuoyIcon', href: '/support-center', group: 'outils' },
   { key: 'nav-pro-interop', label: 'Interopérabilité', icon: 'ArrowsRightLeftIcon', href: '/interoperability-hub', group: 'outils' },
   { key: 'nav-pro-referrals', label: 'Adressages & Certificats', icon: 'ArrowsRightLeftIcon', href: '/pro-referrals', group: 'outils' },
+  { key: 'nav-pro-referrals-network', label: 'Réseau d\'adressage complet', icon: 'UsersIcon', href: '/pro-referrals-network', group: 'outils' },
+  { key: 'nav-pro-clinical-protocols', label: 'Protocoles cliniques', icon: 'BookOpenIcon', href: '/pro-clinical-protocols', group: 'outils' },
   { key: 'nav-pro-certificates', label: 'Certificats médicaux', icon: 'DocumentTextIcon', href: '/medical-certificates', group: 'outils' },
   { key: 'nav-pro-documents', label: 'Documents', icon: 'FolderOpenIcon', href: '/pro-documents', group: 'outils' },
   { key: 'nav-pro-shifa-ai-pro', label: 'SHIFA AI Clinical', icon: 'CpuChipIcon', href: '/shifa-ai-pro', group: 'outils' },
@@ -121,6 +159,7 @@ const professionalNav: NavItem[] = [
   { key: 'nav-pro-agenda-availability', label: 'Disponibilités & Horaires', icon: 'CalendarDaysIcon', href: '/pro-agenda-availability', group: 'compte' },
   { key: 'nav-pro-schedule-templates', label: 'Modèles de planning', icon: 'CalendarDaysIcon', href: '/pro-schedule-templates', group: 'compte' },
   { key: 'nav-pro-parametres', label: 'Paramètres', icon: 'Cog6ToothIcon', href: '/pro-parametres', group: 'compte' },
+  { key: 'nav-pro-settings-global', label: 'Langue & Région', icon: 'GlobeAltIcon', href: '/settings', group: 'compte' },
 ];
 
 const adminNav: NavItem[] = [
@@ -128,23 +167,37 @@ const adminNav: NavItem[] = [
   { key: 'nav-adm-hopital', label: 'Tableau de bord Hôpital', icon: 'BuildingOffice2Icon', href: '/hopital-dashboard', group: 'principal' },
   { key: 'nav-adm-hopital-config', label: 'Configuration Hôpital', icon: 'AdjustmentsHorizontalIcon', href: '/hopital-configuration', group: 'principal' },
   { key: 'nav-adm-admissions', label: 'Admissions', icon: 'UserPlusIcon', href: '/hopital-admissions', group: 'principal' },
+  { key: 'nav-adm-hopital-dpi', label: 'DPI Hospitalier', icon: 'ClipboardDocumentListIcon', href: '/hopital-dpi', group: 'principal' },
+  { key: 'nav-adm-patient-flow', label: 'Flux Patients & Lits', icon: 'HomeIcon', href: '/org-patient-flow', group: 'principal' },
   { key: 'nav-adm-hospitalization', label: 'Hospitalisation', icon: 'BuildingOffice2Icon', href: '/hospitalization', group: 'principal' },
   { key: 'nav-adm-billing', label: 'Facturation', icon: 'BanknotesIcon', href: '/billing-dashboard', group: 'principal' },
   { key: 'nav-adm-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'principal' },
   { key: 'nav-adm-biomedical', label: 'Équipements biomédicaux', icon: 'CpuChipIcon', href: '/biomedical-equipment', group: 'gestion' },
   { key: 'nav-adm-biomedical-maintenance', label: 'Maintenance biomédicale', icon: 'WrenchScrewdriverIcon', href: '/biomedical-maintenance', group: 'gestion' },
+  { key: 'nav-adm-org-biomedical-maintenance', label: 'Maintenance biomédicale complète', icon: 'CpuChipIcon', href: '/org-biomedical-maintenance', group: 'gestion' },
   { key: 'nav-adm-quality', label: 'Qualité & Accréditation', icon: 'ShieldCheckIcon', href: '/quality-accreditation', group: 'gestion' },
   { key: 'nav-adm-org-quality', label: 'Qualité Organisation', icon: 'StarIcon', href: '/org-quality', group: 'gestion' },
   { key: 'nav-adm-interop', label: 'Interopérabilité', icon: 'ArrowsRightLeftIcon', href: '/interoperability-hub', group: 'gestion' },
   { key: 'nav-adm-inventory', label: 'Inventaire & Approvisionnement', icon: 'ArchiveBoxIcon', href: '/inventory-procurement', group: 'gestion' },
   { key: 'nav-adm-supply-chain', label: 'Chaîne d\'approvisionnement', icon: 'TruckIcon', href: '/supply-chain', group: 'gestion' },
+  { key: 'nav-adm-org-supply-chain', label: 'Approvisionnement complet', icon: 'ArchiveBoxIcon', href: '/org-supply-chain', group: 'gestion' },
   { key: 'nav-adm-finance', label: 'Finance', icon: 'ChartBarIcon', href: '/finance-dashboard', group: 'gestion' },
   { key: 'nav-adm-hr', label: 'Ressources Humaines', icon: 'UsersIcon', href: '/hr-module', group: 'gestion' },
+  { key: 'nav-adm-workforce-admin', label: 'SHIFA Workforce Admin', icon: 'UsersIcon', href: '/workforce-admin', group: 'gestion' },
+  { key: 'nav-adm-my-workspace', label: 'Mon Espace Employé', icon: 'UserCircleIcon', href: '/my-workspace', group: 'gestion' },
+  { key: 'nav-adm-org-hr-payroll', label: 'Paie & RH', icon: 'BanknotesIcon', href: '/org-hr-payroll', group: 'gestion' },
   { key: 'nav-adm-hr-planning', label: 'Planification RH & Congés', icon: 'CalendarDaysIcon', href: '/org-hr-planning', group: 'gestion' },
   { key: 'nav-adm-kiosk', label: 'SHIFA Kiosk', icon: 'ComputerDesktopIcon', href: '/shifa-kiosk', group: 'gestion' },
+{ key: 'nav-adm-shifa-access', label: 'SHIFA Access', icon: 'ShieldCheckIcon', href: '/shifa-access', group: 'gestion' },
   { key: 'nav-adm-display', label: 'SHIFA Display', icon: 'TvIcon', href: '/shifa-display', group: 'gestion' },
   { key: 'nav-adm-pro-verif', label: 'Vérification professionnels', icon: 'ShieldCheckIcon', href: '/pro-verification', group: 'gestion' },
   { key: 'nav-adm-sterilization', label: 'Stérilisation Centrale', icon: 'ShieldCheckIcon', href: '/sterilization', group: 'gestion' },
+  { key: 'nav-adm-sterilization-central', label: 'Stérilisation Centrale complète', icon: 'ArrowPathIcon', href: '/org-sterilization-central', group: 'gestion' },
+  { key: 'nav-adm-infection-control', label: 'Hygiène & Infections (CLIN)', icon: 'ShieldCheckIcon', href: '/org-infection-control', group: 'gestion' },
+  { key: 'nav-adm-nursing-management', label: 'Gestion soins infirmiers', icon: 'HeartIcon', href: '/org-nursing-management', group: 'gestion' },
+  { key: 'nav-adm-waste-management', label: 'Déchets hospitaliers DASRI', icon: 'TrashIcon', href: '/org-waste-management', group: 'gestion' },
+  { key: 'nav-adm-patient-satisfaction', label: 'Satisfaction patient', icon: 'StarIcon', href: '/org-patient-satisfaction', group: 'analyse' },
+  { key: 'nav-adm-capacity-planning', label: 'Planification capacitaire', icon: 'ChartBarSquareIcon', href: '/org-capacity-planning', group: 'analyse' },
   { key: 'nav-adm-accounting-ledger', label: 'Comptabilité générale', icon: 'CalculatorIcon', href: '/accounting-ledger', group: 'gestion' },
   { key: 'nav-adm-module-catalog', label: 'Catalogue modules', icon: 'PuzzlePieceIcon', href: '/module-catalog', group: 'gestion' },
   { key: 'nav-adm-professionnels', label: 'Professionnels', icon: 'UserGroupIcon', href: '/admin-professionnels', badge: 3, group: 'gestion' },
@@ -172,6 +225,7 @@ const institutionNav: NavItem[] = [
   { key: 'nav-inst-ong', label: 'ONG / Humanitaire', icon: 'HeartIcon', href: '/espace-ong', group: 'espaces' },
   { key: 'nav-inst-sante-pub', label: 'Santé Publique', icon: 'ChartBarIcon', href: '/espace-sante-publique', group: 'espaces' },
   { key: 'nav-inst-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'espaces' },
+  { key: 'nav-inst-gov-licensing', label: 'Licences Gouvernements & ONG', icon: 'BuildingLibraryIcon', href: '/government-licensing', group: 'espaces' },
   { key: 'nav-inst-shifa-ai-institution', label: 'SHIFA AI Institution', icon: 'CpuChipIcon', href: '/shifa-ai-institution', group: 'workspaces' },
   { key: 'nav-inst-shifa-ai-research', label: 'SHIFA AI Recherche', icon: 'BeakerIcon', href: '/shifa-ai-research', group: 'workspaces' },
   { key: 'nav-inst-research-datasets', label: 'Jeux de données recherche', icon: 'CircleStackIcon', href: '/research-datasets', group: 'workspaces' },
@@ -187,16 +241,49 @@ const institutionNav: NavItem[] = [
 
 const ambassadorNav: NavItem[] = [
   { key: 'nav-amb-dashboard', label: 'Tableau de bord', icon: 'Squares2X2Icon', href: '/ambassador-workspace', group: 'principal' },
-  { key: 'nav-amb-network', label: 'Mon Réseau', icon: 'UsersIcon', href: '/ambassador-workspace', group: 'principal' },
+  { key: 'nav-amb-network', label: 'Mon Réseau', icon: 'UsersIcon', href: '/ambassador-network', group: 'principal' },
   { key: 'nav-amb-commercial', label: 'Commercial & Revenus', icon: 'BanknotesIcon', href: '/ambassador-commercial', group: 'activite' },
-  { key: 'nav-amb-invitations', label: 'Invitations', icon: 'EnvelopeIcon', href: '/ambassador-workspace', group: 'activite' },
-  { key: 'nav-amb-rewards', label: 'Récompenses', icon: 'TrophyIcon', href: '/ambassador-workspace', group: 'activite' },
-  { key: 'nav-amb-training', label: 'Formation', icon: 'AcademicCapIcon', href: '/ambassador-workspace', group: 'ressources' },
-  { key: 'nav-amb-resources', label: 'Kit Marketing', icon: 'SparklesIcon', href: '/ambassador-workspace', group: 'ressources' },
+  { key: 'nav-amb-invitations', label: 'Invitations', icon: 'EnvelopeIcon', href: '/ambassador-invitations', group: 'activite' },
+  { key: 'nav-amb-rewards', label: 'Récompenses', icon: 'TrophyIcon', href: '/ambassador-rewards', group: 'activite' },
+  { key: 'nav-amb-training', label: 'Formation', icon: 'AcademicCapIcon', href: '/ambassador-training', group: 'ressources' },
+  { key: 'nav-amb-resources', label: 'Kit Marketing', icon: 'SparklesIcon', href: '/ambassador-resources', group: 'ressources' },
   { key: 'nav-amb-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
 ];
 
+const developerNav: NavItem[] = [
+  { key: 'nav-dev-dashboard', label: 'Portail Développeur', icon: 'CodeBracketIcon', href: '/api-developer-dashboard', group: 'principal' },
+  { key: 'nav-dev-api-monetization', label: 'API & Monétisation', icon: 'ArrowsRightLeftIcon', href: '/api-monetization', group: 'principal' },
+  { key: 'nav-dev-integration-layer', label: 'Integration Layer', icon: 'PuzzlePieceIcon', href: '/integration-layer', group: 'principal' },
+  { key: 'nav-dev-external-connectors', label: 'Connecteurs externes', icon: 'ArrowsRightLeftIcon', href: '/external-connectors', group: 'principal' },
+  { key: 'nav-dev-interop', label: 'Interopérabilité', icon: 'ArrowsRightLeftIcon', href: '/interoperability-hub', group: 'principal' },
+  { key: 'nav-dev-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'ressources' },
+  { key: 'nav-dev-academy', label: 'Académie', icon: 'AcademicCapIcon', href: '/shifa-academy', group: 'ressources' },
+  { key: 'nav-dev-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
+  { key: 'nav-dev-marketplace', label: 'Marketplace', icon: 'ShoppingBagIcon', href: '/health-marketplace', group: 'ressources' },
+];
+
+const vendorNav: NavItem[] = [
+  { key: 'nav-vnd-marketplace', label: 'Espace Vendeur', icon: 'BuildingStorefrontIcon', href: '/marketplace-vendor', group: 'principal' },
+  { key: 'nav-vnd-marketplace-buyer', label: 'Marketplace Acheteur', icon: 'ShoppingBagIcon', href: '/marketplace-buyer', group: 'principal' },
+  { key: 'nav-vnd-health-marketplace', label: 'Marketplace Santé', icon: 'HeartIcon', href: '/health-marketplace', group: 'principal' },
+  { key: 'nav-vnd-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'ressources' },
+  { key: 'nav-vnd-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
+  { key: 'nav-vnd-academy', label: 'Académie', icon: 'AcademicCapIcon', href: '/shifa-academy', group: 'ressources' },
+];
+
+const researcherNav: NavItem[] = [
+  { key: 'nav-res-workspace', label: 'Espace Recherche', icon: 'BeakerIcon', href: '/research-workspace', group: 'principal' },
+  { key: 'nav-res-datasets', label: 'Jeux de données', icon: 'CircleStackIcon', href: '/research-datasets', group: 'principal' },
+  { key: 'nav-res-ethics-board', label: 'Comité d\'éthique', icon: 'ClipboardDocumentCheckIcon', href: '/research-ethics-board', group: 'principal' },
+  { key: 'nav-res-shifa-ai-research', label: 'SHIFA AI Recherche', icon: 'CpuChipIcon', href: '/shifa-ai-research', group: 'principal' },
+  { key: 'nav-res-epidemio', label: 'Surveillance Épidémio.', icon: 'EyeIcon', href: '/epidemio-surveillance', group: 'analyse' },
+  { key: 'nav-res-community-hub', label: 'Hub Communautaire', icon: 'GlobeAltIcon', href: '/community-hub', group: 'ressources' },
+  { key: 'nav-res-academy', label: 'Académie', icon: 'AcademicCapIcon', href: '/shifa-academy', group: 'ressources' },
+  { key: 'nav-res-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'ressources' },
+];
+
 const platformAdminNav: NavItem[] = [
+  { key: 'nav-pa-super-admin', label: '⭐ Super Admin SHIFA', icon: 'ShieldCheckIcon', href: '/super-admin-shifa', group: 'principal' },
   { key: 'nav-pa-dashboard', label: 'Tableau de bord global', icon: 'Squares2X2Icon', href: '/platform-admin', group: 'principal' },
   { key: 'nav-pa-orgs', label: 'Organisations', icon: 'BuildingOffice2Icon', href: '/platform-admin', group: 'gestion' },
   { key: 'nav-pa-users', label: 'Utilisateurs', icon: 'UsersIcon', href: '/platform-admin', group: 'gestion' },
@@ -230,9 +317,12 @@ const platformAdminNav: NavItem[] = [
   { key: 'nav-pa-phase2-roadmap', label: 'Roadmap Phase 2', icon: 'MapIcon', href: '/phase2-roadmap', group: 'systeme' },
   { key: 'nav-pa-shifa-desktop', label: 'SHIFA Desktop', icon: 'ComputerDesktopIcon', href: '/shifa-desktop', group: 'systeme' },
   { key: 'nav-pa-phase1-audit', label: 'Audit Phase 1', icon: 'ClipboardDocumentCheckIcon', href: '/phase1-completion-audit', group: 'systeme' },
+  { key: 'nav-pa-phase2-audit', label: 'Audit Phase 2 — Système', icon: 'ShieldExclamationIcon', href: '/phase2-system-audit', group: 'systeme' },
   { key: 'nav-pa-security', label: 'Sécurité & Audit', icon: 'ShieldCheckIcon', href: '/platform-admin', group: 'systeme' },
   { key: 'nav-pa-ai', label: 'SHIFA AI', icon: 'CpuChipIcon', href: '/shifa-ai-workspace', group: 'systeme' },
   { key: 'nav-pa-interop', label: 'Interopérabilité', icon: 'ArrowsRightLeftIcon', href: '/interoperability-hub', group: 'systeme' },
+  { key: 'nav-pa-integration-layer', label: 'Integration Layer', icon: 'ArrowsRightLeftIcon', href: '/integration-layer', group: 'systeme' },
+  { key: 'nav-pa-shifa-share', label: 'SHIFA Share', icon: 'ShareIcon', href: '/shifa-share', group: 'systeme' },
   { key: 'nav-pa-external-connectors', label: 'Connecteurs externes', icon: 'PuzzlePieceIcon', href: '/external-connectors', group: 'systeme' },
   { key: 'nav-pa-offline-mode', label: 'Mode Offline & Débit', icon: 'WifiIcon', href: '/offline-mode-config', group: 'systeme' },
   { key: 'nav-pa-local-health', label: 'Services de santé locaux', icon: 'GlobeAltIcon', href: '/local-health-services', group: 'systeme' },
@@ -240,10 +330,29 @@ const platformAdminNav: NavItem[] = [
   { key: 'nav-pa-support', label: 'Support', icon: 'LifebuoyIcon', href: '/support-center', group: 'systeme' },
 ];
 
-const navByRole = { patient: patientNav, professional: professionalNav, admin: adminNav, institution: institutionNav, ambassador: ambassadorNav, platform_admin: platformAdminNav };
+const navByRole = {
+  patient: patientNav,
+  professional: professionalNav,
+  admin: adminNav,
+  org_admin: adminNav,
+  institution: institutionNav,
+  ministry: institutionNav,
+  public_health: institutionNav,
+  insurance: institutionNav,
+  university: institutionNav,
+  ngo: institutionNav,
+  researcher: researcherNav,
+  developer: developerNav,
+  vendor: vendorNav,
+  ambassador: ambassadorNav,
+  platform_admin: platformAdminNav,
+};
 
 const groupLabels: Record<string, string> = {
   principal: 'Principal',
+  masante: 'Ma Santé',
+  prevention: 'Prévention',
+  communication: 'Communication',
   sante: 'Santé & Dossiers',
   teleconsult: 'Téléconsultation',
   clinique: 'Clinique',
@@ -261,11 +370,38 @@ const groupLabels: Record<string, string> = {
   commercial: 'Commercial & Tarification',
 };
 
-const userInfoByRole = {
+const roleLabels: Record<string, string> = {
+  patient: 'Patient',
+  professional: 'Professionnel de santé',
+  admin: 'Administrateur',
+  org_admin: 'Admin Organisation',
+  institution: 'Institution',
+  ministry: 'Ministère',
+  public_health: 'Santé Publique',
+  insurance: 'Assurance',
+  university: 'Université',
+  ngo: 'ONG',
+  researcher: 'Chercheur',
+  developer: 'Développeur',
+  vendor: 'Vendeur',
+  ambassador: 'Ambassadeur',
+  platform_admin: 'Super Admin',
+};
+
+const userInfoByRole: Record<string, { name: string; sub: string; avatar: string }> = {
   patient: { name: 'Aïcha Diallo', sub: 'SH-2-SN-2025-7K4D', avatar: 'AD' },
   professional: { name: 'Dr. Mohamed Sy', sub: 'Médecin généraliste', avatar: 'MS' },
   admin: { name: 'Admin — CHU Saint-Louis', sub: 'Administrateur', avatar: 'AS' },
+  org_admin: { name: 'Admin — CHU Saint-Louis', sub: 'Administrateur', avatar: 'AS' },
   institution: { name: 'Espace Institutionnel', sub: 'Accès multi-organisations', avatar: 'EI' },
+  ministry: { name: 'Ministère de la Santé', sub: 'Espace Ministère', avatar: 'MS' },
+  public_health: { name: 'Santé Publique', sub: 'Espace Santé Publique', avatar: 'SP' },
+  insurance: { name: 'Assurance / Mutuelle', sub: 'Espace Assurance', avatar: 'AS' },
+  university: { name: 'Université / École', sub: 'Espace Université', avatar: 'UE' },
+  ngo: { name: 'ONG / Humanitaire', sub: 'Espace ONG', avatar: 'OG' },
+  researcher: { name: 'Chercheur', sub: 'Espace Recherche', avatar: 'CR' },
+  developer: { name: 'Développeur', sub: 'Portail Développeur', avatar: 'DV' },
+  vendor: { name: 'Vendeur', sub: 'Espace Vendeur', avatar: 'VD' },
   ambassador: { name: 'Karim Diallo', sub: 'Ambassadeur SHIFA — Niveau Or', avatar: 'KD' },
   platform_admin: { name: 'Super Admin SHIFA', sub: 'Administration Plateforme', avatar: 'SA' },
 };
@@ -286,6 +422,7 @@ const phase1Modules: CatalogModule[] = [
   { name: 'ONG', icon: 'HeartIcon', status: 'available', href: '/espace-ong' },
   { name: 'IA Médicale', icon: 'CpuChipIcon', status: 'available', href: '/shifa-ai-workspace' },
   { name: 'Académie', icon: 'BookOpenIcon', status: 'available', href: '/shifa-academy' },
+  { name: 'Emploi & Stages', icon: 'BriefcaseIcon', status: 'available', href: '/shifa-emploi-stage' },
   { name: 'Marketplace', icon: 'ShoppingBagIcon', status: 'available', href: '/health-marketplace' },
   { name: 'Notifications', icon: 'BellIcon', status: 'available', href: '/notifications-center' },
   { name: 'Support', icon: 'LifebuoyIcon', status: 'available', href: '/support-center' },
@@ -309,27 +446,32 @@ const catalogStatusConfig = {
 
 function ModuleCatalogSection({ collapsed }: { collapsed: boolean }) {
   const [open, setOpen] = useState(false);
-
   if (collapsed) return null;
-
   return (
     <div className="mb-4">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg hover:bg-muted transition-colors"
+        className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-colors"
+        style={{ color: 'var(--sidebar-section-label)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
         <p className="section-label text-left">Catalogue Phase 1</p>
-        <Icon name={open ? 'ChevronUpIcon' : 'ChevronDownIcon'} size={14} className="text-muted-foreground shrink-0" />
+        <Icon name={open ? 'ChevronUpIcon' : 'ChevronDownIcon'} size={13} className="shrink-0" style={{ color: 'var(--sidebar-section-label)' } as React.CSSProperties} />
       </button>
       {open && (
         <div className="mt-1 space-y-0.5">
           {phase1Modules.map(mod => {
             const s = catalogStatusConfig[mod.status];
             const inner = (
-              <div className="flex items-center justify-between px-3 py-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                style={{ color: 'var(--sidebar-text)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Icon name={mod.icon as any} size={14} className="text-muted-foreground shrink-0" />
-                  <span className="text-xs truncate" style={{ color: 'var(--foreground)' }}>{mod.name}</span>
+                  <Icon name={mod.icon as any} size={13} style={{ color: 'var(--sidebar-section-label)' } as React.CSSProperties} />
+                  <span className="text-xs truncate">{mod.name}</span>
                 </div>
                 <span className="text-xs px-1.5 py-0.5 rounded-full shrink-0 ml-1" style={{ backgroundColor: s.bg, color: s.text, fontSize: '10px' }}>{s.label}</span>
               </div>
@@ -346,16 +488,38 @@ function ModuleCatalogSection({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?: 'patient' | 'professional' | 'admin' | 'institution' | 'ambassador' | 'platform_admin'; activeRoute?: string }) {
+type SidebarRole = 'patient' | 'professional' | 'admin' | 'org_admin' | 'institution' | 'ambassador' | 'platform_admin' | 'ministry' | 'public_health' | 'insurance' | 'university' | 'ngo' | 'researcher' | 'developer' | 'vendor';
+
+export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?: SidebarRole; activeRoute?: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const { signOut } = useAuth();
+  const [realUserInfo, setRealUserInfo] = useState<{ name: string; sub: string; avatar: string } | null>(null);
+  const { signOut, user } = useAuth();
   const router = useRouter();
   const { dir } = useLanguage();
   const navItems = navByRole[role];
   const groups = [...new Set(navItems.map(i => i.group || 'principal'))];
-  const userInfo = userInfoByRole[role];
+  const fallbackInfo = userInfoByRole[role];
+
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from('user_profiles')
+      .select('full_name, shifa_id, role')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        const name = data.full_name || user.email || fallbackInfo.name;
+        const sub = data.shifa_id || user.email || fallbackInfo.sub;
+        const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        setRealUserInfo({ name, sub, avatar: initials });
+      });
+  }, [user]);
+
+  const userInfo = realUserInfo || fallbackInfo;
 
   const handleSignOut = async () => {
     if (signingOut) return;
@@ -370,42 +534,52 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
 
   const NavContent = () => (
     <>
-      {/* Logo */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b" style={{ borderColor: 'var(--border)', minHeight: '56px' }}>
+      {/* ── Logo Header ─────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between px-3 py-3 shrink-0"
+        style={{ borderBottom: '1px solid var(--sidebar-border)', minHeight: '60px', background: 'var(--sidebar-bg)' }}
+      >
         <div className="flex items-center flex-1 min-w-0">
           {!collapsed ? (
             <ShifaBrand variant="full" />
           ) : (
             <div className="flex justify-center w-full">
-              <ShifaBrand variant="symbol" symbolSize={32} />
+              <ShifaBrand variant="symbol" symbolSize={30} />
             </div>
           )}
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg transition-colors hover:bg-muted ml-2 hidden lg:flex shrink-0"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="p-1.5 rounded-lg transition-colors hidden lg:flex shrink-0 ml-1"
+          style={{ color: 'var(--sidebar-section-label)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          aria-label={collapsed ? 'Développer la sidebar' : 'Réduire la sidebar'}
         >
-          <Icon name={collapsed ? 'ChevronRightIcon' : 'ChevronLeftIcon'} size={16} className="text-muted-foreground" />
+          <Icon name={collapsed ? 'ChevronRightIcon' : 'ChevronLeftIcon'} size={15} />
         </button>
         <button
           onClick={() => setMobileOpen(false)}
-          className="p-1.5 rounded-lg transition-colors hover:bg-muted ml-2 lg:hidden shrink-0"
-          aria-label="Close menu"
+          className="p-1.5 rounded-lg transition-colors lg:hidden shrink-0 ml-1"
+          style={{ color: 'var(--sidebar-section-label)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          aria-label="Fermer le menu"
         >
-          <Icon name="XMarkIcon" size={16} className="text-muted-foreground" />
+          <Icon name="XMarkIcon" size={16} />
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto scrollbar-thin px-2 py-3">
+      {/* ── Navigation ──────────────────────────────────────────── */}
+      <nav className="flex-1 overflow-y-auto scrollbar-thin px-2 py-3" style={{ background: 'var(--sidebar-bg)' }}>
         {groups.map((group) => {
           const items = navItems.filter(i => (i.group || 'principal') === group);
           return (
-            <div key={`group-${group}`} className="mb-4">
+            <div key={`group-${group}`} className="mb-3">
               {!collapsed && (
-                <p className="section-label px-3 mb-1">{groupLabels[group] || group}</p>
+                <p className="section-label px-3 mb-1.5">{groupLabels[group] || group}</p>
               )}
+              {collapsed && <div className="my-2 mx-2 border-t" style={{ borderColor: 'var(--sidebar-border)' }} />}
               {items.map((item) => {
                 const isActive = activeRoute === item.href || (item.href !== '/patient-home' && activeRoute.startsWith(item.href));
                 return (
@@ -413,18 +587,30 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
                     key={item.key}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`nav-item mb-0.5 relative ${isActive ? 'active' : ''}`}
+                    className={`nav-item mb-0.5 ${isActive ? 'active' : ''}`}
                     title={collapsed ? item.label : undefined}
+                    aria-current={isActive ? 'page' : undefined}
+                    style={isActive ? { color: 'var(--sidebar-active-text)', background: 'var(--sidebar-active-bg)' } : { color: 'var(--sidebar-text)' }}
                   >
-                    <Icon name={item.icon as any} size={18} />
-                    {!collapsed && <span className="flex-1">{item.label}</span>}
+                    <Icon
+                      name={item.icon as any}
+                      size={17}
+                      style={{ color: isActive ? 'var(--shifa-blue)' : 'var(--sidebar-section-label)', flexShrink: 0 } as React.CSSProperties}
+                    />
+                    {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
                     {!collapsed && item.badge && item.badge > 0 && (
-                      <span className="px-1.5 py-0.5 text-xs font-bold rounded-full text-white" style={{ backgroundColor: 'var(--shifa-blue)', minWidth: '20px', textAlign: 'center' }}>
+                      <span
+                        className="px-1.5 py-0.5 text-xs font-bold rounded-full text-white shrink-0"
+                        style={{ backgroundColor: 'var(--shifa-blue)', minWidth: '20px', textAlign: 'center', fontSize: '10px' }}
+                      >
                         {item.badge}
                       </span>
                     )}
                     {collapsed && item.badge && item.badge > 0 && (
-                      <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--shifa-blue)' }} />
+                      <span
+                        className="absolute top-1 right-1 w-2 h-2 rounded-full"
+                        style={{ backgroundColor: 'var(--shifa-blue)' }}
+                      />
                     )}
                   </Link>
                 );
@@ -432,55 +618,79 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
             </div>
           );
         })}
-        {/* Module Catalog — admin only */}
-        {role === 'admin' && <ModuleCatalogSection collapsed={collapsed} />}
+        {(role === 'admin' || role === 'org_admin') && <ModuleCatalogSection collapsed={collapsed} />}
       </nav>
 
-      {/* User footer */}
-      <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}>
+      {/* ── User Footer ─────────────────────────────────────────── */}
+      <div
+        className="shrink-0 p-3"
+        style={{ borderTop: '1px solid var(--sidebar-border)', background: 'var(--sidebar-bg)' }}
+      >
         {!collapsed && (
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2.5">
             <LanguageSelector compact={false} />
           </div>
         )}
-        <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center flex-col' : ''}`}>
+          {/* Avatar */}
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
             style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}
+            aria-label={`Avatar de ${userInfo.name}`}
           >
             {userInfo.avatar}
           </div>
           {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate" style={{ color: 'var(--foreground)' }}>{userInfo.name}</p>
-              <p className="text-xs truncate font-mono" style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}>{userInfo.sub}</p>
-            </div>
-          )}
-          {!collapsed && (
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="p-1 rounded-lg hover:bg-muted transition-colors"
-              title="Déconnexion"
-            >
-              {signingOut ? (
-                <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Icon name="ArrowLeftOnRectangleIcon" size={16} className="text-muted-foreground" />
-              )}
-            </button>
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--shifa-dark)', fontFamily: 'var(--font-heading)' }}>
+                  {userInfo.name}
+                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span
+                    className="inline-block px-1.5 py-0.5 rounded text-white font-semibold"
+                    style={{ fontSize: '9px', background: 'var(--shifa-blue)', letterSpacing: '0.03em' }}
+                  >
+                    {roleLabels[role] || role}
+                  </span>
+                  <p className="text-xs truncate font-mono" style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}>
+                    {userInfo.sub}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="p-1.5 rounded-lg transition-colors shrink-0"
+                style={{ color: 'var(--sidebar-section-label)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                title="Déconnexion"
+                aria-label="Se déconnecter"
+              >
+                {signingOut ? (
+                  <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--shifa-blue)' }} />
+                ) : (
+                  <Icon name="ArrowLeftOnRectangleIcon" size={16} />
+                )}
+              </button>
+            </>
           )}
           {collapsed && (
             <button
               onClick={handleSignOut}
               disabled={signingOut}
-              className="p-1 rounded-lg hover:bg-muted transition-colors"
+              className="p-1 rounded-lg transition-colors"
+              style={{ color: 'var(--sidebar-section-label)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-hover-bg)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               title="Déconnexion"
+              aria-label="Se déconnecter"
             >
               {signingOut ? (
-                <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--shifa-blue)' }} />
               ) : (
-                <Icon name="ArrowLeftOnRectangleIcon" size={14} className="text-muted-foreground" />
+                <Icon name="ArrowLeftOnRectangleIcon" size={14} />
               )}
             </button>
           )}
@@ -491,42 +701,50 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
 
   return (
     <>
-      {/* Mobile hamburger */}
+      {/* ── Mobile hamburger ────────────────────────────────────── */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl shadow-lg border"
-        style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
-        aria-label="Open menu"
+        className="lg:hidden fixed top-3.5 left-4 z-50 p-2 rounded-xl border transition-all"
+        style={{
+          backgroundColor: 'var(--shifa-surface-2)',
+          borderColor: 'var(--border)',
+          boxShadow: '0 2px 8px rgba(21,88,214,0.10)',
+        }}
+        aria-label="Ouvrir le menu"
       >
-        <Icon name="Bars3Icon" size={20} className="text-foreground" />
+        <Icon name="Bars3Icon" size={20} style={{ color: 'var(--shifa-navy)' } as React.CSSProperties} />
       </button>
 
-      {/* Mobile overlay */}
+      {/* ── Mobile overlay ──────────────────────────────────────── */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/50"
+          className="lg:hidden fixed inset-0 z-40"
+          style={{ backgroundColor: 'rgba(13,35,71,0.45)', backdropFilter: 'blur(2px)' }}
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
-      {/* Mobile drawer */}
+      {/* ── Mobile drawer ───────────────────────────────────────── */}
       <aside
         dir={dir}
         className={`lg:hidden fixed top-0 left-0 z-50 h-full flex flex-col border-r transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        style={{ width: '260px', backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
+        style={{ width: '260px', backgroundColor: 'var(--sidebar-bg)', borderColor: 'var(--sidebar-border)' }}
+        aria-label="Navigation principale"
       >
         <NavContent />
       </aside>
 
-      {/* Desktop sidebar */}
+      {/* ── Desktop sidebar ─────────────────────────────────────── */}
       <aside
         dir={dir}
         className="hidden lg:flex flex-col h-full border-r transition-all duration-300 ease-in-out shrink-0"
         style={{
-          width: collapsed ? '64px' : '240px',
-          backgroundColor: 'var(--card)',
-          borderColor: 'var(--border)',
+          width: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
+          backgroundColor: 'var(--sidebar-bg)',
+          borderColor: 'var(--sidebar-border)',
         }}
+        aria-label="Navigation principale"
       >
         <NavContent />
       </aside>

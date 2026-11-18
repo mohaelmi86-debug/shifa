@@ -204,7 +204,7 @@ export default function InteroperabilityHubContent() {
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Derniers événements</h3>
                 <button onClick={() => setActiveTab('logs')} className="text-xs font-medium" style={{ color: 'var(--shifa-blue)' }}>Voir tous les journaux →</button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {logs.slice(0, 5).map(log => {
                   const s = statusConfig[log.statut];
                   return (
@@ -272,7 +272,7 @@ export default function InteroperabilityHubContent() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                  <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                     {apis.map(api => {
                       const s = statusConfig[api.statut];
                       const pct = Math.round((api.appels_jour / api.quota) * 100);
@@ -310,7 +310,7 @@ export default function InteroperabilityHubContent() {
                   Ajouter webhook
                 </button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {webhooks.map(wh => {
                   const s = statusConfig[wh.statut];
                   return (
@@ -356,7 +356,7 @@ export default function InteroperabilityHubContent() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                   {integrations.map(int => {
                     const s = statusConfig[int.statut];
                     return (
@@ -417,7 +417,7 @@ export default function InteroperabilityHubContent() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                  <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                     {filteredLogs.map(log => {
                       const s = statusConfig[log.statut];
                       return (

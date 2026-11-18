@@ -4,6 +4,7 @@ import Icon from '@/components/ui/AppIcon';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslations } from '@/lib/i18n';
 import LanguageSelector from '@/components/ui/LanguageSelector';
+import { DeleteAccountModal, socialLinks } from '@/components/ui/AccountDeletion';
 
 type SettingsTab = 'profil' | 'securite' | 'notifications' | 'confidentialite' | 'accessibilite';
 
@@ -42,6 +43,7 @@ export default function PatientSettingsContent() {
   const { language } = useLanguage();
   const tr = getTranslations(language);
   const [activeTab, setActiveTab] = useState<SettingsTab>('profil');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [notifications, setNotifications] = useState({
     rdvEmail: true, rdvSms: true, resultats: true, messages: true, rappels: false, newsletter: false,
   });
@@ -248,9 +250,33 @@ export default function PatientSettingsContent() {
                     <Icon name="ArrowDownTrayIcon" size={15} />
                     Exporter mes données
                   </button>
-                  <button className="text-sm px-4 py-2 rounded-xl font-semibold border transition-colors hover:bg-red-50" style={{ color: 'var(--shifa-red)', borderColor: 'var(--shifa-red)' }}>
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="text-sm px-4 py-2 rounded-xl font-semibold border transition-colors hover:bg-red-50"
+                    style={{ color: 'var(--shifa-red)', borderColor: 'var(--shifa-red)' }}
+                  >
                     Supprimer mon compte
                   </button>
+                </div>
+              </div>
+
+              {/* Social media section */}
+              <div className="mt-6 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+                <p className="text-sm font-semibold mb-3" style={{ color: 'var(--shifa-dark)' }}>Suivez SHIFA</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {socialLinks.map((social) => (
+                    <a
+                      key={social.name}
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                      style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: social.color }}
+                      aria-label={social.name}
+                    >
+                      {social.icon}
+                    </a>
+                  ))}
                 </div>
               </div>
             </div>
@@ -295,6 +321,10 @@ export default function PatientSettingsContent() {
           )}
         </div>
       </div>
+
+      {showDeleteModal && (
+        <DeleteAccountModal onClose={() => setShowDeleteModal(false)} />
+      )}
     </div>
   );
 }

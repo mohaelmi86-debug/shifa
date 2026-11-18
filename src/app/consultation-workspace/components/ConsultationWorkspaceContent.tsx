@@ -24,13 +24,13 @@ const sections: { key: EncounterSection; label: string; icon: string }[] = [
   { key: 'plan', label: 'Plan de soins', icon: 'CalendarDaysIcon' },
 ];
 
-const mockVitals: VitalSign[] = [
-  { label: 'Tension artérielle', value: '128/82', unit: 'mmHg', normal: true },
-  { label: 'Fréquence cardiaque', value: '78', unit: 'bpm', normal: true },
-  { label: 'Température', value: '37.2', unit: '°C', normal: true },
-  { label: 'SpO2', value: '98', unit: '%', normal: true },
-  { label: 'Poids', value: '62', unit: 'kg', normal: true },
-  { label: 'Taille', value: '165', unit: 'cm', normal: true },
+const defaultVitals: VitalSign[] = [
+  { label: 'Tension artérielle', value: '--', unit: 'mmHg', normal: true },
+  { label: 'Fréquence cardiaque', value: '--', unit: 'bpm', normal: true },
+  { label: 'Température', value: '--', unit: '°C', normal: true },
+  { label: 'SpO2', value: '--', unit: '%', normal: true },
+  { label: 'Poids', value: '--', unit: 'kg', normal: true },
+  { label: 'Taille', value: '--', unit: 'cm', normal: true },
 ];
 
 interface PrescriptionLine {
@@ -56,6 +56,17 @@ const AI_MODES: { key: AIMode; label: string; icon: string; description: string 
   { key: 'chat', label: 'Assistance libre', icon: 'SparklesIcon', description: 'Posez une question clinique' },
 ];
 
+interface PatientInfo {
+  name: string;
+  age: string;
+  shifaId: string;
+  dob: string;
+  bloodType: string;
+  allergies: string[];
+  activeTreatments: string[];
+  avatar: string;
+}
+
 export default function ConsultationWorkspaceContent() {
   const [activeSection, setActiveSection] = useState<EncounterSection>('motif');
   const [motif, setMotif] = useState('');
@@ -63,7 +74,7 @@ export default function ConsultationWorkspaceContent() {
   const [examen, setExamen] = useState('');
   const [evaluation, setEvaluation] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
-  const [vitals, setVitals] = useState(mockVitals);
+  const [vitals, setVitals] = useState<VitalSign[]>(defaultVitals);
   const [prescriptions, setPrescriptions] = useState<PrescriptionLine[]>([
     { id: 'rx1', drug: '', dosage: '', frequency: '', duration: '' },
   ]);
@@ -76,6 +87,18 @@ export default function ConsultationWorkspaceContent() {
   const [chatHistory, setChatHistory] = useState<AIMessage[]>([]);
   const [lastAIResult, setLastAIResult] = useState<string>('');
   const [hasGeneratedForMode, setHasGeneratedForMode] = useState<Partial<Record<AIMode, string>>>({});
+  const [isLoadingConsultation, setIsLoadingConsultation] = useState(true);
+  const [consultationId, setConsultationId] = useState<string | null>(null);
+  const [patient, setPatient] = useState<PatientInfo>({
+    name: 'Chargement...',
+    age: '--',
+    shifaId: '--',
+    dob: '--',
+    bloodType: '--',
+    allergies: [],
+    activeTreatments: [],
+    avatar: '--',
+  });
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const { response, isLoading, error, sendMessage } = useChat('OPEN_AI', 'gpt-4o', true);
@@ -84,16 +107,128 @@ export default function ConsultationWorkspaceContent() {
     if (error) toast.error(error.message);
   }, [error]);
 
+  // Load latest consultation data from Supabase
+  useEffect(() => {
+    const loadConsultation = async () => {
+      setIsLoadingConsultation(true);
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Get the professional's profile
+        const { data: pro } = await supabase
+          .from('professionals')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!pro) return;
+
+        // Fetch the most recent in-progress consultation for this professional
+        const { data: consultation } = await supabase
+          .from('health_records')
+          .select('*')
+          .eq('professional_id', pro.id)
+          .eq('record_type', 'consultation')
+          .eq('is_signed', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (consultation) {
+          setConsultationId(consultation.id);
+          const content = consultation.content as Record<string, any> || {};
+
+          // Restore notes
+          if (content.motif) setMotif(content.motif);
+          if (content.anamnese) setAnamnese(content.anamnese);
+          if (content.examen) setExamen(content.examen);
+          if (content.evaluation) setEvaluation(content.evaluation);
+          if (content.diagnostic) setDiagnosis(content.diagnostic);
+
+          // Restore vitals from saved content
+          if (Array.isArray(content.vitals) && content.vitals.length > 0) {
+            setVitals(defaultVitals.map((def, i) => {
+              const saved = content.vitals[i];
+              if (saved && saved.value && saved.value !== '--') {
+                return { ...def, value: saved.value };
+              }
+              return def;
+            }));
+          }
+
+          // Restore prescriptions
+          if (Array.isArray(content.medications) && content.medications.length > 0) {
+            setPrescriptions(content.medications.map((m: any, i: number) => ({
+              id: `rx${i + 1}`,
+              drug: m.drug || '',
+              dosage: m.dosage || '',
+              frequency: m.frequency || '',
+              duration: m.duration || '',
+            })));
+          }
+
+          // Load patient info if patient_id is set
+          if (consultation.patient_id) {
+            const { data: patientProfile } = await supabase
+              .from('user_profiles')
+              .select('full_name, shifa_id, date_of_birth')
+              .eq('id', consultation.patient_id)
+              .maybeSingle();
+
+            if (patientProfile) {
+              const name = patientProfile.full_name || 'Patient';
+              const dob = patientProfile.date_of_birth || '';
+              let age = '--';
+              if (dob) {
+                const birthYear = new Date(dob).getFullYear();
+                age = `${new Date().getFullYear() - birthYear} ans`;
+              }
+              const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+              setPatient({
+                name,
+                age,
+                shifaId: patientProfile.shifa_id || '--',
+                dob: dob ? new Date(dob).toLocaleDateString('fr-FR') : '--',
+                bloodType: '--',
+                allergies: [],
+                activeTreatments: [],
+                avatar: initials,
+              });
+            }
+          }
+        } else {
+          // No draft found — show empty workspace with professional's own info as context
+          const { data: proProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (proProfile) {
+            setPatient(prev => ({ ...prev, name: 'Nouvelle consultation', age: '', shifaId: '', avatar: 'NC' }));
+          }
+        }
+      } catch (err: any) {
+        console.log('Load consultation error:', err.message);
+      } finally {
+        setIsLoadingConsultation(false);
+      }
+    };
+
+    loadConsultation();
+  }, []);
+
   // Capture completed streaming response
   useEffect(() => {
     if (!isLoading && response) {
       setLastAIResult(response);
       if (aiMode === 'chat') {
         setChatHistory(prev => {
-          // Avoid duplicate assistant messages
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant' && last.content === response) return prev;
-          // Replace streaming placeholder if present
           if (last?.role === 'assistant') {
             return [...prev.slice(0, -1), { role: 'assistant', content: response }];
           }
@@ -110,26 +245,15 @@ export default function ConsultationWorkspaceContent() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, response]);
 
-  const patient = {
-    name: 'Aïcha Diallo',
-    age: '33 ans',
-    shifaId: 'SH-2-225-FR-2025-7K4D',
-    dob: '12/03/1992',
-    bloodType: 'O+',
-    allergies: ['Pénicilline', 'AINS'],
-    activeTreatments: ['Metformine 500mg', 'Vitamine D3'],
-    avatar: 'AD',
-  };
-
   const buildEncounterContext = () => {
     const parts: string[] = [];
-    parts.push(`Patient: ${patient.name}, ${patient.age}`);
-    parts.push(`Allergies: ${patient.allergies.join(', ')}`);
-    parts.push(`Traitements actifs: ${patient.activeTreatments.join(', ')}`);
+    parts.push(`Patient: ${patient.name}${patient.age ? ', ' + patient.age : ''}`);
+    if (patient.allergies.length > 0) parts.push(`Allergies: ${patient.allergies.join(', ')}`);
+    if (patient.activeTreatments.length > 0) parts.push(`Traitements actifs: ${patient.activeTreatments.join(', ')}`);
     if (motif) parts.push(`Motif: ${motif}`);
     if (anamnese) parts.push(`Anamnèse: ${anamnese}`);
-    const vitalStr = vitals.map(v => `${v.label}: ${v.value} ${v.unit}`).join(', ');
-    parts.push(`Constantes: ${vitalStr}`);
+    const vitalStr = vitals.filter(v => v.value !== '--').map(v => `${v.label}: ${v.value} ${v.unit}`).join(', ');
+    if (vitalStr) parts.push(`Constantes: ${vitalStr}`);
     if (examen) parts.push(`Examen clinique: ${examen}`);
     if (evaluation) parts.push(`Évaluation: ${evaluation}`);
     if (diagnosis) parts.push(`Diagnostic: ${diagnosis}`);
@@ -228,15 +352,25 @@ RÈGLES ABSOLUES:
           })),
         };
 
-        await supabase.from('health_records').insert({
-          patient_id: null, // Would be set from appointment context
-          professional_id: pro.id,
-          record_type: 'consultation',
-          title: motif || 'Consultation',
-          content,
-          is_signed: false,
-          created_by: user.id,
-        });
+        if (consultationId) {
+          // Update existing draft
+          await supabase.from('health_records').update({
+            content,
+            title: motif || 'Consultation',
+          }).eq('id', consultationId);
+        } else {
+          // Create new draft
+          const { data: newRecord } = await supabase.from('health_records').insert({
+            patient_id: null,
+            professional_id: pro.id,
+            record_type: 'consultation',
+            title: motif || 'Consultation',
+            content,
+            is_signed: false,
+            created_by: user.id,
+          }).select('id').maybeSingle();
+          if (newRecord) setConsultationId(newRecord.id);
+        }
       }
     } catch (err: any) {
       console.log('Save draft error:', err.message);
@@ -274,17 +408,27 @@ RÈGLES ABSOLUES:
           })),
         };
 
-        await supabase.from('health_records').insert({
-          patient_id: null,
-          professional_id: pro.id,
-          record_type: 'consultation',
-          title: motif || 'Consultation signée',
-          content,
-          is_signed: true,
-          signed_at: new Date().toISOString(),
-          signed_by: user.id,
-          created_by: user.id,
-        });
+        if (consultationId) {
+          await supabase.from('health_records').update({
+            content,
+            title: motif || 'Consultation signée',
+            is_signed: true,
+            signed_at: new Date().toISOString(),
+            signed_by: user.id,
+          }).eq('id', consultationId);
+        } else {
+          await supabase.from('health_records').insert({
+            patient_id: null,
+            professional_id: pro.id,
+            record_type: 'consultation',
+            title: motif || 'Consultation signée',
+            content,
+            is_signed: true,
+            signed_at: new Date().toISOString(),
+            signed_by: user.id,
+            created_by: user.id,
+          });
+        }
 
         // Also save prescription if medications present
         const meds = prescriptions.filter(rx => rx.drug);
@@ -337,25 +481,39 @@ RÈGLES ABSOLUES:
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold text-white shrink-0" style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}>
-                {patient.avatar}
+                {isLoadingConsultation ? '...' : patient.avatar}
               </div>
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-bold text-base" style={{ color: 'var(--foreground)' }}>{patient.name}</h2>
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>{patient.age}</span>
-                  <span className="text-xs font-mono" style={{ color: 'var(--shifa-blue)' }}>{patient.shifaId}</span>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {patient.allergies.map(a => (
-                    <span key={a} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
-                      <Icon name="ExclamationTriangleIcon" size={11} />
-                      {a}
-                    </span>
-                  ))}
-                  {patient.activeTreatments.map(t => (
-                    <span key={t} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(0,102,255,0.08)', color: 'var(--shifa-blue)' }}>{t}</span>
-                  ))}
-                </div>
+                {isLoadingConsultation ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="h-4 w-40 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--muted)' }} />
+                    <div className="h-3 w-56 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--muted)' }} />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="font-bold text-base" style={{ color: 'var(--foreground)' }}>{patient.name}</h2>
+                      {patient.age && <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>{patient.age}</span>}
+                      {patient.shifaId && patient.shifaId !== '--' && <span className="text-xs font-mono" style={{ color: 'var(--shifa-blue)' }}>{patient.shifaId}</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {patient.allergies.map(a => (
+                        <span key={a} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                          <Icon name="ExclamationTriangleIcon" size={11} />
+                          {a}
+                        </span>
+                      ))}
+                      {patient.activeTreatments.map(t => (
+                        <span key={t} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(0,102,255,0.08)', color: 'var(--shifa-blue)' }}>{t}</span>
+                      ))}
+                      {consultationId && (
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#10B981' }}>
+                          Brouillon chargé
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -627,7 +785,15 @@ RÈGLES ABSOLUES:
 
             {activeSection === 'constantes' && (
               <div className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-                <h3 className="font-bold mb-4" style={{ color: 'var(--foreground)' }}>Constantes vitales</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold" style={{ color: 'var(--foreground)' }}>Constantes vitales</h3>
+                  {isLoadingConsultation && (
+                    <span className="text-xs flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+                      <Icon name="ArrowPathIcon" size={12} className="animate-spin" />
+                      Chargement...
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {vitals.map((vital, i) => (
                     <div key={vital.label} className="p-3 rounded-xl border" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
@@ -639,6 +805,7 @@ RÈGLES ABSOLUES:
                           style={{ color: 'var(--foreground)' }}
                           value={vital.value}
                           onChange={e => updateVital(i, e.target.value)}
+                          placeholder="--"
                         />
                         <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{vital.unit}</span>
                       </div>

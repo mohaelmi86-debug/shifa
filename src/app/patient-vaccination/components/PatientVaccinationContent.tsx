@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
 interface Vaccine {
@@ -7,18 +7,64 @@ interface Vaccine {
   name: string;
   date: string;
   nextDose?: string;
+  boosterDueDate?: string;
   lot: string;
   provider: string;
   status: 'done' | 'due' | 'overdue';
   doses: number;
   totalDoses: number;
+  notes?: string;
 }
+
+interface VaccineFormData {
+  name: string;
+  customName: string;
+  date: string;
+  lot: string;
+  provider: string;
+  doses: string;
+  totalDoses: string;
+  nextDose: string;
+  boosterDueDate: string;
+  notes: string;
+}
+
+const VACCINE_LIST = [
+  'BCG (Tuberculose)',
+  'Choléra',
+  'COVID-19 (AstraZeneca)',
+  'COVID-19 (Johnson & Johnson)',
+  'COVID-19 (Moderna)',
+  'COVID-19 (Pfizer-BioNTech)',
+  'Dengue (Dengvaxia)',
+  'Fièvre jaune',
+  'Grippe saisonnière',
+  'Hépatite A',
+  'Hépatite B',
+  'HPV (Papillomavirus)',
+  'Méningite A+C',
+  'Méningite ACWY',
+  'Méningite B (Bexsero)',
+  'Pneumocoque (PCV13)',
+  'Pneumocoque (PPSV23)',
+  'Poliomyélite',
+  'Rage',
+  'Rotavirus',
+  'Rougeole-Oreillons-Rubéole (ROR)',
+  'Tétanos-Diphtérie-Coqueluche (DTP)',
+  'Typhoïde',
+  'Varicelle',
+  'Zona (Shingrix)',
+  'Autre (préciser)',
+];
+
+const STORAGE_KEY = 'shifa_vaccinations';
 
 const mockVaccines: Vaccine[] = [
   { id: '1', name: 'COVID-19 (Pfizer-BioNTech)', date: '15/03/2022', lot: 'EW0553', provider: 'CHU Saint-Louis', status: 'done', doses: 3, totalDoses: 3 },
   { id: '2', name: 'Grippe saisonnière', date: '10/10/2025', nextDose: '10/10/2026', lot: 'FL2025-44', provider: 'Dr. Mohamed Sy', status: 'due', doses: 1, totalDoses: 1 },
   { id: '3', name: 'Hépatite B', date: '05/01/2020', lot: 'HB-2020-12', provider: 'Centre de santé Médina', status: 'done', doses: 3, totalDoses: 3 },
-  { id: '4', name: 'Tétanos-Diphtérie-Coqueluche', date: '20/06/2019', nextDose: '20/06/2029', lot: 'TDC-19-88', provider: 'Centre de santé Médina', status: 'done', doses: 1, totalDoses: 1 },
+  { id: '4', name: 'Tétanos-Diphtérie-Coqueluche (DTP)', date: '20/06/2019', nextDose: '20/06/2029', lot: 'TDC-19-88', provider: 'Centre de santé Médina', status: 'done', doses: 1, totalDoses: 1 },
   { id: '5', name: 'Fièvre jaune', date: '12/04/2018', lot: 'FJ-2018-55', provider: 'Institut Pasteur Dakar', status: 'done', doses: 1, totalDoses: 1 },
   { id: '6', name: 'Méningite A+C', date: '—', nextDose: 'Recommandé', lot: '—', provider: '—', status: 'overdue', doses: 0, totalDoses: 1 },
 ];
@@ -29,12 +75,137 @@ const statusConfig = {
   overdue: { label: 'Recommandé', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: 'ExclamationCircleIcon' },
 };
 
-export default function PatientVaccinationContent() {
-  const [activeTab, setActiveTab] = useState<'history' | 'schedule' | 'certificates'>('history');
+function loadStoredVaccines(): Vaccine[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
-  const done = mockVaccines.filter(v => v.status === 'done').length;
-  const due = mockVaccines.filter(v => v.status === 'due').length;
-  const overdue = mockVaccines.filter(v => v.status === 'overdue').length;
+function saveVaccinesToStorage(vaccines: Vaccine[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(vaccines));
+  } catch {
+    // ignore
+  }
+}
+
+export default function PatientVaccinationContent() {
+  const [activeTab, setActiveTab] = useState<'history' | 'schedule' | 'certificates' | 'add'>('history');
+  const [vaccines, setVaccines] = useState<Vaccine[]>(mockVaccines);
+  const [formSuccess, setFormSuccess] = useState(false);
+  const [formData, setFormData] = useState<VaccineFormData>({
+    name: '',
+    customName: '',
+    date: '',
+    lot: '',
+    provider: '',
+    doses: '1',
+    totalDoses: '1',
+    nextDose: '',
+    boosterDueDate: '',
+    notes: '',
+  });
+  const [formErrors, setFormErrors] = useState<Partial<VaccineFormData>>({});
+
+  // Merge stored vaccines with mock on mount
+  useEffect(() => {
+    const stored = loadStoredVaccines();
+    if (stored.length > 0) {
+      setVaccines([...stored, ...mockVaccines]);
+    }
+  }, []);
+
+  const done = vaccines.filter(v => v.status === 'done').length;
+  const due = vaccines.filter(v => v.status === 'due').length;
+  const overdue = vaccines.filter(v => v.status === 'overdue').length;
+
+  const validateForm = () => {
+    const errors: Partial<VaccineFormData> = {};
+    const vaccineName = formData.name === 'Autre (préciser)' ? formData.customName : formData.name;
+    if (!vaccineName) errors.name = 'Le nom du vaccin est requis';
+    if (!formData.date) errors.date = "La date d'administration est requise";
+    if (!formData.provider) errors.provider = 'Le prestataire est requis';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    const vaccineName = formData.name === 'Autre (préciser)' ? formData.customName : formData.name;
+    const dosesNum = parseInt(formData.doses) || 1;
+    const totalDosesNum = parseInt(formData.totalDoses) || 1;
+
+    // Format date for display
+    let displayDate = formData.date;
+    try {
+      const d = new Date(formData.date);
+      displayDate = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch { /* keep raw */ }
+
+    let displayBooster = formData.boosterDueDate;
+    if (formData.boosterDueDate) {
+      try {
+        const d = new Date(formData.boosterDueDate);
+        displayBooster = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      } catch { /* keep raw */ }
+    }
+
+    let displayNextDose = formData.nextDose;
+    if (formData.nextDose) {
+      try {
+        const d = new Date(formData.nextDose);
+        displayNextDose = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      } catch { /* keep raw */ }
+    }
+
+    const newVaccine: Vaccine = {
+      id: Date.now().toString(),
+      name: vaccineName,
+      date: displayDate,
+      lot: formData.lot || '—',
+      provider: formData.provider,
+      status: dosesNum >= totalDosesNum ? 'done' : 'due',
+      doses: dosesNum,
+      totalDoses: totalDosesNum,
+      nextDose: displayNextDose || undefined,
+      boosterDueDate: displayBooster || undefined,
+      notes: formData.notes || undefined,
+    };
+
+    // Update local state
+    setVaccines(prev => {
+      const updated = [newVaccine, ...prev];
+      // Sync only user-added vaccines (not mock) to storage
+      const stored = loadStoredVaccines();
+      saveVaccinesToStorage([newVaccine, ...stored]);
+      return updated;
+    });
+
+    setFormSuccess(true);
+    setFormData({
+      name: '',
+      customName: '',
+      date: '',
+      lot: '',
+      provider: '',
+      doses: '1',
+      totalDoses: '1',
+      nextDose: '',
+      boosterDueDate: '',
+      notes: '',
+    });
+    setTimeout(() => {
+      setFormSuccess(false);
+      setActiveTab('history');
+    }, 2500);
+  };
 
   return (
     <div className="px-6 lg:px-8 xl:px-10 py-6 max-w-screen-xl mx-auto">
@@ -44,13 +215,23 @@ export default function PatientVaccinationContent() {
           <h1 className="text-2xl font-bold" style={{ color: 'var(--shifa-dark)' }}>Vaccination</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>Historique vaccinal, calendrier et certificats</p>
         </div>
-        <button
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}
-        >
-          <Icon name="DocumentArrowDownIcon" size={16} />
-          Télécharger le carnet
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('add')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all hover:shadow-sm"
+            style={{ borderColor: 'var(--shifa-blue)', color: 'var(--shifa-blue)', backgroundColor: 'rgba(0,102,255,0.05)' }}
+          >
+            <Icon name="PlusIcon" size={16} />
+            Saisir un vaccin
+          </button>
+          <button
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}
+          >
+            <Icon name="DocumentArrowDownIcon" size={16} />
+            Télécharger le carnet
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -78,6 +259,7 @@ export default function PatientVaccinationContent() {
           { key: 'history', label: 'Historique', icon: 'ClockIcon' },
           { key: 'schedule', label: 'Calendrier', icon: 'CalendarDaysIcon' },
           { key: 'certificates', label: 'Certificats', icon: 'DocumentCheckIcon' },
+          { key: 'add', label: 'Saisir un vaccin', icon: 'PlusCircleIcon' },
         ].map(tab => (
           <button
             key={tab.key}
@@ -96,7 +278,7 @@ export default function PatientVaccinationContent() {
 
       {activeTab === 'history' && (
         <div className="flex flex-col gap-3">
-          {mockVaccines.map(vaccine => {
+          {vaccines.map(vaccine => {
             const st = statusConfig[vaccine.status];
             return (
               <div key={vaccine.id} className="card-base p-5 flex items-start gap-4">
@@ -120,7 +302,7 @@ export default function PatientVaccinationContent() {
                       {st.label}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-center gap-4 mt-3 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Doses :</p>
                       <div className="flex gap-1">
@@ -136,10 +318,20 @@ export default function PatientVaccinationContent() {
                     </div>
                     {vaccine.nextDose && (
                       <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        Prochain rappel : <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{vaccine.nextDose}</span>
+                        Prochaine dose : <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{vaccine.nextDose}</span>
+                      </p>
+                    )}
+                    {vaccine.boosterDueDate && (
+                      <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        Rappel booster : <span className="font-semibold" style={{ color: '#f59e0b' }}>{vaccine.boosterDueDate}</span>
                       </p>
                     )}
                   </div>
+                  {vaccine.notes && (
+                    <p className="text-xs mt-2 italic" style={{ color: 'var(--muted-foreground)' }}>
+                      <span className="font-semibold not-italic">Notes :</span> {vaccine.notes}
+                    </p>
+                  )}
                 </div>
                 {vaccine.status === 'done' && (
                   <button className="p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0" title="Télécharger certificat">
@@ -158,7 +350,7 @@ export default function PatientVaccinationContent() {
           <div className="flex flex-col gap-3">
             {[
               { month: 'Octobre 2026', vaccine: 'Grippe saisonnière', type: 'Rappel annuel', urgent: true },
-              { month: 'Juin 2029', vaccine: 'Tétanos-Diphtérie-Coqueluche', type: 'Rappel décennal', urgent: false },
+              { month: 'Juin 2029', vaccine: 'Tétanos-Diphtérie-Coqueluche (DTP)', type: 'Rappel décennal', urgent: false },
               { month: 'Dès que possible', vaccine: 'Méningite A+C', type: 'Recommandé', urgent: true },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-4 p-4 rounded-xl" style={{ backgroundColor: 'var(--muted)' }}>
@@ -176,7 +368,7 @@ export default function PatientVaccinationContent() {
 
       {activeTab === 'certificates' && (
         <div className="flex flex-col gap-3">
-          {mockVaccines.filter(v => v.status === 'done').map(vaccine => (
+          {vaccines.filter(v => v.status === 'done').map(vaccine => (
             <div key={vaccine.id} className="card-base p-4 flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0,102,255,0.08)' }}>
                 <Icon name="DocumentCheckIcon" size={20} style={{ color: 'var(--shifa-blue)' } as any} className="" />
@@ -194,6 +386,197 @@ export default function PatientVaccinationContent() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {activeTab === 'add' && (
+        <div className="max-w-2xl">
+          <div className="card-base p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(0,102,255,0.08)' }}>
+                <Icon name="PlusCircleIcon" size={20} style={{ color: 'var(--shifa-blue)' } as any} className="" />
+              </div>
+              <div>
+                <h2 className="font-bold" style={{ color: 'var(--shifa-dark)' }}>Saisir un vaccin</h2>
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Enregistrez un vaccin reçu — synchronisé avec votre dossier de santé</p>
+              </div>
+            </div>
+
+            {formSuccess && (
+              <div className="flex items-start gap-3 p-4 rounded-xl mb-5 border" style={{ backgroundColor: 'rgba(16,185,129,0.06)', borderColor: 'rgba(16,185,129,0.3)' }}>
+                <Icon name="CheckCircleIcon" size={18} style={{ color: 'var(--shifa-green)' } as any} className="shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--shifa-green)' }}>Vaccin enregistré avec succès !</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Synchronisé avec votre dossier de santé · Redirection vers l'historique…</p>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              {/* Vaccine name */}
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+                  Nom du vaccin <span style={{ color: 'var(--shifa-red)' }}>*</span>
+                </label>
+                <select
+                  className="input-field w-full"
+                  value={formData.name}
+                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                >
+                  <option value="">Sélectionner un vaccin… ({VACCINE_LIST.length - 1} options + personnalisé)</option>
+                  {VACCINE_LIST.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                {formErrors.name && <p className="mt-1 text-xs font-medium" style={{ color: 'var(--shifa-red)' }}>{formErrors.name}</p>}
+              </div>
+
+              {formData.name === 'Autre (préciser)' && (
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+                    Nom du vaccin (préciser) <span style={{ color: 'var(--shifa-red)' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field w-full"
+                    placeholder="Ex: Vaccin contre la dengue"
+                    value={formData.customName}
+                    onChange={e => setFormData(prev => ({ ...prev, customName: e.target.value }))}
+                  />
+                </div>
+              )}
+
+              {/* Date + Provider */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+                    Date d'administration <span style={{ color: 'var(--shifa-red)' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    className="input-field w-full"
+                    value={formData.date}
+                    onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                  />
+                  {formErrors.date && <p className="mt-1 text-xs font-medium" style={{ color: 'var(--shifa-red)' }}>{formErrors.date}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+                    Prestataire / Centre de santé <span style={{ color: 'var(--shifa-red)' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field w-full"
+                    placeholder="Ex: CHU de Dakar, Dr. Sy…"
+                    value={formData.provider}
+                    onChange={e => setFormData(prev => ({ ...prev, provider: e.target.value }))}
+                  />
+                  {formErrors.provider && <p className="mt-1 text-xs font-medium" style={{ color: 'var(--shifa-red)' }}>{formErrors.provider}</p>}
+                </div>
+              </div>
+
+              {/* Lot + Doses */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Numéro de lot</label>
+                  <input
+                    type="text"
+                    className="input-field w-full"
+                    placeholder="Ex: EW0553"
+                    value={formData.lot}
+                    onChange={e => setFormData(prev => ({ ...prev, lot: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Dose reçue</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    className="input-field w-full"
+                    value={formData.doses}
+                    onChange={e => setFormData(prev => ({ ...prev, doses: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Total doses</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    className="input-field w-full"
+                    value={formData.totalDoses}
+                    onChange={e => setFormData(prev => ({ ...prev, totalDoses: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Next dose + Booster due date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+                    Date prochaine dose <span className="text-xs font-normal" style={{ color: 'var(--muted-foreground)' }}>(optionnel)</span>
+                  </label>
+                  <input
+                    type="date"
+                    className="input-field w-full"
+                    value={formData.nextDose}
+                    onChange={e => setFormData(prev => ({ ...prev, nextDose: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+                    Date rappel booster <span className="text-xs font-normal" style={{ color: 'var(--muted-foreground)' }}>(optionnel)</span>
+                  </label>
+                  <input
+                    type="date"
+                    className="input-field w-full"
+                    value={formData.boosterDueDate}
+                    onChange={e => setFormData(prev => ({ ...prev, boosterDueDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Clinical notes */}
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+                  Notes cliniques <span className="text-xs font-normal" style={{ color: 'var(--muted-foreground)' }}>(optionnel)</span>
+                </label>
+                <textarea
+                  className="input-field w-full resize-none"
+                  rows={3}
+                  placeholder="Réactions observées, remarques du médecin, contre-indications notées…"
+                  value={formData.notes}
+                  onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+
+              {/* Sync notice */}
+              <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: 'rgba(0,102,255,0.04)', border: '1px solid rgba(0,102,255,0.12)' }}>
+                <Icon name="ArrowPathIcon" size={14} style={{ color: 'var(--shifa-blue)' } as any} className="shrink-0" />
+                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Ce vaccin sera <span className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>synchronisé immédiatement</span> avec votre dossier de santé (onglet Vaccinations).
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('history')}
+                  className="flex-1 py-3 rounded-xl border text-sm font-semibold transition-all hover:bg-muted"
+                  style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, var(--shifa-blue), var(--shifa-cyan))' }}
+                >
+                  <Icon name="CheckIcon" size={16} />
+                  Enregistrer le vaccin
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

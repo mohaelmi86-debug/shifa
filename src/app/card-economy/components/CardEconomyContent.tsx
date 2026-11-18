@@ -188,7 +188,7 @@ export default function CardEconomyContent() {
                 Prix configurables — Phase 1
               </span>
             </div>
-            <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {CARD_FEES.map(fee => (
                 <div key={fee.type} className="px-4 py-4 flex items-center gap-4">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--muted)' }}>
