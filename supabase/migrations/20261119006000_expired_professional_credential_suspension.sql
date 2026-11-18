@@ -1,7 +1,7 @@
 -- Suspend organization access when an approved professional license/registration expires.
 -- This routine is service-role only; schedule it from a trusted server/Edge Function.
--- It preserves access through another organization when that organization has its own
--- currently valid approved license/registration.
+-- It does not alter other active memberships; global profile deactivation occurs only
+-- when no accepted active organization membership remains (legacy memberships included).
 
 CREATE OR REPLACE FUNCTION public.process_expired_professional_credentials()
 RETURNS integer
