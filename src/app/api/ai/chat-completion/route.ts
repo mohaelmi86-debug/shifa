@@ -135,19 +135,6 @@ export async function POST(request: NextRequest) {
       return jsonError(403, 'MODULE_NOT_AUTHORIZED', requestId);
     }
 
-    // Durable, atomic limits shared by all server instances. Fail closed if the limiter is unavailable.
-    const { data: rateLimit, error: rateLimitError } = await supabase.rpc('consume_shifa_ai_rate_limit');
-    if (rateLimitError || !rateLimit || typeof rateLimit !== 'object') {
-      console.error('SHIFA AI rate limiter unavailable', { requestId });
-      return jsonError(503, 'AI_RATE_LIMIT_UNAVAILABLE', requestId);
-    }
-    if (rateLimit.allowed !== true) {
-      const retryAfter = Number.isInteger(rateLimit.retry_after_seconds)
-        ? Math.max(1, Math.min(86_400, rateLimit.retry_after_seconds))
-        : 60;
-      return jsonError(429, 'AI_RATE_LIMIT_EXCEEDED', requestId, { 'Retry-After': String(retryAfter) });
-    }
-
     const provider = process.env.SHIFA_AI_PROVIDER;
     const apiKeyEnv = provider ? PROVIDER_KEY_ENV[provider] : undefined;
     const apiKey = apiKeyEnv ? process.env[apiKeyEnv] : undefined;
@@ -155,6 +142,20 @@ export async function POST(request: NextRequest) {
     if (!provider || !apiKeyEnv || !apiKey || !model) {
       console.error('SHIFA AI configuration incomplete', { requestId, module: moduleName });
       return jsonError(503, 'AI_SERVICE_NOT_CONFIGURED', requestId);
+    }
+
+    // Durable, atomic limits shared by all server instances. Fail closed if the limiter is unavailable.
+    const { data: rateLimitData, error: rateLimitError } = await supabase.rpc('consume_shifa_ai_rate_limit');
+    const rateLimit = rateLimitData as { allowed?: boolean; retry_after_seconds?: number } | null;
+    if (rateLimitError || !rateLimit || typeof rateLimit !== 'object') {
+      console.error('SHIFA AI rate limiter unavailable', { requestId });
+      return jsonError(503, 'AI_RATE_LIMIT_UNAVAILABLE', requestId);
+    }
+    if (rateLimit.allowed !== true) {
+      const retryAfter = Number.isInteger(rateLimit.retry_after_seconds)
+        ? Math.max(1, Math.min(86_400, rateLimit.retry_after_seconds as number))
+        : 60;
+      return jsonError(429, 'AI_RATE_LIMIT_EXCEEDED', requestId, { 'Retry-After': String(retryAfter) });
     }
 
     const result = await completion({
