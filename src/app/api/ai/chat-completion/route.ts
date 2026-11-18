@@ -50,16 +50,29 @@ function extractOutput(result: unknown): string {
 export async function POST(request: NextRequest) {
   const requestId = randomUUID();
 
-  // Enforce the limit on the actual body bytes; Content-Length alone is not trustworthy.
-  let rawBody: string;
+  // Enforce the limit while reading the stream; do not buffer an unbounded body.
+  const declaredLength = Number(request.headers.get('content-length') || 0);
+  if (declaredLength > 32_000) return jsonError(413, 'REQUEST_TOO_LARGE', requestId);
+
+  const reader = request.body?.getReader();
+  if (!reader) return jsonError(400, 'INVALID_JSON', requestId);
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
   try {
-    rawBody = await request.text();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > 32_000) {
+        await reader.cancel();
+        return jsonError(413, 'REQUEST_TOO_LARGE', requestId);
+      }
+      chunks.push(value);
+    }
   } catch {
     return jsonError(400, 'INVALID_JSON', requestId);
   }
-  if (Buffer.byteLength(rawBody, 'utf8') > 32_000) {
-    return jsonError(413, 'REQUEST_TOO_LARGE', requestId);
-  }
+  const rawBody = Buffer.concat(chunks.map(chunk => Buffer.from(chunk))).toString('utf8');
 
   let body: unknown;
   try {
