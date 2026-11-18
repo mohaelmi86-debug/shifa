@@ -44,7 +44,11 @@ CREATE INDEX IF NOT EXISTS idx_professional_credentials_professional
 
 ALTER TABLE public.professional_credentials ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.professional_credentials FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON TABLE public.professional_credentials TO authenticated;
+GRANT SELECT (
+  id, professional_id, organization_id, submitted_by, credential_type,
+  document_name, storage_path, mime_type, file_size, issuing_country,
+  license_number, expires_at, status, reviewed_at, created_at, updated_at
+) ON TABLE public.professional_credentials TO authenticated;
 
 DROP POLICY IF EXISTS professional_credentials_read_scope ON public.professional_credentials;
 CREATE POLICY professional_credentials_read_scope
