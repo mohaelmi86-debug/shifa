@@ -14,9 +14,12 @@ const ADMIN_ROUTES = [
   '/admin-professionnels', '/admin-utilisateurs', '/admin-activite', '/admin-parametres',
 ];
 const ORG_ROUTES = ['/org-onboarding'];
-const PARTNER_ROUTES = [
-  '/espace-ministere', '/espace-assurance', '/espace-universite',
-  '/espace-ong', '/espace-sante-publique',
+const PARTNER_ROLE_ROUTES: Array<{ path: string; roles: string[] }> = [
+  { path: '/espace-ministere', roles: ['ministry', 'platform_admin'] },
+  { path: '/espace-assurance', roles: ['insurance', 'platform_admin'] },
+  { path: '/espace-universite', roles: ['university', 'platform_admin'] },
+  { path: '/espace-ong', roles: ['ngo', 'platform_admin'] },
+  { path: '/espace-sante-publique', roles: ['public_health', 'platform_admin'] },
 ];
 
 function matchesPath(pathname: string, route: string) {
@@ -28,9 +31,8 @@ function requiredRoles(pathname: string): string[] | null {
   if (PROFESSIONAL_ROUTES.some((route) => matchesPath(pathname, route))) return ['professional'];
   if (ADMIN_ROUTES.some((route) => matchesPath(pathname, route))) return ['org_admin', 'platform_admin'];
   if (ORG_ROUTES.some((route) => matchesPath(pathname, route))) return ['org_admin', 'platform_admin'];
-  if (PARTNER_ROUTES.some((route) => matchesPath(pathname, route))) {
-    return ['org_admin', 'platform_admin'];
-  }
+  const partnerRoute = PARTNER_ROLE_ROUTES.find(({ path }) => matchesPath(pathname, path));
+  if (partnerRoute) return partnerRoute.roles;
   return null;
 }
 
@@ -69,11 +71,11 @@ export async function middleware(request: NextRequest) {
   // Fail closed: do not trust client metadata for authorization.
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('role')
+    .select('role, is_active')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (profileError || !profile?.role || !roles.includes(profile.role)) {
+  if (profileError || !profile || profile.is_active !== true || !roles.includes(profile.role)) {
     const url = request.nextUrl.clone();
     url.pathname = '/unauthorized';
     url.search = '';
