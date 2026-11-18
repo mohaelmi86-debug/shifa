@@ -295,7 +295,7 @@ export default function TeleconsultationSessionContent() {
                 <button className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
                   style={{ backgroundColor: 'rgba(16,185,129,0.3)', border: '1px solid rgba(16,185,129,0.4)' }}>
                   <Icon name="DocumentCheckIcon" size={15} className="inline mr-1.5" />
-                  Valider l'ordonnance
+                  Valider l&apos;ordonnance
                 </button>
               </div>
             )}
