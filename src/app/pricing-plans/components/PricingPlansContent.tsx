@@ -181,7 +181,7 @@ export default function PricingPlansContent() {
 
       {/* Currency display example */}
       <div className="card-base p-5 mb-6">
-        <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--shifa-dark)' }}>Exemple d'affichage des prix — Devise locale + référence EUR/USD</h3>
+        <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--shifa-dark)' }}>Exemple d&apos;affichage des prix — Devise locale + référence EUR/USD</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-3 rounded-xl" style={{ background: 'var(--muted)' }}>
             <p className="text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>Comores (KMF)</p>
@@ -192,7 +192,7 @@ export default function PricingPlansContent() {
             <SmartAmount amount={250} currency="MAD" size="sm" />
           </div>
           <div className="p-3 rounded-xl" style={{ background: 'var(--muted)' }}>
-            <p className="text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>Afrique de l'Ouest (XOF)</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--muted-foreground)' }}>Afrique de l&apos;Ouest (XOF)</p>
             <SmartAmount amount={5000} currency="XOF" size="sm" />
           </div>
           <div className="p-3 rounded-xl" style={{ background: 'var(--muted)' }}>
