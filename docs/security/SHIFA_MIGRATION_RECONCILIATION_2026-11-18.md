@@ -84,3 +84,64 @@ A second read-only inspection of `pg_policies` and `information_schema.role_tabl
 - The `patients_select` policy allows organization-admin and platform-admin access to the full patient row. This conflicts with the approved restricted admin model; implement a deliberately minimized administrative projection rather than granting full-table clinical identity access.
 
 These are policy/grant observations, not proof that every path is exploitable in the current application. Validate them with real JWT/API tests and synthetic fixtures before rollout.
+
+## 8. Expanded clinical-surface audit (read-only)
+
+The audit was expanded to appointments, lab results, vital signs, and patient transfers.
+
+| Table | Policies | Permissive | Restrictive | Finding |
+|---|---:|---:|---:|---|
+| appointments | 7 | 6 | 1 | Restrictive guard delegates to the legacy broad clinical scope; permissive rules include organization-admin and platform-admin access |
+| consultations | 5 | 4 | 1 | Same legacy scope; platform-admin and organization-admin paths remain |
+| health_records | 8 | 7 | 1 | Same legacy scope; patient insert identity mismatch remains |
+| lab_results | 9 | 8 | 1 | Same legacy scope; broad org/admin/platform paths and professional checks need redesign |
+| patient_documents | 4 | 3 | 1 | Uploader SELECT path and auth-user-vs-patient UUID mismatch |
+| patient_transfers | 4 | 4 | 0 | No restrictive clinical-scope policy; transfer helper must be inspected and tested independently |
+| patients | 4 | 4 | 0 | No restrictive policy; full-row SELECT currently includes org-admin/platform-admin paths |
+| prescriptions | 7 | 6 | 1 | Same legacy scope; professional ALL policy and admin/platform paths remain |
+| vital_signs | 4 | 3 | 1 | Same legacy scope; SELECT/INSERT/UPDATE allow broad clinical-role or platform-admin paths |
+
+### 8.1 Legacy scope is not an active care relationship
+
+The current `private.clinical_scope_guard(patient_id, organization_id)` returns true when:
+- the authenticated user owns the patient record; OR
+- the user is a platform administrator; OR
+- the user has a clinical role and belongs to the supplied organization, or is an organization administrator for it.
+
+It does **not** require a specific active care relationship between that professional and that patient. This means the existing restrictive policy is not equivalent to the approved SHIFA v2.0 `care` rule. Because permissive policies are combined with restrictive policies, this broad guard currently does not narrow all clinical access to the intended patient-professional relationship.
+
+The helper `private.professional_has_patient_consultation(patient_id)` checks for any matching consultation with active professional and organization membership, but it does not constrain consultation status or validity dates and is not a substitute for a revocable, explicit care-relationship record.
+
+### 8.2 Organization-admin and platform-admin semantics
+
+`private.is_org_admin_for(org_id)` returns true for an active `org_admin` whose `user_profiles.organization_id` matches, but it also returns true for a platform administrator. This helper must not be reused as a clinical-record authorization predicate under the approved model.
+
+The schema-level grants inspection also confirmed that `anon` and `authenticated` cannot CREATE objects in either `public` or `private` schemas. This reduces the immediate schema-object-shadowing risk, but the SECURITY DEFINER functions should still be hardened with a minimal, explicitly qualified search path and reviewed ownership/EXECUTE grants.
+
+### 8.3 Additional table-level privilege exposure
+
+The same broad authenticated table grants (including `TRUNCATE`, `REFERENCES`, and `TRIGGER`) were observed on appointments, lab_results, vital_signs, and patient_transfers, not just the initial five tables. No equivalent direct table privileges for `anon` were returned for this inspected set. This does not replace a complete database-wide grant audit.
+
+### 8.4 Storage buckets
+
+Current buckets:
+- `avatars`: public; 5 MiB limit; image formats.
+- `documents`: private; 50 MiB limit; PDF, image and Word formats.
+- `lab-reports`: private; 50 MiB limit; PDF, image and spreadsheet/CSV formats.
+- `medical-images`: private; 100 MiB limit; JPEG, PNG, WebP and DICOM formats.
+
+The private clinical buckets must be tested via authenticated Storage API requests and signed URLs. Existing folder-prefix policies are not sufficient evidence of patient-level care authorization. The public avatars bucket is a separate public-media decision and should not contain clinical content.
+
+## 9. Revised RLS v2.0 implementation boundary
+
+The first RLS v2.0 migration must cover, at minimum:
+
+1. Patients: patient self-access plus a minimized administrative projection; no blanket clinical row access for org/platform administrators.
+2. Consultations, health_records, prescriptions, appointments, lab_results, vital_signs: active patient-care relationship + active professional + active facility membership, with patient self-read as a separate path and tightly controlled write operations.
+3. Patient documents: reconcile the current `auth.users.id` foreign key model with patient-care checks; never pass this identifier to a helper that expects `patients.id`.
+4. Patient transfers: explicit source/destination facility authorization, patient consent/workflow state, and restrictive tenant boundary; no general platform-admin clinical bypass.
+5. Storage: map object metadata to patient and organization; authorize upload/download/delete through the same care and facility rules, not just a user-folder prefix.
+6. Privileges: remove unnecessary table-level `TRUNCATE`, `REFERENCES`, and `TRIGGER` from end-user roles; retain only operation-specific DML grants needed by the client and verify application compatibility.
+7. SECURITY DEFINER helpers: pinned safe search path, fully qualified references, least-privilege EXECUTE grants, and no client-write access to care relationships or break-glass audit rows.
+
+All of the above remains a design and audit record only. No DDL, policy, grant, bucket, or application setting has been changed in Supabase.
