@@ -60,6 +60,10 @@ BEGIN
   END IF;
 
   IF v_application.application_type = 'professional' THEN
+    IF v_payload->>'professionalType' = 'salarie' THEN
+      RAISE EXCEPTION 'PROFESSIONAL_REQUIRES_ORGANIZATION_INVITATION' USING ERRCODE = '55000';
+    END IF;
+
     IF EXISTS (
       SELECT 1 FROM public.professionals
       WHERE user_id = v_application.applicant_id
