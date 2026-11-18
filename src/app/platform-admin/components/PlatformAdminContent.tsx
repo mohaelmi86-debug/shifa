@@ -485,7 +485,7 @@ export default function PlatformAdminContent() {
       <div className="mb-5 px-4 py-3 rounded-xl border flex items-start gap-3" style={{ backgroundColor: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.2)' }}>
         <Icon name="ShieldCheckIcon" size={18} style={{ color: '#7C3AED' }} className="shrink-0 mt-0.5" />
         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          <strong style={{ color: 'var(--foreground)' }}>Accès clinique séparé :</strong> L'administrateur plateforme gère l'infrastructure SHIFA. L'accès aux données cliniques individuelles nécessite une autorisation distincte et explicite, conformément aux règles de confidentialité médicale.
+          <strong style={{ color: 'var(--foreground)' }}>Accès clinique séparé :</strong> L&apos;administrateur plateforme gère l'infrastructure SHIFA. L&apos;accès aux données cliniques individuelles nécessite une autorisation distincte et explicite, conformément aux règles de confidentialité médicale.
         </p>
       </div>
 
@@ -753,7 +753,7 @@ export default function PlatformAdminContent() {
       {activeTab === 'ambassadors' && (
         <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
           <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Réseau d'ambassadeurs ({ambassadors.length} actifs)</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Réseau d&apos;ambassadeurs ({ambassadors.length} actifs)</h3>
             <button className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: '#3730A3' }}>+ Inviter ambassadeur</button>
           </div>
           <div className="overflow-x-auto">
@@ -823,7 +823,7 @@ export default function PlatformAdminContent() {
           </div>
           <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
             <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Journal d'audit récent</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Journal d&apos;audit récent</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
