@@ -71,9 +71,14 @@ export default function WorkspaceContent() {
                 : 'Nous ne pouvons pas confirmer votre statut professionnel. Aucun dossier patient ni outil de consultation n’a été chargé. Réessayez ou contactez l’administrateur de votre établissement.'}
           </p>
           {accessState === 'pending' && (
-            <Link href="/registration-pending" className="btn-primary inline-flex items-center justify-center px-4 py-2.5 text-sm">
-              Suivre ma demande
-            </Link>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link href="/professional-verification" className="btn-primary inline-flex items-center justify-center px-4 py-2.5 text-sm">
+                Déposer mes justificatifs
+              </Link>
+              <Link href="/registration-pending" className="btn-secondary inline-flex items-center justify-center px-4 py-2.5 text-sm">
+                Suivre ma demande
+              </Link>
+            </div>
           )}
           {accessState === 'unavailable' && (
             <button type="button" onClick={() => window.location.reload()} className="btn-secondary px-4 py-2.5 text-sm">
