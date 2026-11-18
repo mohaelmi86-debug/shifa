@@ -470,7 +470,11 @@ export default function PlatformAdminContent() {
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Gestion globale de l'écosystème SHIFA — Accès restreint</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/registration-review" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white" style={{ background: 'var(--shifa-blue)' }}>
+            <Icon name="ClipboardDocumentCheckIcon" size={15} />
+            Valider les inscriptions
+          </Link>
           <div className="px-3 py-1.5 rounded-full text-xs font-semibold" style={{ backgroundColor: 'rgba(139,92,246,0.12)', color: '#7C3AED' }}>
             🔐 Super Admin
           </div>
