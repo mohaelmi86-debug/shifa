@@ -145,7 +145,9 @@ BEGIN
       AND policyname = 'professionals_tenant_read_guard'
       AND permissive = 'RESTRICTIVE'
       AND cmd = 'SELECT'
-  ) OR position('private.org_admin_can_access_professional(uuid)' IN pg_get_functiondef(
+  ) OR position('professional_organizations' IN pg_get_functiondef(
+    'private.org_admin_can_access_professional(uuid)'::regprocedure
+  )) = 0 OR position('org_admin' IN pg_get_functiondef(
     'private.org_admin_can_access_professional(uuid)'::regprocedure
   )) = 0 THEN
     RAISE EXCEPTION 'FAIL: professional directory reads must be restricted to self, verified public profiles, platform admins, or the owning organization';
