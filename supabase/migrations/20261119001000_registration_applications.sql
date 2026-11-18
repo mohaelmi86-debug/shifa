@@ -60,7 +60,7 @@ BEGIN
   v_type := lower(COALESCE(NEW.raw_user_meta_data->>'registration_type', ''));
   v_data := NEW.raw_user_meta_data->'registration_data';
 
-  IF jsonb_typeof(v_data) <> 'object' THEN
+  IF v_data IS NULL OR jsonb_typeof(v_data) <> 'object' THEN
     RETURN NEW;
   END IF;
 
