@@ -137,6 +137,7 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
               <select className="input-field" {...register('country', { required: 'Requis' })}>
                 <option value="">Sélectionner votre pays</option>
                 <option value="FR">France</option>
+                <option value="KM">Comores</option>
                 <option value="SN">Sénégal</option>
                 <option value="CI">Côte d'Ivoire</option>
                 <option value="MA">Maroc</option>
