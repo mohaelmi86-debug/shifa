@@ -139,7 +139,7 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
                 <option value="FR">France</option>
                 <option value="KM">Comores</option>
                 <option value="SN">Sénégal</option>
-                <option value="CI">Côte d'Ivoire</option>
+                <option value="CI">Côte d&apos;Ivoire</option>
                 <option value="MA">Maroc</option>
                 <option value="DZ">Algérie</option>
                 <option value="TN">Tunisie</option>
@@ -198,8 +198,8 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
             <div className="flex items-start gap-2.5">
               <input type="checkbox" id="acceptTerms" className="w-4 h-4 mt-0.5 rounded accent-primary cursor-pointer" {...register('acceptTerms', { required: 'Vous devez accepter les conditions' })} />
               <label htmlFor="acceptTerms" className="text-xs cursor-pointer leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
-                J'accepte les{' '}
-                <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions d'utilisation</a>{' '}
+                J&apos;accepte les{' '}
+                <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions d&apos;utilisation</a>{' '}
                 et la{' '}
                 <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Politique de confidentialité</a>{' '}
                 de SHIFA Health OS.
