@@ -17,6 +17,7 @@ Nature : durcissement applicatif incrémental ; aucun changement Supabase ni dé
 - Le prompt système est défini côté serveur ; les messages système fournis par le navigateur sont rejetés.
 - Le navigateur ne choisit plus le fournisseur, le modèle, les clés, le streaming ni les paramètres arbitraires du SDK.
 - Les limites de requête sont contrôlées : 32 Ko sur les octets réels du corps HTTP (indépendamment de l'en-tête Content-Length), 20 messages maximum, 8 000 caractères par message et 24 000 caractères cumulés.
+- Un limiteur PostgreSQL atomique est ajouté dans une migration séparée : 10 requêtes/minute et 200/jour par utilisateur authentifié, avec réponse HTTP 429 et en-tête `Retry-After`. Le limiteur échoue en mode fermé si le RPC est indisponible ; les compteurs agrégés anciens sont nettoyés à chaque appel actif et aucun prompt n'est stocké.
 - Les erreurs publiques sont normalisées et ne renvoient plus les détails bruts du fournisseur.
 - Les trois écrans patient, professionnel et organisation utilisent le nouveau contrat `{ module, messages }` et lisent `output`. Ils vérifient `response.ok` avant d'afficher la réponse.
 - Le mode professionnel sélectionné est conservé comme contexte de la question, mais ne confère aucun droit d'accès aux données patient.
@@ -41,7 +42,7 @@ Le handler renvoie `503 AI_SERVICE_NOT_CONFIGURED` si la configuration requise m
 
 **Ce lot n'est pas une autorisation de mise en production.**
 
-1. **Rate limit et quotas atomiques absents** : le dépôt ne fournit pas encore de mécanisme distribué démontré par utilisateur et organisation. Il faut ajouter un stockage atomique partagé, des plafonds journaliers/mensuels, une limite de concurrence, un budget/coût maximum et un coupe-circuit avant exposition publique.
+1. **Quotas organisation et budget financier** : le limiteur de ce lot applique des plafonds atomiques par utilisateur (10/minute, 200/jour), pas encore par organisation. Ajouter les plafonds organisation, le suivi des coûts réels par fournisseur/modèle, les budgets mensuels et un coupe-circuit avant exposition publique.
 2. **Configuration modèle à valider** : les noms exacts des modèles et leur compatibilité avec `@rocketnew/llm-sdk` doivent être confirmés dans l'environnement cible. Aucun appel fournisseur n'a été effectué.
 3. **Rôle organisation** : le contrôle serveur autorise actuellement uniquement `org_admin`. Vérifier que les administrateurs d'établissement légitimes utilisent bien ce rôle dans les profils réels ; ne pas élargir par défaut à `platform_admin`.
 4. **Autres consommateurs** : les wrappers génériques historiques `src/lib/ai/chatCompletion.ts` et `src/lib/hooks/useChat.ts` ont encore leur ancien contrat fournisseur/modèle/streaming. Les recherches GitHub n'ont pas fourni de résultats d'usage fiables ; leur usage doit être cartographié et migré avant suppression ou réactivation.
@@ -69,11 +70,12 @@ Utiliser exclusivement des comptes et données synthétiques dans un environneme
 | Erreur fournisseur | HTTP 502 générique, détail conservé uniquement côté serveur |
 | Réponse fournisseur vide/non reconnue | HTTP 502 générique |
 
-Critères de sortie : tests négatifs et positifs réussis, rate limiting distribué opérationnel, revue du mapping des rôles, test de build/type-check, et validation explicite avant déploiement.
+Critères de sortie : migration appliquée sur un staging isolé après réconciliation du ledger, tests négatifs et positifs réussis, rate limiting distribué opérationnel, revue du mapping des rôles, test de build/type-check, puis validation explicite avant déploiement.
 
 ## 5. Limites de vérification
 
 - Changements committés sur une branche dédiée GitHub.
 - Aucun build, lint, test automatisé, test navigateur ou appel fournisseur n'a été exécuté depuis cet environnement.
+- La migration `20261118220000_shifa_ai_rate_limits.sql` est uniquement préparée dans GitHub ; elle n'a pas été appliquée à Supabase. Le ledger de production doit d'abord être réconcilié (15 migrations présentes côté Supabase contre 3 sources sur `main`).
 - Aucun secret, fichier `.env`, dossier patient, compte réel ou donnée Supabase n'a été consulté ou modifié.
 - Aucun déploiement ni changement de production n'a été effectué.
