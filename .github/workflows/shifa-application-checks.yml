@@ -1,0 +1,38 @@
+name: SHIFA application checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - security/shifa-ai-api-hardening
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shifa-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npm run type-check
+
+      - name: ESLint
+        run: npm run lint
