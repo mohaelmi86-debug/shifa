@@ -37,7 +37,9 @@ BEGIN
   END IF;
 
   DELETE FROM private.shifa_ai_rate_limits
-  WHERE user_id = v_user_id AND bucket_start < v_now - INTERVAL '2 days';
+  WHERE user_id = v_user_id
+    AND ((bucket_type = 'minute' AND bucket_start < v_now - INTERVAL '2 hours')
+      OR (bucket_type = 'day' AND bucket_start < v_now - INTERVAL '2 days'));
 
   v_minute_start := date_trunc('minute', v_now);
   v_day_start := date_trunc('day', v_now AT TIME ZONE 'UTC') AT TIME ZONE 'UTC';
