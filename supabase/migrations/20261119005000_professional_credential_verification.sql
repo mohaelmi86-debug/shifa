@@ -253,7 +253,8 @@ BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
   END IF;
-  IF p_decision NOT IN ('approve', 'reject') THEN
+  -- NULL must be rejected explicitly: SQL's NOT IN returns NULL for NULL input.
+  IF p_decision IS NULL OR p_decision NOT IN ('approve', 'reject') THEN
     RAISE EXCEPTION 'INVALID_CREDENTIAL_DECISION' USING ERRCODE = '22023';
   END IF;
   IF p_review_note IS NOT NULL AND length(p_review_note) > 2000 THEN
