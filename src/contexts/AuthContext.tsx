@@ -48,14 +48,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [supabase]);
 
   // Email/Password Sign Up
-  const signUp = async (email: string, password: string, metadata = {}) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    metadata: {
+      fullName?: string;
+      avatarUrl?: string;
+      firstName?: string;
+      lastName?: string;
+      dateOfBirth?: string;
+      gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+      country?: string;
+      phone?: string;
+    } = {}
+  ) => {
+    // Only profile fields are forwarded. Authorization roles are never accepted
+    // from user-editable signup metadata.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: (metadata as any)?.fullName || '',
-          avatar_url: (metadata as any)?.avatarUrl || ''
+          full_name: metadata.fullName || '',
+          avatar_url: metadata.avatarUrl || '',
+          first_name: metadata.firstName || '',
+          last_name: metadata.lastName || '',
+          date_of_birth: metadata.dateOfBirth || '',
+          gender: metadata.gender || '',
+          country: metadata.country || '',
+          phone: metadata.phone || ''
         },
         emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`
       }
