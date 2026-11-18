@@ -1,5 +1,6 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import Icon from '@/components/ui/AppIcon';
 
 type ProfStatus = 'active' | 'pending' | 'suspended' | 'inactive';
@@ -54,7 +55,19 @@ const kpis = [
 ];
 
 export default function AdminProfessionnelsContent() {
+  const supabase = useMemo(() => createClient(), []);
   const [search, setSearch] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
+  const [inviteProfession, setInviteProfession] = useState('');
+  const [inviteSpecialty, setInviteSpecialty] = useState('');
+  const [inviteLicense, setInviteLicense] = useState('');
+  const [inviteCountry, setInviteCountry] = useState('FR');
+  const [invitePhone, setInvitePhone] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -232,32 +245,92 @@ export default function AdminProfessionnelsContent() {
                 <Icon name="XMarkIcon" size={16} className="text-muted-foreground" />
               </button>
             </div>
-            <div className="flex flex-col gap-3">
-              {[
-                { label: 'Nom complet', placeholder: 'Dr. Prénom Nom', type: 'text' },
-                { label: 'E-mail professionnel', placeholder: 'prenom.nom@etablissement.sn', type: 'email' },
-                { label: 'Profession', placeholder: 'Médecin, Infirmier(ère)...', type: 'text' },
-              ].map(f => (
-                <div key={f.label}>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>{f.label}</label>
-                  <input type={f.type} className="input-field w-full text-sm" placeholder={f.placeholder} />
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setInviteBusy(true);
+                setInviteError('');
+                setInviteLink('');
+                const { data, error } = await supabase.rpc('create_professional_invitation', {
+                  p_email: inviteEmail.trim().toLowerCase(),
+                  p_first_name: inviteFirstName.trim(),
+                  p_last_name: inviteLastName.trim(),
+                  p_profession: inviteProfession.trim(),
+                  p_specialty: inviteSpecialty.trim() || null,
+                  p_license_number: inviteLicense.trim() || null,
+                  p_country_code: inviteCountry,
+                  p_phone: invitePhone.trim() || null,
+                });
+                if (error || !data) {
+                  setInviteError(error?.message.includes('ACTIVE_ORGANIZATION_ADMIN_REQUIRED')
+                    ? 'Votre compte doit être administrateur actif d’un établissement pour inviter un professionnel.'
+                    : error?.message.includes('PROFESSIONAL_ALREADY_IN_ORGANIZATION')
+                      ? 'Ce professionnel appartient déjà à votre établissement.'
+                      : 'Impossible de créer cette invitation. Vérifiez les informations et vos droits.');
+                } else {
+                  setInviteLink(`${window.location.origin}/accept-professional-invitation?token=${encodeURIComponent(data)}`);
+                }
+                setInviteBusy(false);
+              }}
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Prénom *</label>
+                  <input required value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} className="input-field w-full text-sm" />
                 </div>
-              ))}
-              <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Département</label>
-                <select className="input-field w-full text-sm">
-                  <option value="">Sélectionner un département</option>
-                  {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Nom *</label>
+                  <input required value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} className="input-field w-full text-sm" />
+                </div>
               </div>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button className="flex-1 btn-secondary py-2.5 text-sm" onClick={() => setShowInviteModal(false)}>Annuler</button>
-              <button className="flex-1 btn-primary py-2.5 text-sm" onClick={() => setShowInviteModal(false)}>
-                <Icon name="PaperAirplaneIcon" size={15} />
-                Envoyer l'invitation
-              </button>
-            </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>E-mail professionnel *</label>
+                <input required type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="input-field w-full text-sm" placeholder="prenom.nom@etablissement.org" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Profession *</label>
+                <input required value={inviteProfession} onChange={e => setInviteProfession(e.target.value)} className="input-field w-full text-sm" placeholder="Médecin, infirmier, pharmacien…" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Spécialité</label>
+                <input value={inviteSpecialty} onChange={e => setInviteSpecialty(e.target.value)} className="input-field w-full text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>N° licence / ordre</label>
+                  <input value={inviteLicense} onChange={e => setInviteLicense(e.target.value)} className="input-field w-full text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Pays</label>
+                  <select value={inviteCountry} onChange={e => setInviteCountry(e.target.value)} className="input-field w-full text-sm">
+                    <option value="FR">France</option><option value="KM">Comores</option><option value="SN">Sénégal</option><option value="CI">Côte d’Ivoire</option><option value="MA">Maroc</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Téléphone</label>
+                <input value={invitePhone} onChange={e => setInvitePhone(e.target.value)} className="input-field w-full text-sm" />
+              </div>
+              {inviteError && <p role="alert" className="text-sm" style={{ color: 'var(--shifa-red)' }}>{inviteError}</p>}
+              {inviteLink && (
+                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--border)' }}>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--shifa-green)' }}>Invitation créée — valable 7 jours</p>
+                  <p className="text-xs mt-1 mb-2" style={{ color: 'var(--muted-foreground)' }}>Copiez ce lien et transmettez-le au professionnel. Le compte utilisé pour l’accepter doit avoir cette adresse e-mail.</p>
+                  <input readOnly value={inviteLink} className="input-field w-full text-xs" />
+                  <button type="button" className="btn-secondary w-full mt-2 py-2 text-sm" onClick={() => void navigator.clipboard.writeText(inviteLink)}>
+                    <Icon name="ClipboardDocumentIcon" size={14} /> Copier le lien
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-3 mt-2">
+                <button type="button" className="flex-1 btn-secondary py-2.5 text-sm" onClick={() => setShowInviteModal(false)}>Fermer</button>
+                {!inviteLink && <button type="submit" disabled={inviteBusy} className="flex-1 btn-primary py-2.5 text-sm disabled:opacity-50">
+                  <Icon name={inviteBusy ? 'ArrowPathIcon' : 'PaperAirplaneIcon'} size={15} />
+                  {inviteBusy ? 'Création…' : 'Créer l’invitation'}
+                </button>}
+              </div>
+            </form>
           </div>
         </div>
       )}
