@@ -69,9 +69,9 @@ export default function FinanceDashboardContent() {
   ];
 
   const currentRevenue = revenueData[revenueData.length - 1];
-  const totalRevenue = Object.values(currentRevenue).slice(1).reduce((a, b) => a + b, 0);
+  const totalRevenue = Object.values(currentRevenue).slice(1).reduce<number>((a, b) => a + Number(b), 0);
   const currentExpenses = expenseData[expenseData.length - 1];
-  const totalExpenses = Object.values(currentExpenses).slice(1).reduce((a, b) => a + b, 0);
+  const totalExpenses = Object.values(currentExpenses).slice(1).reduce<number>((a, b) => a + Number(b), 0);
   const netProfit = totalRevenue - totalExpenses;
   const margin = ((netProfit / totalRevenue) * 100).toFixed(1);
 
