@@ -1,0 +1,92 @@
+-- SHIFA registration workflow security assertions.
+-- Run only against a disposable/staging database after both registration migrations.
+-- This script is read-only and intentionally raises an exception on a failed assertion.
+
+DO $$
+DECLARE
+  v_rls boolean;
+  v_trigger_count integer;
+  v_policy_count integer;
+  v_config text[];
+BEGIN
+  SELECT c.relrowsecurity
+    INTO v_rls
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'registration_applications';
+
+  IF v_rls IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'FAIL: RLS must be enabled on registration_applications';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.registration_applications', 'SELECT')
+     OR has_table_privilege('anon', 'public.registration_applications', 'INSERT')
+     OR has_table_privilege('anon', 'public.registration_applications', 'UPDATE')
+     OR has_table_privilege('anon', 'public.registration_applications', 'DELETE') THEN
+    RAISE EXCEPTION 'FAIL: anon must have no table privileges';
+  END IF;
+
+  IF has_table_privilege('authenticated', 'public.registration_applications', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.registration_applications', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.registration_applications', 'DELETE') THEN
+    RAISE EXCEPTION 'FAIL: authenticated clients must not mutate application rows directly';
+  END IF;
+
+  IF NOT has_column_privilege('authenticated', 'public.registration_applications', 'applicant_id', 'SELECT')
+     OR NOT has_column_privilege('authenticated', 'public.registration_applications', 'status', 'SELECT') THEN
+    RAISE EXCEPTION 'FAIL: applicants must be able to read their own status fields';
+  END IF;
+
+  IF has_column_privilege('authenticated', 'public.registration_applications', 'review_note', 'SELECT') THEN
+    RAISE EXCEPTION 'FAIL: internal review notes must not be readable by clients';
+  END IF;
+
+  IF has_function_privilege('anon', 'public.review_registration_application(uuid,text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: anon must not execute review_registration_application';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'public.review_registration_application(uuid,text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: authenticated platform admins need the RPC grant (role check remains inside function)';
+  END IF;
+
+  SELECT count(*)
+    INTO v_trigger_count
+  FROM pg_trigger t
+  JOIN pg_class c ON c.oid = t.tgrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'auth'
+    AND c.relname = 'users'
+    AND t.tgname = 'on_auth_user_registration_application'
+    AND NOT t.tgisinternal;
+
+  IF v_trigger_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL: expected exactly one auth registration capture trigger';
+  END IF;
+
+  SELECT count(*)
+    INTO v_policy_count
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'registration_applications'
+    AND cmd <> 'SELECT';
+
+  IF v_policy_count <> 0 THEN
+    RAISE EXCEPTION 'FAIL: no client write policies should exist on registration_applications';
+  END IF;
+
+  SELECT p.proconfig
+    INTO v_config
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = 'review_registration_application'
+    AND pg_get_function_identity_arguments(p.oid) = 'p_application_id uuid, p_decision text, p_review_note text';
+
+  IF v_config IS NULL OR NOT ('search_path=public, pg_temp' = ANY(v_config)) THEN
+    RAISE EXCEPTION 'FAIL: review RPC must pin its search_path';
+  END IF;
+
+  RAISE NOTICE 'PASS: registration application privilege, RLS, trigger and RPC configuration assertions';
+END;
+$$;
