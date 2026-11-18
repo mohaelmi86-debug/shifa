@@ -148,9 +148,7 @@ BEGIN
 
   IF position('private.is_verified_active_professional()' IN pg_get_functiondef(
     'private.is_clinical_role()'::regprocedure
-  )) = 0 OR position('private.is_verified_active_professional()' IN pg_get_functiondef(
-    'private.is_verified_active_professional()'::regprocedure
-  )) > 0 THEN
+  )) = 0 THEN
     RAISE EXCEPTION 'FAIL: clinical role helper must delegate to the verified active professional predicate';
   END IF;
 
