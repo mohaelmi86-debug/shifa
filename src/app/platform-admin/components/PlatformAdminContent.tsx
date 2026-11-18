@@ -45,7 +45,7 @@ const orgTypeData = [
 const organizations = [
   { id: 'org-001', name: 'CHU Saint-Louis', type: 'Hôpital', country: '🇸🇳 Sénégal', plan: 'Enterprise', users: 284, status: 'actif', since: 'Jan 2025' },
   { id: 'org-002', name: 'Clinique Al-Shifa Dakar', type: 'Clinique', country: '🇸🇳 Sénégal', plan: 'Pro', users: 48, status: 'actif', since: 'Mar 2025' },
-  { id: 'org-003', name: "Pharmacie Centrale Abidjan", type: 'Pharmacie', country: "🇨🇮 Côte d\'Ivoire", plan: 'Standard', users: 12, status: 'actif', since: 'Avr 2025' },
+  { id: 'org-003', name: "Pharmacie Centrale Abidjan", type: 'Pharmacie', country: "🇨🇮 Côte d'Ivoire", plan: 'Standard', users: 12, status: 'actif', since: 'Avr 2025' },
   { id: 'org-004', name: 'Hôpital Ibn Sina Casablanca', type: 'Hôpital', country: '🇲🇦 Maroc', plan: 'Enterprise', users: 520, status: 'actif', since: 'Fév 2025' },
   { id: 'org-005', name: 'Labo BioMed Comores', type: 'Laboratoire', country: '🇰🇲 Comores', plan: 'Standard', users: 8, status: 'en_attente', since: 'Aoû 2026' },
   { id: 'org-006', name: 'Centre Santé Yaoundé', type: 'Centre de santé', country: '🇨🇲 Cameroun', plan: 'Pro', users: 35, status: 'actif', since: 'Jun 2025' },
@@ -80,7 +80,7 @@ const auditLogs = [
 const countries = [
   { code: 'SN', name: 'Sénégal', flag: '🇸🇳', orgs: 284, users: 48200, currency: 'XOF', status: 'actif' },
   { code: 'MA', name: 'Maroc', flag: '🇲🇦', orgs: 210, users: 38400, currency: 'MAD', status: 'actif' },
-  { code: 'CI', name: "Côte d\'Ivoire", flag: '🇨🇮', orgs: 185, users: 32100, currency: 'XOF', status: 'actif' },
+  { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮', orgs: 185, users: 32100, currency: 'XOF', status: 'actif' },
   { code: 'CM', name: 'Cameroun', flag: '🇨🇲', orgs: 142, users: 24800, currency: 'XAF', status: 'actif' },
   { code: 'KM', name: 'Comores', flag: '🇰🇲', orgs: 28, users: 4200, currency: 'KMF', status: 'actif' },
   { code: 'FR', name: 'France', flag: '🇫🇷', orgs: 98, users: 18400, currency: 'EUR', status: 'actif' },
@@ -485,7 +485,7 @@ export default function PlatformAdminContent() {
       <div className="mb-5 px-4 py-3 rounded-xl border flex items-start gap-3" style={{ backgroundColor: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.2)' }}>
         <Icon name="ShieldCheckIcon" size={18} style={{ color: '#7C3AED' }} className="shrink-0 mt-0.5" />
         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-          <strong style={{ color: 'var(--foreground)' }}>Accès clinique séparé :</strong> L&apos;administrateur plateforme gère l'infrastructure SHIFA. L&apos;accès aux données cliniques individuelles nécessite une autorisation distincte et explicite, conformément aux règles de confidentialité médicale.
+          <strong style={{ color: 'var(--foreground)' }}>Accès clinique séparé :</strong> L&apos;administrateur plateforme gère l&apos;infrastructure SHIFA. L&apos;accès aux données cliniques individuelles nécessite une autorisation distincte et explicite, conformément aux règles de confidentialité médicale.
         </p>
       </div>
 
@@ -536,7 +536,7 @@ export default function PlatformAdminContent() {
               </ResponsiveContainer>
             </div>
             <div className="rounded-2xl p-5 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Répartition par type d'org.</h3>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Répartition par type d&apos;org.</h3>
               <ResponsiveContainer width="100%" height={160}>
                 <PieChart>
                   <Pie data={orgTypeData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={3}>
