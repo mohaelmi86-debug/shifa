@@ -50,13 +50,20 @@ function extractOutput(result: unknown): string {
 export async function POST(request: NextRequest) {
   const requestId = randomUUID();
 
-  // Reject oversized requests before parsing their JSON body.
-  const contentLength = Number(request.headers.get('content-length') || 0);
-  if (contentLength > 32_000) return jsonError(413, 'REQUEST_TOO_LARGE', requestId);
+  // Enforce the limit on the actual body bytes; Content-Length alone is not trustworthy.
+  let rawBody: string;
+  try {
+    rawBody = await request.text();
+  } catch {
+    return jsonError(400, 'INVALID_JSON', requestId);
+  }
+  if (Buffer.byteLength(rawBody, 'utf8') > 32_000) {
+    return jsonError(413, 'REQUEST_TOO_LARGE', requestId);
+  }
 
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(rawBody);
   } catch {
     return jsonError(400, 'INVALID_JSON', requestId);
   }
