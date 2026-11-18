@@ -203,7 +203,7 @@ BEGIN
   FROM storage.objects
   WHERE bucket_id = 'professional-credentials'
     AND name = p_storage_path
-    AND owner_id = v_user_id::text;
+    AND (owner = v_user_id OR owner_id = v_user_id::text);
 
   IF NOT FOUND OR v_object_size IS NULL OR v_object_size <> p_file_size
      OR v_object_mime IS DISTINCT FROM p_mime_type THEN
