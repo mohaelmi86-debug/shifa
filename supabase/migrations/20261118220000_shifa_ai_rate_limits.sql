@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS private.shifa_ai_rate_limits (
 );
 
 ALTER TABLE private.shifa_ai_rate_limits ENABLE ROW LEVEL SECURITY;
-ALTER TABLE private.shifa_ai_rate_limits FORCE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE private.shifa_ai_rate_limits FROM PUBLIC, anon, authenticated, service_role;
 
@@ -36,6 +35,9 @@ BEGIN
   IF v_user_id IS NULL THEN
     RETURN jsonb_build_object('allowed', false, 'reason', 'unauthenticated', 'retry_after_seconds', 60);
   END IF;
+
+  DELETE FROM private.shifa_ai_rate_limits
+  WHERE user_id = v_user_id AND bucket_start < v_now - INTERVAL '2 days';
 
   v_minute_start := date_trunc('minute', v_now);
   v_day_start := date_trunc('day', v_now AT TIME ZONE 'UTC') AT TIME ZONE 'UTC';
