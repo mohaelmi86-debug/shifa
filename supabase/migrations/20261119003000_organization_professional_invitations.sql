@@ -128,6 +128,7 @@ DECLARE
   v_email text;
   v_invitation public.organization_professional_invitations%ROWTYPE;
   v_profile_role text;
+  v_professional_id uuid;
 BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
@@ -184,7 +185,14 @@ BEGIN
     RAISE EXCEPTION 'PROFESSIONAL_ALREADY_LINKED_TO_ANOTHER_ORGANIZATION' USING ERRCODE = '55000';
   END IF;
 
-  IF EXISTS (SELECT 1 FROM public.professionals WHERE user_id = v_user_id) THEN
+  SELECT id INTO v_professional_id
+  FROM public.professionals
+  WHERE user_id = v_user_id
+  ORDER BY created_at DESC NULLS LAST
+  LIMIT 1
+  FOR UPDATE;
+
+  IF v_professional_id IS NOT NULL THEN
     UPDATE public.professionals
     SET first_name = v_invitation.first_name,
         last_name = v_invitation.last_name,
@@ -197,7 +205,7 @@ BEGIN
         is_verified = FALSE,
         status = 'pending'::public.professional_status,
         updated_at = now()
-    WHERE user_id = v_user_id;
+    WHERE id = v_professional_id;
   ELSE
     INSERT INTO public.professionals (
       user_id, first_name, last_name, profession, specialty,
@@ -207,6 +215,29 @@ BEGIN
       v_invitation.profession, v_invitation.specialty,
       v_invitation.license_number, v_invitation.country_code,
       v_invitation.phone, v_email, FALSE, 'pending'::public.professional_status
+    )
+    RETURNING id INTO v_professional_id;
+  END IF;
+
+  -- Persist the organization membership used by tenant-scoped clinical RLS.
+  UPDATE public.professional_organizations
+  SET role_title = v_invitation.profession,
+      status = 'pending'::public.professional_status,
+      invitation_status = 'accepted'::public.invitation_status,
+      invited_by = v_invitation.invited_by,
+      invited_at = COALESCE(invited_at, now()),
+      joined_at = now()
+  WHERE professional_id = v_professional_id
+    AND organization_id = v_invitation.organization_id;
+
+  IF NOT FOUND THEN
+    INSERT INTO public.professional_organizations (
+      professional_id, organization_id, role_title, status,
+      invitation_status, invited_by, invited_at, joined_at, is_primary
+    ) VALUES (
+      v_professional_id, v_invitation.organization_id, v_invitation.profession,
+      'pending'::public.professional_status, 'accepted'::public.invitation_status,
+      v_invitation.invited_by, now(), now(), FALSE
     );
   END IF;
 
