@@ -99,3 +99,20 @@ La PR #5 ne doit donc pas être considérée comme ayant déjà supprimé ce tra
 
 - Le middleware a également été renforcé sur les portails protégés : contrôle du rôle et du statut actif depuis `user_profiles`, avec correspondance des routes par segment complet (pas de simple préfixe). Les pages patient, professionnel, administration et partenaires sont séparées par rôle.
 - Le transport transitoire `x-sb-token` a été conservé pour ne pas casser le fallback localStorage, mais son ajout global à `fetch` vérifie désormais l'origine exacte via `new URL(...).origin`. Un appel vers une origine externe, y compris une URL protocol-relative (`//...`), ne reçoit plus le jeton.
+
+
+## 8. Contrôle Supabase distant en lecture seule — 18 novembre 2026
+
+Projet vérifié : `shifa health` (`dxngxejuxeghsdafkkjp`, région `eu-west-3`).
+
+- Le ledger distant contient 15 migrations ; ni le durcissement tenant de la PR #2 ni la migration de quotas IA de cette PR ne sont appliqués.
+- Toutes les tables du schéma `public` ont RLS activé.
+- Six politiques ont été relevées avec `USING (true)`. Deux sont dangereuses pour l'isolation tenant : `departments_org_read` et `org_modules_read`. Elles sont couvertes par la correction de la PR #2, désormais simplifiée pour supprimer ces politiques redondantes et conserver les policies SELECT déjà scoped.
+- Les quatre politiques publiques restantes concernent `funding_campaigns`, `health_services`, `marketplace_products` et `modules`. Elles doivent rester explicitement classées comme données publiques approuvées ; ne pas y placer de données personnelles ou médicales.
+- Les policies de `org_roles`, `subscriptions`, `tax_records` et `settlements` consultées utilisent des prédicats d'accès ; elles nécessitent tout de même des tests négatifs multi-tenant.
+- Les Security Advisors signalent la protection contre les mots de passe compromis désactivée (avertissement à corriger dans les paramètres Auth). Le linter Performance remonte 214 index inutilisés et de nombreuses policies permissives redondantes ; ne pas supprimer les index sans mesures de charge, et consolider les policies après tests.
+- Aucun SQL de modification n'a été exécuté sur le projet distant.
+
+## 9. Lockfile CI
+
+Le workflow génère désormais un `package-lock.json` à partir de `package.json`, publie ce fichier comme artefact GitHub Actions (rétention 7 jours), puis installe les dépendances avec `npm ci` avant audit, type-check, lint et build. Le lockfile n'est pas encore committé au dépôt : il devra être récupéré depuis l'artefact et relu avant ajout à la branche.
