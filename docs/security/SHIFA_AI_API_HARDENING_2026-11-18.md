@@ -79,3 +79,20 @@ Critères de sortie : migration appliquée sur un staging isolé après réconci
 - La migration `20261118220000_shifa_ai_rate_limits.sql` est uniquement préparée dans GitHub ; elle n'a pas été appliquée à Supabase. Le ledger de production doit d'abord être réconcilié (15 migrations présentes côté Supabase contre 3 sources sur `main`).
 - Aucun secret, fichier `.env`, dossier patient, compte réel ou donnée Supabase n'a été consulté ou modifié.
 - Aucun déploiement ni changement de production n'a été effectué.
+
+
+## 6. Corrections CI et déploiement — 18 novembre 2026
+
+- Le premier workflow a confirmé : installation npm réussie, audit initial à 0 vulnérabilité, TypeScript réussi, ESLint en échec (25 erreurs, 40 avertissements).
+- Les 25 erreurs ESLint relevées dans les fichiers modifiés ont été corrigées sur cette branche : apostrophes JSX, échappements inutiles et gestion explicite du fallback de stockage.
+- Le workflow a été renforcé : Node.js 22, audit bloquant à partir du niveau élevé et étape de build de production Next.js.
+- Le script `npm start` a été corrigé : il lance désormais `next start -p 4028` au lieu du serveur de développement. `npm run dev` reste réservé au développement.
+- La règle qui ignorait `package-lock.json` a été retirée de `.gitignore`. **Le lockfile n'est toutefois pas encore présent dans le dépôt** ; une installation reproductible via `npm ci` reste à finaliser.
+- Le dernier workflow n'a pas encore fourni de résultat exploitable après ces commits. Le build et le lint corrigé restent donc à confirmer par une exécution CI réussie.
+
+## 7. Bloqueur de sécurité transversal à réconcilier
+
+La branche `main` contient toujours le mécanisme historique `x-sb-token` : le client navigateur ajoute ce jeton aux requêtes same-origin et le middleware le réinjecte dans les cookies. La PR #2 (`audit/shifa-security-hardening-2026-11`) annonce la suppression de ce mécanisme, mais elle est toujours ouverte en brouillon et ses corrections ne sont pas intégrées à `main`.
+
+La PR #5 ne doit donc pas être considérée comme ayant déjà supprimé ce transport. Avant toute mise en production, il faut réconcilier les deux branches et décider d'une migration de session qui ne casse pas les sessions existantes. Ne pas supprimer ce mécanisme à l'aveugle : le fallback localStorage actuel peut en dépendre dans les navigateurs où le test de cookie partitionné échoue.
+
