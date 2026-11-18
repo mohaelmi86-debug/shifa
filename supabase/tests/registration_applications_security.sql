@@ -211,6 +211,70 @@ BEGIN
     RAISE EXCEPTION 'FAIL: expected restrictive verification guards on patients and clinical tables; found %', v_policy_count;
   END IF;
 
+  -- Professional credential submission and review workflow (migration 20261119005000).
+  IF NOT EXISTS (
+    SELECT 1 FROM storage.buckets
+    WHERE id = 'professional-credentials'
+      AND public IS FALSE
+      AND file_size_limit = 10485760
+  ) THEN
+    RAISE EXCEPTION 'FAIL: professional credential bucket must be private and limited to 10 MiB';
+  END IF;
+
+  SELECT c.relrowsecurity INTO v_rls
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'professional_credentials';
+
+  IF v_rls IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'FAIL: professional_credentials must have RLS enabled';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.professional_credentials', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.professional_credentials', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.professional_credentials', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.professional_credentials', 'DELETE')
+     OR has_column_privilege('authenticated', 'public.professional_credentials', 'review_note', 'SELECT') THEN
+    RAISE EXCEPTION 'FAIL: credential metadata must be read-scoped, immutable to clients, and review notes private';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'public.submit_professional_credential(text,text,text,text,integer,text,text,date)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.review_professional_credential(uuid,text,text)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.submit_professional_credential(text,text,text,text,integer,text,text,date)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.review_professional_credential(uuid,text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: credential RPC grants are not correctly scoped';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+      AND policyname = 'professional_credentials_storage_upload_guard'
+      AND permissive = 'RESTRICTIVE' AND cmd = 'INSERT'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+      AND policyname = 'professional_credentials_storage_read_guard'
+      AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: credential Storage access must have restrictive upload and read guards';
+  END IF;
+
+  IF position('private.org_admin_can_access_professional' IN pg_get_functiondef(
+    'public.review_professional_credential(uuid,text,text)'::regprocedure
+  )) = 0 OR position('SECURITY DEFINER' IN upper(pg_get_functiondef(
+    'public.review_professional_credential(uuid,text,text)'::regprocedure
+  ))) = 0 THEN
+    RAISE EXCEPTION 'FAIL: credential review must be performed by a SECURITY DEFINER RPC with organization checks';
+  END IF;
+
+  IF position('professional_license' IN pg_get_functiondef(
+    'public.review_professional_credential(uuid,text,text)'::regprocedure
+  )) = 0 OR position('is_verified = TRUE' IN pg_get_functiondef(
+    'public.review_professional_credential(uuid,text,text)'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: approval of a valid professional license or registration must activate the verified profile';
+  END IF;
+
   RAISE NOTICE 'PASS: registration and organization invitation privilege, RLS, trigger and RPC configuration assertions';
 END;
 $$;
