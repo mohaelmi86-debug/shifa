@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Icon from '@/components/ui/AppIcon';
+import ProfessionalCredentialReviewPanel from './ProfessionalCredentialReviewPanel';
 
 type ProfStatus = 'active' | 'pending' | 'suspended' | 'inactive';
 
@@ -117,6 +118,8 @@ export default function AdminProfessionnelsContent() {
           </div>
         ))}
       </div>
+
+      <ProfessionalCredentialReviewPanel />
 
       {/* Table */}
       <div className="card-base">
