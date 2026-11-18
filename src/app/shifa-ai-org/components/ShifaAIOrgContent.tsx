@@ -179,7 +179,7 @@ export default function ShifaAIOrgContent() {
           </div>
           <div className="p-4 rounded-xl border text-sm" style={{ backgroundColor: 'rgba(0,102,255,0.04)', borderColor: 'rgba(0,102,255,0.15)', color: 'var(--muted-foreground)' }}>
             <Icon name="InformationCircleIcon" size={14} className="inline mr-1.5" style={{ color: 'var(--shifa-blue)' }} />
-            Ces scores sont calculés par SHIFA AI à partir de données agrégées et anonymisées. Aucune donnée médicale individuelle n'est utilisée.
+            Ces scores sont calculés par SHIFA AI à partir de données agrégées et anonymisées. Aucune donnée médicale individuelle n&apos;est utilisée.
           </div>
         </div>
       )}
