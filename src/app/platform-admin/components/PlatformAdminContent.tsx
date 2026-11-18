@@ -467,7 +467,7 @@ export default function PlatformAdminContent() {
           </div>
           <div>
             <h1 className="text-xl font-bold" style={{ color: 'var(--shifa-dark)' }}>Administration Plateforme SHIFA</h1>
-            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Gestion globale de l'écosystème SHIFA — Accès restreint</p>
+            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Gestion globale de l&apos;écosystème SHIFA — Accès restreint</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -522,7 +522,7 @@ export default function PlatformAdminContent() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 rounded-2xl p-5 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Croissance de l'écosystème (6 mois)</h3>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Croissance de l&apos;écosystème (6 mois)</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={growthData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
