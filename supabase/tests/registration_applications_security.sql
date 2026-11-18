@@ -139,8 +139,11 @@ BEGIN
       AND policyname = 'patients_professional_verification_guard'
       AND permissive = 'RESTRICTIVE'
       AND cmd = 'SELECT'
+      AND qual ILIKE '%user_profiles%'
+      AND qual ILIKE '%is_verified%'
+      AND qual ILIKE '%active%'
   ) THEN
-    RAISE EXCEPTION 'FAIL: patient SELECT must have a restrictive professional verification guard';
+    RAISE EXCEPTION 'FAIL: patient SELECT must have a restrictive guard for all professional profiles, including inactive ones, requiring verified active status';
   END IF;
 
   IF position('pro.is_verified IS TRUE' IN pg_get_functiondef(
