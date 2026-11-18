@@ -87,6 +87,37 @@ USING (
   )
 );
 
+-- Restrictive guards ensure other permissive Storage policies cannot widen access
+-- to this private bucket.
+DROP POLICY IF EXISTS professional_credentials_storage_upload_guard ON storage.objects;
+CREATE POLICY professional_credentials_storage_upload_guard
+ON storage.objects
+AS RESTRICTIVE
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'professional-credentials'
+  AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+);
+
+DROP POLICY IF EXISTS professional_credentials_storage_read_guard ON storage.objects;
+CREATE POLICY professional_credentials_storage_read_guard
+ON storage.objects
+AS RESTRICTIVE
+FOR SELECT TO authenticated
+USING (
+  bucket_id = 'professional-credentials'
+  AND (
+    (storage.foldername(name))[1] = (SELECT auth.uid())::text
+    OR EXISTS (
+      SELECT 1
+      FROM public.professional_credentials pc
+      WHERE pc.storage_path = name
+        AND private.org_admin_can_access_professional(pc.professional_id)
+    )
+    OR private.is_platform_admin()
+  )
+);
+
 CREATE OR REPLACE FUNCTION public.submit_professional_credential(
   p_credential_type text,
   p_document_name text,
