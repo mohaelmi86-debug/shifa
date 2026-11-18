@@ -202,7 +202,7 @@ export default function ShifaAIPharmacyContent() {
           <div className="px-5 py-2 bg-amber-50 border-t border-amber-200 shrink-0">
             <p className="text-xs text-amber-700 flex items-center gap-1.5">
               <Icon name="ExclamationTriangleIcon" size={13} />
-              Outil d'aide à la décision — Ne remplace pas le jugement clinique du pharmacien ou du médecin
+              Outil d&apos;aide à la décision — Ne remplace pas le jugement clinique du pharmacien ou du médecin
             </p>
           </div>
 
