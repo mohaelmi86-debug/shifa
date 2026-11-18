@@ -18,7 +18,7 @@ ALTER TABLE private.shifa_ai_rate_limits FORCE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE private.shifa_ai_rate_limits FROM PUBLIC, anon, authenticated, service_role;
 
-CREATE OR REPLACE FUNCTION private.consume_shifa_ai_rate_limit()
+CREATE OR REPLACE FUNCTION public.consume_shifa_ai_rate_limit()
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -75,11 +75,10 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION private.consume_shifa_ai_rate_limit() FROM PUBLIC, anon;
-GRANT USAGE ON SCHEMA private TO authenticated;
-GRANT EXECUTE ON FUNCTION private.consume_shifa_ai_rate_limit() TO authenticated;
+REVOKE ALL ON FUNCTION public.consume_shifa_ai_rate_limit() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.consume_shifa_ai_rate_limit() TO authenticated;
 
 COMMENT ON TABLE private.shifa_ai_rate_limits IS
   'Private atomic request counters for SHIFA AI. Retain only short-lived aggregate counters; no prompt or clinical content is stored.';
-COMMENT ON FUNCTION private.consume_shifa_ai_rate_limit() IS
+COMMENT ON FUNCTION public.consume_shifa_ai_rate_limit() IS
   'Atomically enforces 10 SHIFA AI requests per user per minute and 200 per UTC day. Requires an authenticated JWT.';
