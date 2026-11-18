@@ -34,7 +34,13 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
     setRegisterError('');
     try {
       await signUp(data.email, data.password, {
-        fullName: `${data.firstName} ${data.lastName}`,
+        fullName: `${data.firstName.trim()} ${data.lastName.trim()}`,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender === 'F' ? 'female' : data.gender === 'M' ? 'male' : 'other',
+        country: data.country,
+        phone: data.phone.trim(),
       });
       router.push('/patient-home');
     } catch (err: any) {
