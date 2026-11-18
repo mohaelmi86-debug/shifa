@@ -139,7 +139,7 @@ USING (
 
 -- Guard direct professional-ID policies too. These restrictive policies apply
 -- in addition to existing tenant/patient policies and preserve non-professional roles.
-DO $
+DO $guard$
 DECLARE
   v_table text;
   v_tables text[] := ARRAY[
@@ -163,7 +163,7 @@ BEGIN
     END IF;
   END LOOP;
 END;
-$;
+$guard$;
 
 COMMENT ON FUNCTION private.is_verified_active_professional() IS
   'True only for an active account with a verified active professional record.';
