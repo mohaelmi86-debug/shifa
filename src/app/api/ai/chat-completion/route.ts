@@ -1,100 +1,147 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { completion } from '@rocketnew/llm-sdk';
+import { createClient } from '@/lib/supabase/server';
 
-const API_KEYS: Record<string, string | undefined> = {
-  OPEN_AI: process.env.OPENAI_API_KEY,
-  ANTHROPIC: process.env.ANTHROPIC_API_KEY,
-  GEMINI: process.env.GEMINI_API_KEY,
-  PERPLEXITY: process.env.PERPLEXITY_API_KEY,
+export const runtime = 'nodejs';
+
+type AiModule = 'patient' | 'professional' | 'organization';
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
+const PROVIDER_KEY_ENV: Record<string, string> = {
+  OPEN_AI: 'OPENAI_API_KEY',
+  ANTHROPIC: 'ANTHROPIC_API_KEY',
+  GEMINI: 'GEMINI_API_KEY',
+  PERPLEXITY: 'PERPLEXITY_API_KEY',
 };
 
-function formatErrorResponse(error: unknown, provider?: string) {
-  const statusCode = (error as any)?.statusCode || (error as any)?.status || 500;
-  const providerName = (error as any)?.llmProvider || provider || 'Unknown';
+const MODULE_CONFIG: Record<AiModule, { modelEnv: string; allowedRoles: string[]; systemPrompt: string }> = {
+  patient: {
+    modelEnv: 'SHIFA_AI_MODEL_PATIENT',
+    allowedRoles: ['patient'],
+    systemPrompt: "Tu es SHIFA AI, un assistant d'information générale en santé. Réponds en français, avec clarté et bienveillance. Tu ne poses aucun diagnostic, ne prescris aucun traitement et ne prétends pas remplacer un professionnel de santé. En cas de signe d'urgence, recommande de contacter immédiatement les services d'urgence locaux. Ne demande pas de données identifiantes inutiles et ne révèle jamais d'informations sur d'autres patients.",
+  },
+  professional: {
+    modelEnv: 'SHIFA_AI_MODEL_PROFESSIONAL',
+    allowedRoles: ['professional'],
+    systemPrompt: "Tu es SHIFA AI Clinical, un assistant d'aide au travail des professionnels de santé. Réponds en français. Tes suggestions ne remplacent jamais le jugement clinique, la vérification des sources ni les protocoles locaux. Ne présente jamais une hypothèse comme un diagnostic confirmé et ne déclenche aucune action clinique. N'invente aucune donnée patient.",
+  },
+  organization: {
+    modelEnv: 'SHIFA_AI_MODEL_ORGANIZATION',
+    allowedRoles: ['org_admin'],
+    systemPrompt: "Tu es SHIFA AI Organisation, un assistant d'analyse opérationnelle d'établissement de santé. Réponds en français, de manière concise et actionnable. N'accède pas aux dossiers médicaux individuels, ne demande pas de données directement identifiantes et distingue clairement les hypothèses des faits. Toute décision reste sous validation humaine.",
+  },
+};
 
-  return {
-    error: `${providerName.toUpperCase()} API error: ${statusCode}`,
-    details: error instanceof Error ? error.message : String(error),
-    statusCode,
+function jsonError(status: number, code: string, requestId: string) {
+  return NextResponse.json({ error: code, requestId }, { status });
+}
+
+function extractOutput(result: unknown): string {
+  if (!result || typeof result !== 'object') return '';
+  const value = result as {
+    content?: unknown;
+    choices?: Array<{ message?: { content?: unknown } }>;
   };
+  const candidate = value.choices?.[0]?.message?.content ?? value.content;
+  return typeof candidate === 'string' ? candidate : '';
 }
 
 export async function POST(request: NextRequest) {
-  let body: any = {};
+  const requestId = randomUUID();
 
+  // Reject oversized requests before parsing their JSON body.
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (contentLength > 32_000) return jsonError(413, 'REQUEST_TOO_LARGE', requestId);
+
+  let body: unknown;
   try {
     body = await request.json();
-    const { provider, model, messages, stream = false, parameters = {} } = body;
+  } catch {
+    return jsonError(400, 'INVALID_JSON', requestId);
+  }
 
-    if (!provider || !model || !messages?.length) {
-      return NextResponse.json(
-        { error: 'Missing required fields: provider, model, messages', details: 'Request validation failed' },
-        { status: 400 }
-      );
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return jsonError(400, 'INVALID_REQUEST', requestId);
+  }
+
+  const payload = body as { module?: unknown; messages?: unknown; stream?: unknown };
+  if (payload.stream === true) return jsonError(400, 'STREAMING_NOT_SUPPORTED', requestId);
+  if (typeof payload.module !== 'string' || !Object.hasOwn(MODULE_CONFIG, payload.module)) {
+    return jsonError(400, 'INVALID_MODULE', requestId);
+  }
+
+  const moduleName = payload.module as AiModule;
+  const config = MODULE_CONFIG[moduleName];
+  if (!Array.isArray(payload.messages) || payload.messages.length < 1 || payload.messages.length > 20) {
+    return jsonError(400, 'INVALID_MESSAGES', requestId);
+  }
+
+  const messages: ChatMessage[] = [];
+  let totalChars = 0;
+  for (const item of payload.messages) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return jsonError(400, 'INVALID_MESSAGES', requestId);
+    }
+    const message = item as { role?: unknown; content?: unknown };
+    if ((message.role !== 'user' && message.role !== 'assistant') ||
+        typeof message.content !== 'string' ||
+        message.content.length < 1 || message.content.length > 8_000) {
+      return jsonError(400, 'INVALID_MESSAGES', requestId);
+    }
+    totalChars += message.content.length;
+    if (totalChars > 24_000) return jsonError(413, 'CONVERSATION_TOO_LARGE', requestId);
+    messages.push({ role: message.role, content: message.content });
+  }
+
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return jsonError(401, 'AUTHENTICATION_REQUIRED', requestId);
+
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('role, is_active')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError || !profile || profile.is_active !== true) {
+      return jsonError(403, 'ACCOUNT_NOT_AUTHORIZED', requestId);
+    }
+    if (!config.allowedRoles.includes(profile.role)) {
+      return jsonError(403, 'MODULE_NOT_AUTHORIZED', requestId);
     }
 
-    const apiKey = API_KEYS[provider];
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: `${provider.toUpperCase()} API key is not configured`, details: 'The API key for this provider is missing in environment variables' },
-        { status: 400 }
-      );
+    const provider = process.env.SHIFA_AI_PROVIDER;
+    const apiKeyEnv = provider ? PROVIDER_KEY_ENV[provider] : undefined;
+    const apiKey = apiKeyEnv ? process.env[apiKeyEnv] : undefined;
+    const model = process.env[config.modelEnv];
+    if (!provider || !apiKeyEnv || !apiKey || !model) {
+      console.error('SHIFA AI configuration incomplete', { requestId, module: moduleName });
+      return jsonError(503, 'AI_SERVICE_NOT_CONFIGURED', requestId);
     }
 
-    if (stream) {
-      const response = await completion({
-        model,
-        messages,
-        stream: true,
-        api_key: apiKey,
-        ...parameters,
-      });
-
-      const encoder = new TextEncoder();
-      const readable = new ReadableStream({
-        async start(controller) {
-          try {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'start' })}\n\n`));
-
-            for await (const chunk of response as unknown as AsyncIterable<unknown>) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', chunk })}\n\n`));
-            }
-
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
-            controller.close();
-          } catch (error) {
-            const formatted = formatErrorResponse(error, provider);
-            console.error('API Route Error:', { error: formatted.error, details: formatted.details });
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: formatted.error, details: formatted.details })}\n\n`));
-            controller.close();
-          }
-        },
-      });
-
-      return new NextResponse(readable, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
-        },
-      });
-    }
-
-    const response = await completion({
+    const result = await completion({
       model,
-      messages,
+      messages: [{ role: 'system', content: config.systemPrompt }, ...messages],
       stream: false,
       api_key: apiKey,
-      ...parameters,
     });
 
-    return NextResponse.json(response);
+    const output = extractOutput(result);
+    if (!output) {
+      console.error('SHIFA AI provider returned an empty or unsupported response', { requestId, module: moduleName });
+      return jsonError(502, 'AI_EMPTY_RESPONSE', requestId);
+    }
+
+    return NextResponse.json({ requestId, output });
   } catch (error) {
-    const formatted = formatErrorResponse(error, body?.provider);
-    console.error('API Route Error:', { error: formatted.error, details: formatted.details });
-    return NextResponse.json(
-      { error: formatted.error, details: formatted.details },
-      { status: formatted.statusCode }
-    );
+    // Never return provider error text, prompts, or credentials to the browser.
+    console.error('SHIFA AI request failed', {
+      requestId,
+      module: moduleName,
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+    });
+    return jsonError(502, 'AI_REQUEST_FAILED', requestId);
   }
 }
