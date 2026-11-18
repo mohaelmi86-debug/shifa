@@ -33,8 +33,8 @@ const MODULE_CONFIG: Record<AiModule, { modelEnv: string; allowedRoles: string[]
   },
 };
 
-function jsonError(status: number, code: string, requestId: string) {
-  return NextResponse.json({ error: code, requestId }, { status });
+function jsonError(status: number, code: string, requestId: string, headers?: HeadersInit) {
+  return NextResponse.json({ error: code, requestId }, { status, headers });
 }
 
 function extractOutput(result: unknown): string {
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
   const payload = body as { module?: unknown; messages?: unknown; stream?: unknown };
   if (payload.stream === true) return jsonError(400, 'STREAMING_NOT_SUPPORTED', requestId);
-  if (typeof payload.module !== 'string' || !Object.hasOwn(MODULE_CONFIG, payload.module)) {
+  if (typeof payload.module !== 'string' || !Object.prototype.hasOwnProperty.call(MODULE_CONFIG, payload.module)) {
     return jsonError(400, 'INVALID_MODULE', requestId);
   }
 
@@ -113,6 +113,9 @@ export async function POST(request: NextRequest) {
     if (totalChars > 24_000) return jsonError(413, 'CONVERSATION_TOO_LARGE', requestId);
     messages.push({ role: message.role, content: message.content });
   }
+  if (messages[messages.length - 1]?.role !== 'user') {
+    return jsonError(400, 'LAST_MESSAGE_MUST_BE_USER', requestId);
+  }
 
   try {
     const supabase = await createClient();
@@ -130,6 +133,19 @@ export async function POST(request: NextRequest) {
     }
     if (!config.allowedRoles.includes(profile.role)) {
       return jsonError(403, 'MODULE_NOT_AUTHORIZED', requestId);
+    }
+
+    // Durable, atomic limits shared by all server instances. Fail closed if the limiter is unavailable.
+    const { data: rateLimit, error: rateLimitError } = await supabase.rpc('consume_shifa_ai_rate_limit');
+    if (rateLimitError || !rateLimit || typeof rateLimit !== 'object') {
+      console.error('SHIFA AI rate limiter unavailable', { requestId });
+      return jsonError(503, 'AI_RATE_LIMIT_UNAVAILABLE', requestId);
+    }
+    if (rateLimit.allowed !== true) {
+      const retryAfter = Number.isInteger(rateLimit.retry_after_seconds)
+        ? Math.max(1, Math.min(86_400, rateLimit.retry_after_seconds))
+        : 60;
+      return jsonError(429, 'AI_RATE_LIMIT_EXCEEDED', requestId, { 'Retry-After': String(retryAfter) });
     }
 
     const provider = process.env.SHIFA_AI_PROVIDER;
