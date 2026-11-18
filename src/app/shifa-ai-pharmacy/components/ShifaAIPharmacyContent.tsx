@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { useChat } from '@/lib/hooks/useChat';
 
 type Tool = 'interactions' | 'substitutions' | 'dosage' | 'contraindications' | 'pregnancy' | 'renal';
 
@@ -38,7 +37,6 @@ export default function ShifaAIPharmacyContent() {
   const [loading, setLoading] = useState(false);
   const [showAlerts, setShowAlerts] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage } = useChat();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,8 +52,20 @@ export default function ShifaAIPharmacyContent() {
     setInput('');
     setLoading(true);
     try {
-      const response = await sendMessage(fullPrompt);
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      const response = await fetch('/api/ai/chat-completion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          module: 'professional',
+          messages: [{ role: 'user', content: fullPrompt }],
+        }),
+      });
+
+      const data: { output?: string; error?: string } = await response.json();
+      if (!response.ok || typeof data.output !== 'string') {
+        throw new Error(data.error || 'AI_SERVICE_ERROR');
+      }
+      setMessages(prev => [...prev, { role: 'assistant', content: data.output as string }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Erreur lors de la génération de la réponse. Veuillez réessayer.' }]);
     } finally {
