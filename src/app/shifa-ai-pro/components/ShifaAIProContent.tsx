@@ -105,7 +105,7 @@ export default function ShifaAIProContent() {
 
       {/* Disclaimer */}
       <div className="rounded-lg px-4 py-2.5 mb-4 text-xs" style={{ background: 'rgba(139,92,246,0.06)', color: '#5b21b6', border: '1px solid rgba(139,92,246,0.2)' }}>
-        ⚠️ SHIFA AI Clinical est un outil d'aide à la décision. Ses suggestions ne remplacent pas le jugement clinique du professionnel de santé. Aucune donnée patient réelle n'est utilisée.
+        ⚠️ SHIFA AI Clinical est un outil d&apos;aide à la décision. Ses suggestions ne remplacent pas le jugement clinique du professionnel de santé. Aucune donnée patient réelle n&apos;est utilisée.
       </div>
 
       <div className="flex gap-4 flex-1 min-h-0">
