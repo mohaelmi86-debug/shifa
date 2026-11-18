@@ -8,6 +8,7 @@ DECLARE
   v_trigger_count integer;
   v_policy_count integer;
   v_config text[];
+  v_security_definer boolean;
 BEGIN
   SELECT c.relrowsecurity
     INTO v_rls
@@ -82,6 +83,18 @@ BEGIN
   WHERE n.nspname = 'public'
     AND p.proname = 'review_registration_application'
     AND pg_get_function_identity_arguments(p.oid) = 'p_application_id uuid, p_decision text, p_review_note text';
+
+  SELECT p.prosecdef
+    INTO v_security_definer
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = 'review_registration_application'
+    AND pg_get_function_identity_arguments(p.oid) = 'p_application_id uuid, p_decision text, p_review_note text';
+
+  IF v_security_definer IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'FAIL: review RPC must be SECURITY DEFINER';
+  END IF;
 
   IF v_config IS NULL OR NOT ('search_path=public, pg_temp' = ANY(v_config)) THEN
     RAISE EXCEPTION 'FAIL: review RPC must pin its search_path';
