@@ -166,6 +166,23 @@ BEGIN
     RAISE EXCEPTION 'FAIL: patient consultation visibility must require verification';
   END IF;
 
+  IF position('private.is_verified_active_professional()' IN pg_get_functiondef(
+    'private.owns_professional_record(uuid)'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: professional-owned clinical records must require verified active status';
+  END IF;
+
+  SELECT count(*)
+    INTO v_policy_count
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND policyname LIKE '%_professional_verification_guard'
+    AND permissive = 'RESTRICTIVE';
+
+  IF v_policy_count < 19 THEN
+    RAISE EXCEPTION 'FAIL: expected restrictive verification guards on patients and clinical tables; found %', v_policy_count;
+  END IF;
+
   RAISE NOTICE 'PASS: registration and organization invitation privilege, RLS, trigger and RPC configuration assertions';
 END;
 $$;
