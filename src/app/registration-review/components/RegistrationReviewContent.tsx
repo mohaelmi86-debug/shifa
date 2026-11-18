@@ -39,7 +39,7 @@ export default function RegistrationReviewContent() {
   const [applications, setApplications] = useState<RegistrationApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [reviewNote, setReviewNote] = useState('');
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -77,7 +77,7 @@ export default function RegistrationReviewContent() {
     const { error: reviewError } = await supabase.rpc('review_registration_application', {
       p_application_id: application.id,
       p_decision: decision,
-      p_review_note: reviewNote.trim() || null,
+      p_review_note: reviewNotes[application.id]?.trim() || null,
     });
 
     if (reviewError) {
@@ -88,7 +88,7 @@ export default function RegistrationReviewContent() {
       setNotice(decision === 'approve'
         ? 'Dossier approuvé. Les droits ont été attribués.'
         : 'Candidature rejetée.');
-      setReviewNote('');
+      setReviewNotes(current => ({ ...current, [application.id]: '' }));
       await loadApplications();
     }
     setBusyId(null);
@@ -163,8 +163,8 @@ export default function RegistrationReviewContent() {
                   id={`review-note-${application.id}`}
                   className="input-field min-h-20 w-full"
                   maxLength={2000}
-                  value={reviewNote}
-                  onChange={event => setReviewNote(event.target.value)}
+                  value={reviewNotes[application.id] || ''}
+                  onChange={event => setReviewNotes(current => ({ ...current, [application.id]: event.target.value }))}
                   placeholder="Motif, vérifications effectuées, références de contrôle…"
                 />
                 <div className="mt-3 flex flex-wrap justify-end gap-2">
