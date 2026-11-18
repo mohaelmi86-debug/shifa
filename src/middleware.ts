@@ -44,13 +44,14 @@ function injectTokenFromHeader(request: NextRequest): void {
 }
 
 export async function middleware(request: NextRequest) {
+  // Transitional compatibility: the legacy browser storage fallback still uses this header.
+  // This must run before route filtering so authenticated API handlers can read the cookie too.
+  // Remove only after a tested migration to first-party Supabase cookies.
+  injectTokenFromHeader(request);
+
   const pathname = request.nextUrl.pathname;
   const roles = requiredRoles(pathname);
   if (!roles) return NextResponse.next();
-
-  // Transitional compatibility: the legacy browser storage fallback still uses this header.
-  // Remove only after a tested migration to first-party Supabase cookies.
-  injectTokenFromHeader(request);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
