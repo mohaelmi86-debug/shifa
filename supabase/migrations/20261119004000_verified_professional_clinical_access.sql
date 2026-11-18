@@ -97,7 +97,11 @@ AS RESTRICTIVE
 FOR SELECT
 TO authenticated
 USING (
-  private.user_role() <> 'professional'
+  NOT EXISTS (
+    SELECT 1 FROM public.user_profiles up
+    WHERE up.id = (SELECT auth.uid())
+      AND up.role::text = 'professional'
+  )
   OR EXISTS (
     SELECT 1
     FROM public.professionals pro
