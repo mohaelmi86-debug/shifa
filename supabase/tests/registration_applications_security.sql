@@ -146,24 +146,32 @@ BEGIN
     RAISE EXCEPTION 'FAIL: patient SELECT must have a restrictive guard for all professional profiles, including inactive ones, requiring verified active status';
   END IF;
 
-  IF position('pro.is_verified IS TRUE' IN pg_get_functiondef(
+  IF position('private.is_verified_active_professional()' IN pg_get_functiondef(
     'private.is_clinical_role()'::regprocedure
-  )) = 0 OR position('pro.status::text = ''active''' IN pg_get_functiondef(
-    'private.is_clinical_role()'::regprocedure
-  )) = 0 THEN
-    RAISE EXCEPTION 'FAIL: clinical role helper must require verified active professionals';
+  )) = 0 OR position('private.is_verified_active_professional()' IN pg_get_functiondef(
+    'private.is_verified_active_professional()'::regprocedure
+  )) > 0 THEN
+    RAISE EXCEPTION 'FAIL: clinical role helper must delegate to the verified active professional predicate';
   END IF;
 
-  IF position('pro.is_verified IS TRUE' IN pg_get_functiondef(
+  IF position('private.is_verified_active_professional()' IN pg_get_functiondef(
     'private.belongs_to_org(uuid)'::regprocedure
   )) = 0 THEN
     RAISE EXCEPTION 'FAIL: professional organization membership must require verification';
   END IF;
 
-  IF position('pro.is_verified IS TRUE' IN pg_get_functiondef(
+  IF position('private.is_verified_active_professional()' IN pg_get_functiondef(
     'private.professional_has_patient_consultation(uuid)'::regprocedure
   )) = 0 THEN
     RAISE EXCEPTION 'FAIL: patient consultation visibility must require verification';
+  END IF;
+
+  IF position('pro.is_verified IS TRUE' IN pg_get_functiondef(
+    'private.is_verified_active_professional()'::regprocedure
+  )) = 0 OR position('pro.status::text = ''active''' IN pg_get_functiondef(
+    'private.is_verified_active_professional()'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: central predicate must require verified active professional status';
   END IF;
 
   IF position('private.is_verified_active_professional()' IN pg_get_functiondef(
