@@ -70,3 +70,17 @@ The initial foundation migration contains destructive schema operations such as 
 ## 6. Security note
 
 The public repository root contains a file named `.env`. Its contents were deliberately not opened. The repository owner should inspect it through a secure local environment; if it contains any real secret, revoke/rotate the credential immediately and remove the secret from the repository history using a controlled cleanup process. Never commit service-role keys, database passwords, or private API secrets.
+
+## 7. Additional read-only RLS and privilege findings
+
+A second read-only inspection of `pg_policies` and `information_schema.role_table_grants` confirms:
+
+- `authenticated` currently has broad table-level privileges on all five inspected clinical tables, including `TRUNCATE`, `REFERENCES`, and `TRIGGER` alongside normal CRUD. RLS does not filter `TRUNCATE`; this is a high-priority privilege-hardening issue. The proposed revocation must be designed and tested carefully, and must not be run directly in production as an unreviewed one-liner.
+- The restrictive `clinical_scope_guard` is present on consultations, health_records, prescriptions, and patient_documents. However, several permissive policies still grant broad access paths; restrictive policies constrain them only if their predicate is correct and applies to the relevant role/command.
+- Clinical SELECT policies still contain direct platform-admin and organization-admin access paths, inconsistent with the approved no-standing-clinical-access rule for platform admins and restricted-only hospital administrators.
+- `health_records_patient_insert` compares `health_records.patient_id` to `auth.uid()`, although the FK maps that column to `patients.id`. This is an identity-model mismatch and must be resolved without breaking patient-owned writes.
+- `patient_documents_uploader_select` grants a read path to the uploader without checking an active care relationship. Its restrictive guard also passes a patient identifier that is an `auth.users.id`, while the shared guard's patient lookup model expects `patients.id`.
+- Storage policies for `documents`, `lab-reports`, and `medical-images` currently rely on the first folder segment matching the authenticated user's ID (or platform-admin allowance in some buckets). They do not demonstrate an active-care-relationship check for clinical documents.
+- The `patients_select` policy allows organization-admin and platform-admin access to the full patient row. This conflicts with the approved restricted admin model; implement a deliberately minimized administrative projection rather than granting full-table clinical identity access.
+
+These are policy/grant observations, not proof that every path is exploitable in the current application. Validate them with real JWT/API tests and synthetic fixtures before rollout.
