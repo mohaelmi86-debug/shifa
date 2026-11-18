@@ -284,6 +284,12 @@ BEGIN
     RAISE EXCEPTION 'FAIL: approval of a valid professional license or registration must activate the verified profile';
   END IF;
 
+  IF position('p_decision IS NULL' IN pg_get_functiondef(
+    'public.review_professional_credential(uuid,text,text)'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: credential review RPC must reject a NULL decision explicitly';
+  END IF;
+
   RAISE NOTICE 'PASS: registration and organization invitation privilege, RLS, trigger and RPC configuration assertions';
 END;
 $$;
