@@ -259,6 +259,15 @@ BEGIN
     RAISE EXCEPTION 'FAIL: credential Storage access must have restrictive upload and read guards';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+      AND policyname = 'professional_credentials_storage_delete_guard'
+      AND permissive = 'RESTRICTIVE' AND cmd = 'DELETE'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: credential cleanup must be restricted to the uploading user's folder';
+  END IF;
+
   IF position('private.org_admin_can_access_professional' IN pg_get_functiondef(
     'public.review_professional_credential(uuid,text,text)'::regprocedure
   )) = 0 OR position('SECURITY DEFINER' IN upper(pg_get_functiondef(
