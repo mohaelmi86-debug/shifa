@@ -64,8 +64,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       registrationData?: Record<string, string>;
     } = {}
   ) => {
-    // Only profile fields are forwarded. Authorization roles are never accepted
-    // from user-editable signup metadata.
+    // Profile fields and optional application details are forwarded as untrusted metadata.
+    // Authorization roles, organization IDs, and verification flags are never accepted.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
