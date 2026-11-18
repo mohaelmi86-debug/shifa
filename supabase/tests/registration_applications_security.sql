@@ -100,6 +100,36 @@ BEGIN
     RAISE EXCEPTION 'FAIL: review RPC must pin its search_path';
   END IF;
 
-  RAISE NOTICE 'PASS: registration application privilege, RLS, trigger and RPC configuration assertions';
+  -- Organization invitation security checks (requires migration 20261119003000).
+  SELECT c.relrowsecurity
+    INTO v_rls
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'organization_professional_invitations';
+
+  IF v_rls IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'FAIL: RLS must be enabled on organization_professional_invitations';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.organization_professional_invitations', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.organization_professional_invitations', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.organization_professional_invitations', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.organization_professional_invitations', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.organization_professional_invitations', 'DELETE') THEN
+    RAISE EXCEPTION 'FAIL: invitation tokens and rows must not be directly accessible to clients';
+  END IF;
+
+  IF has_function_privilege('anon', 'public.create_professional_invitation(text,text,text,text,text,text,text,text)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.accept_professional_invitation(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: anon must not execute invitation RPCs';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'public.create_professional_invitation(text,text,text,text,text,text,text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.accept_professional_invitation(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: authenticated users need invitation RPC grants (authorization remains enforced inside functions)';
+  END IF;
+
+  RAISE NOTICE 'PASS: registration and organization invitation privilege, RLS, trigger and RPC configuration assertions';
 END;
 $$;
