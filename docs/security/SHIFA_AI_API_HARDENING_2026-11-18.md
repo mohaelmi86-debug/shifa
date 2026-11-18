@@ -16,7 +16,7 @@ Nature : durcissement applicatif incrémental ; aucun changement Supabase ni dé
   - `organization` → rôle `org_admin`
 - Le prompt système est défini côté serveur ; les messages système fournis par le navigateur sont rejetés.
 - Le navigateur ne choisit plus le fournisseur, le modèle, les clés, le streaming ni les paramètres arbitraires du SDK.
-- Les limites de requête sont contrôlées : 32 Ko de corps annoncés, 20 messages maximum, 8 000 caractères par message et 24 000 caractères cumulés.
+- Les limites de requête sont contrôlées : 32 Ko sur les octets réels du corps HTTP (indépendamment de l'en-tête Content-Length), 20 messages maximum, 8 000 caractères par message et 24 000 caractères cumulés.
 - Les erreurs publiques sont normalisées et ne renvoient plus les détails bruts du fournisseur.
 - Les trois écrans patient, professionnel et organisation utilisent le nouveau contrat `{ module, messages }` et lisent `output`. Ils vérifient `response.ok` avant d'afficher la réponse.
 - Le mode professionnel sélectionné est conservé comme contexte de la question, mais ne confère aucun droit d'accès aux données patient.
