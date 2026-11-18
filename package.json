@@ -85,7 +85,6 @@
   },
   "overrides": {
     "esbuild": "^0.28.1",
-    "postcss-selector-parser": "^6.1.5",
-    "postcss": "^8.5.23"
+    "postcss-selector-parser": "^6.1.5"
   }
 }
