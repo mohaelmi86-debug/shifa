@@ -33,9 +33,27 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
     setRegisterError('');
     try {
       await signUp(data.adminEmail, data.password, {
-        fullName: `${data.adminFirstName} ${data.adminLastName}`,
+        fullName: `${data.adminFirstName.trim()} ${data.adminLastName.trim()}`,
+        firstName: data.adminFirstName.trim(),
+        lastName: data.adminLastName.trim(),
+        country: data.country,
+        phone: data.phone.trim(),
+        registrationType: 'organization',
+        registrationData: {
+          organizationName: data.orgName.trim(),
+          organizationType: data.orgType,
+          country: data.country,
+          city: data.city.trim(),
+          address: data.address.trim(),
+          phone: data.phone.trim(),
+          contactEmail: data.email.trim().toLowerCase(),
+          registrationNumber: data.registrationNumber.trim(),
+          adminFirstName: data.adminFirstName.trim(),
+          adminLastName: data.adminLastName.trim(),
+          adminEmail: data.adminEmail.trim().toLowerCase(),
+        },
       });
-      router.push('/administration-tablissement');
+      router.push('/registration-pending');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
