@@ -6,7 +6,7 @@ const PATIENT_ROUTES = [
   '/dossier-de-sant', '/patient-messages', '/shifa-card', '/patient-settings',
 ];
 const PROFESSIONAL_ROUTES = [
-  '/workspace-professionnel', '/consultation-workspace', '/pro-patients',
+  '/workspace-professionnel', '/professional-verification', '/consultation-workspace', '/pro-patients',
   '/pro-agenda', '/pro-prescriptions', '/pro-resultats', '/pro-messages', '/pro-parametres',
 ];
 const ADMIN_ROUTES = [
