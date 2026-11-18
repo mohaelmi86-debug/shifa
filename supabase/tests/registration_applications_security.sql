@@ -290,6 +290,34 @@ BEGIN
     RAISE EXCEPTION 'FAIL: credential review RPC must reject a NULL decision explicitly';
   END IF;
 
+  -- Expired credential processor (requires migration 20261119006000).
+  IF NOT has_function_privilege('service_role', 'public.process_expired_professional_credentials()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.process_expired_professional_credentials()', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.process_expired_professional_credentials()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: expiry processor must be executable only by service_role';
+  END IF;
+
+  IF position('SECURITY DEFINER' IN upper(pg_get_functiondef(
+    'public.process_expired_professional_credentials()'::regprocedure
+  ))) = 0
+     OR position('expires_at < current_date' IN pg_get_functiondef(
+       'public.process_expired_professional_credentials()'::regprocedure
+     )) = 0
+     OR position('valid_pc.expires_at IS NULL OR valid_pc.expires_at >= current_date' IN pg_get_functiondef(
+       'public.process_expired_professional_credentials()'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: expiry processor must use server-side execution and preserve currently valid credentials';
+  END IF;
+
+  IF position('professional_organizations' IN pg_get_functiondef(
+    'public.process_expired_professional_credentials()'::regprocedure
+  )) = 0
+     OR position('professional_credential_expired' IN pg_get_functiondef(
+       'public.process_expired_professional_credentials()'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: expiry processor must suspend organization membership and create an audit record';
+  END IF;
+
   RAISE NOTICE 'PASS: registration and organization invitation privilege, RLS, trigger and RPC configuration assertions';
 END;
 $$;
