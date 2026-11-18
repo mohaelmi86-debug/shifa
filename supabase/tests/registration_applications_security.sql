@@ -130,6 +130,39 @@ BEGIN
     RAISE EXCEPTION 'FAIL: authenticated users need invitation RPC grants (authorization remains enforced inside functions)';
   END IF;
 
+  -- Verified-professional clinical access checks (requires migration 20261119004000).
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'patients'
+      AND policyname = 'patients_professional_verification_guard'
+      AND permissive = 'RESTRICTIVE'
+      AND cmd = 'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: patient SELECT must have a restrictive professional verification guard';
+  END IF;
+
+  IF position('pro.is_verified IS TRUE' IN pg_get_functiondef(
+    'private.is_clinical_role()'::regprocedure
+  )) = 0 OR position('pro.status::text = ''active''' IN pg_get_functiondef(
+    'private.is_clinical_role()'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: clinical role helper must require verified active professionals';
+  END IF;
+
+  IF position('pro.is_verified IS TRUE' IN pg_get_functiondef(
+    'private.belongs_to_org(uuid)'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: professional organization membership must require verification';
+  END IF;
+
+  IF position('pro.is_verified IS TRUE' IN pg_get_functiondef(
+    'private.professional_has_patient_consultation(uuid)'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: patient consultation visibility must require verification';
+  END IF;
+
   RAISE NOTICE 'PASS: registration and organization invitation privilege, RLS, trigger and RPC configuration assertions';
 END;
 $$;
