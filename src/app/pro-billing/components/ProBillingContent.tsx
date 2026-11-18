@@ -348,7 +348,7 @@ export default function ProBillingContent() {
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{act.type} · {act.insurer}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <CurrencyDisplay amount={act.covered || 0} className="text-sm font-bold" style={{ color: '#16a34a' }} />
+                    <CurrencyDisplay amount={act.covered || 0} className="text-sm font-bold" color="#16a34a" currency="XOF" />
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>à rembourser</p>
                   </div>
                   <button className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>
