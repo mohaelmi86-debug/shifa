@@ -61,3 +61,14 @@ jobs:
           else
             echo "Expected rejection confirmed: unsafe admin policy was detected."
           fi
+      - name: Contract rejects an admin bypass hidden in a helper
+        shell: bash
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "DROP POLICY simulated_platform_admin_bypass ON public.patients;"
+          psql -v ON_ERROR_STOP=1 -c "CREATE OR REPLACE FUNCTION private.belongs_to_org(target_org_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS \\$\\$ SELECT private.is_platform_admin() \\$\\$;"
+          if psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_v2_policy_contract.sql; then
+            echo "::error::Policy contract did not reject the helper-level admin bypass"
+            exit 1
+          else
+            echo "Expected rejection confirmed: helper-level admin bypass was detected."
+          fi
