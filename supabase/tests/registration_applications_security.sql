@@ -488,6 +488,41 @@ BEGIN
     RAISE EXCEPTION 'FAIL: professional-owned appointment, health record and prescription rows must have exact-tenant restrictive guards';
   END IF;
 
+  -- Availability and transfer-notification tenant boundaries (migration 20261119008000).
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'availability_slots'
+      AND policyname = 'availability_slots_professional_org_scope_guard'
+      AND permissive = 'RESTRICTIVE'
+      AND cmd = 'ALL'
+      AND qual ILIKE '%owns_professional_record_in_org%'
+      AND with_check ILIKE '%owns_professional_record_in_org%'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: professional availability writes must require exact active organization membership';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'private.is_transfer_notification_recipient(uuid,uuid)', 'EXECUTE')
+     OR has_function_privilege('anon', 'private.is_transfer_notification_recipient(uuid,uuid)', 'EXECUTE')
+     OR position('po.organization_id IN' IN pg_get_functiondef(
+       'private.is_transfer_notification_recipient(uuid,uuid)'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: transfer notification recipient validation must be authenticated-only and tenant-scoped';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'transfer_notifications'
+      AND policyname = 'transfer_notifications_insert_scope_guard'
+      AND permissive = 'RESTRICTIVE'
+      AND cmd = 'INSERT'
+      AND with_check ILIKE '%can_access_transfer%'
+      AND with_check ILIKE '%is_transfer_notification_recipient%'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: transfer notifications must be linked to an accessible transfer and valid participant';
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
