@@ -661,14 +661,20 @@ BEGIN
 
   SELECT count(*)
     INTO v_expected_clinical_table_count
-  FROM information_schema.tables
-  WHERE table_schema = 'public'
-    AND table_name = ANY(ARRAY[
-      'appointments','blood_requests','consultations','health_records',
-      'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
-      'lab_samples','operating_room_schedules','patient_transfers',
-      'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
-    ]);
+  FROM (
+    SELECT table_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = ANY(ARRAY[
+        'appointments','blood_requests','consultations','health_records',
+        'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
+        'lab_samples','operating_room_schedules','patient_transfers',
+        'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
+      ])
+      AND column_name IN ('patient_id', 'organization_id')
+    GROUP BY table_name
+    HAVING count(DISTINCT column_name) = 2
+  ) AS scoped_tables;
 
   SELECT count(*)
     INTO v_actual_clinical_policy_count
