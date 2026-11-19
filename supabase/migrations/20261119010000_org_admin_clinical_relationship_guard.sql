@@ -164,6 +164,16 @@ CREATE POLICY org_admin_clinical_relationship_guard
     OR private.professional_has_patient_consultation(id)
   );
 
+-- A restrictive guard only narrows existing policies; it cannot grant access.
+-- Add the explicit care-team SELECT path so a verified professional with an
+-- appointment can see the patient while tenant/platform administrators cannot.
+DROP POLICY IF EXISTS patients_care_team_select ON public.patients;
+CREATE POLICY patients_care_team_select
+  ON public.patients
+  FOR SELECT
+  TO authenticated
+  USING (private.professional_has_patient_consultation(id));
+
 -- patient_documents.patient_id references auth.users(id), not patients.id.
 -- Use the actual FK semantics and do not let uploader identity grant clinical reads.
 CREATE OR REPLACE FUNCTION private.can_access_patient_document(
