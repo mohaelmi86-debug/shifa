@@ -50,3 +50,25 @@ Un état actuel d'ACL peut être observé, mais il ne permet pas de prouver quel
 - RLS activé n'est pas équivalent à RLS forcé. Étudier les cas où `FORCE ROW LEVEL SECURITY` est pertinent, en tenant compte des propriétaires, fonctions privilégiées et chemins d'administration.
 - Ne jamais exposer de dossiers patients ni pièces médicales pendant les contrôles de schéma.
 - Maintenir cette PR en brouillon jusqu'à la validation du schéma réel et de la CI complète.
+
+
+## Inventaire complémentaire du schéma distant — 19/11/2026
+
+Un second relevé metadata-only a confirmé les volumes suivants :
+
+| Objet | Nombre |
+|---|---:|
+| Colonnes dans les tables publiques | 994 |
+| Contraintes | 585 |
+| Index | 295 |
+| Triggers | 25 |
+| Fonctions dans `public` et `private` | 35 |
+| Policies RLS | 257 |
+
+Les inventaires détaillés des colonnes, contraintes, index, fonctions, triggers, politiques et ACL sont disponibles dans les requêtes de `../tests/schema_reconciliation_metadata.sql` et `acl-review.sql`. Les résultats complets doivent être exportés en artefacts de comparaison lors de l'exécution sur une base de référence et un staging.
+
+## Problème d'ordre des migrations
+
+Le fichier de branche `20261118220000_shifa_ai_rate_limits.sql` porte un timestamp antérieur à la version distante déjà enregistrée `20261118225231`. Il est donc potentiellement considéré comme une migration locale en retard par rapport au ledger distant. Les migrations suivantes `20261118233000` et `20261119...` sont postérieures.
+
+**Ne pas supposer que la migration antérieure peut être poussée sans impact.** Il faut d'abord déterminer si son contenu est entièrement absent du projet distant, si des objets équivalents existent déjà et si son application est sûre/idempotente. Aucun réordonnancement de fichier ni réparation de ledger ne doit être effectué sans cette preuve.
