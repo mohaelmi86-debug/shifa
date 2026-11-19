@@ -24,8 +24,9 @@ BEGIN
     'prescriptions','appointments','lab_results','vital_signs','patient_transfers'
   ] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    -- Deny-all fixture: a positive test must never rely on an unconditional TRUE guard.
     EXECUTE format(
-      'CREATE POLICY contract_guard ON public.%I AS RESTRICTIVE FOR ALL TO authenticated USING (true) WITH CHECK (true)',
+      'CREATE POLICY contract_guard ON public.%I AS RESTRICTIVE FOR ALL TO authenticated USING (false) WITH CHECK (false)',
       t
     );
   END LOOP;
