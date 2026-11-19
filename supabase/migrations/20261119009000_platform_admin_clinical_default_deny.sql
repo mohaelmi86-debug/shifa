@@ -61,8 +61,7 @@ BEGIN
       WHERE c.oid = to_regclass(format('public.%I', v_table));
 
       IF v_rls IS DISTINCT FROM TRUE THEN
-        RAISE EXCEPTION
-          'Refusing to install platform-admin clinical guard: RLS is not enabled on public.%', v_table;
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', v_table);
       END IF;
 
       EXECUTE format(
