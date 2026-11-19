@@ -164,6 +164,87 @@ CREATE POLICY org_admin_clinical_relationship_guard
     OR private.professional_has_patient_consultation(id)
   );
 
+-- patient_documents.patient_id references auth.users(id), not patients.id.
+-- Use the actual FK semantics and do not let uploader identity grant clinical reads.
+CREATE OR REPLACE FUNCTION private.can_access_patient_document(
+  p_patient_user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth, pg_temp
+AS $function$
+  SELECT p_patient_user_id IS NOT NULL
+    AND (
+      p_patient_user_id = (SELECT auth.uid())
+      OR EXISTS (
+        SELECT 1
+        FROM public.patients AS patient
+        WHERE patient.user_id = p_patient_user_id
+          AND private.professional_has_patient_consultation(patient.id)
+      )
+    );
+$function$;
+
+REVOKE ALL ON FUNCTION private.can_access_patient_document(uuid)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.can_access_patient_document(uuid)
+  TO authenticated;
+
+DROP POLICY IF EXISTS clinical_scope_guard ON public.patient_documents;
+DROP POLICY IF EXISTS patient_documents_uploader_select ON public.patient_documents;
+DROP POLICY IF EXISTS patient_documents_uploader_insert ON public.patient_documents;
+
+DROP POLICY IF EXISTS patient_documents_relationship_select ON public.patient_documents;
+CREATE POLICY patient_documents_relationship_select
+  ON public.patient_documents
+  AS RESTRICTIVE
+  FOR SELECT
+  TO authenticated
+  USING (private.can_access_patient_document(patient_id));
+
+DROP POLICY IF EXISTS patient_documents_relationship_insert ON public.patient_documents;
+CREATE POLICY patient_documents_relationship_insert
+  ON public.patient_documents
+  AS RESTRICTIVE
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    private.can_access_patient_document(patient_id)
+    AND uploaded_by = (SELECT auth.uid())
+  );
+
+DROP POLICY IF EXISTS patient_documents_relationship_update ON public.patient_documents;
+CREATE POLICY patient_documents_relationship_update
+  ON public.patient_documents
+  AS RESTRICTIVE
+  FOR UPDATE
+  TO authenticated
+  USING (private.can_access_patient_document(patient_id))
+  WITH CHECK (
+    private.can_access_patient_document(patient_id)
+    AND uploaded_by = (SELECT auth.uid())
+  );
+
+DROP POLICY IF EXISTS patient_documents_relationship_delete ON public.patient_documents;
+CREATE POLICY patient_documents_relationship_delete
+  ON public.patient_documents
+  AS RESTRICTIVE
+  FOR DELETE
+  TO authenticated
+  USING (
+    patient_id = (SELECT auth.uid())
+    OR (
+      EXISTS (
+        SELECT 1
+        FROM public.patients AS patient
+        WHERE patient.user_id = patient_documents.patient_id
+          AND private.professional_has_patient_consultation(patient.id)
+      )
+    )
+  );
+
 -- SHIFA cards contain patient identity data but do not carry organization_id.
 -- Access is limited to the card owner or a professional with an appointment.
 DROP POLICY IF EXISTS org_admin_clinical_relationship_guard ON public.shifa_cards;
