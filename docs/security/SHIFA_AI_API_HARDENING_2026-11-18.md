@@ -36,6 +36,7 @@ Variables à configurer dans l'environnement serveur de déploiement (jamais dan
 | `SHIFA_AI_MODEL_PROFESSIONAL` | Identifiant de modèle choisi pour le module professionnel |
 | `SHIFA_AI_MODEL_ORGANIZATION` | Identifiant de modèle choisi pour le module organisation |
 | `SHIFA_AI_MODEL_INSTITUTION` | Identifiant de modèle choisi pour le module institution (ministères/assureurs) |
+| `SHIFA_AI_MODEL_RESEARCH` | Identifiant de modèle choisi pour le module recherche (universités) |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `PERPLEXITY_API_KEY` | Clé serveur du fournisseur choisi |
 
 Le handler renvoie `503 AI_SERVICE_NOT_CONFIGURED` si la configuration requise manque. Il ne bascule pas silencieusement sur un fournisseur ou un modèle de secours.
@@ -128,3 +129,12 @@ Le workflow génère désormais un `package-lock.json` à partir de `package.jso
 - L'écran institution transmet désormais `{ module: 'institution', messages }`, n'envoie plus de message `system` depuis le navigateur et lit le champ `output` renvoyé par l'API.
 - Le middleware protège les écrans IA patient, professionnel, pharmacie, organisation, institution et workspace selon les rôles du profil serveur. L'accès institutionnel est limité à `ministry` et `insurance`.
 - La validation TypeScript, ESLint, build et tests SQL doit être confirmée sur le dernier commit avant de considérer ce correctif terminé.
+
+
+## 11. SHIFA AI Research et tests HTTP — 19 novembre 2026
+
+- Le module `research` est désormais défini côté serveur avec `SHIFA_AI_MODEL_RESEARCH` et accès limité au rôle `university`.
+- Le prompt de recherche est injecté côté serveur ; le navigateur ne peut plus fournir son propre message `system`. Les références bibliographiques ne doivent jamais être inventées et les données directement identifiantes / dossiers médicaux individuels sont exclus.
+- La page `/shifa-ai-research` est protégée par le middleware pour les seuls comptes universitaires et utilise le contexte institutionnel dans la navigation.
+- Ajout d'un harnais Vitest et de tests d'intégration de la route HTTP : rejet du rôle `system` client, module inconnu, session absente, rôle non autorisé, succès université, quota 429/Retry-After, configuration manquante et non-divulgation des erreurs fournisseur.
+- La CI exécute désormais ces tests avant ESLint et le build. Leur résultat doit être confirmé sur le HEAD le plus récent ; aucune exécution réelle du fournisseur IA n'est simulée comme un succès.
