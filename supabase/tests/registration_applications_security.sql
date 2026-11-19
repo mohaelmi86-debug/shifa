@@ -458,6 +458,36 @@ BEGIN
     RAISE EXCEPTION 'FAIL: expiry reminders must notify only active admins of the owning organization with recipient-specific idempotency';
   END IF;
 
+  -- Tenant scope for professional-owned clinical rows (migration 20261119008000).
+  IF NOT has_function_privilege('authenticated', 'private.owns_professional_record_in_org(uuid,uuid)', 'EXECUTE')
+     OR has_function_privilege('anon', 'private.owns_professional_record_in_org(uuid,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: exact-organization professional ownership helper grants are not correctly scoped';
+  END IF;
+
+  IF position('po.organization_id = p_organization_id' IN pg_get_functiondef(
+    'private.owns_professional_record_in_org(uuid,uuid)'::regprocedure
+  )) = 0
+     OR position('po.status::text = ''active''' IN pg_get_functiondef(
+       'private.owns_professional_record_in_org(uuid,uuid)'::regprocedure
+     )) = 0
+     OR position('po.invitation_status' IN pg_get_functiondef(
+       'private.owns_professional_record_in_org(uuid,uuid)'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: professional-owned clinical access must require accepted, active membership in the exact organization';
+  END IF;
+
+  IF (SELECT count(*) FROM pg_policies
+      WHERE schemaname = 'public'
+        AND policyname IN (
+          'appointments_professional_org_scope_guard',
+          'health_records_professional_org_scope_guard',
+          'prescriptions_professional_org_scope_guard'
+        )
+        AND permissive = 'RESTRICTIVE'
+        AND cmd = 'ALL') < 3 THEN
+    RAISE EXCEPTION 'FAIL: professional-owned appointment, health record and prescription rows must have exact-tenant restrictive guards';
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
