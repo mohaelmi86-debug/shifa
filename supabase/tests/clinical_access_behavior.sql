@@ -4,13 +4,47 @@
 
 BEGIN;
 
-INSERT INTO auth.users (id, email) VALUES
-  ('10000000-0000-4000-8000-000000000001', 'ci-patient@shifa.invalid'),
-  ('10000000-0000-4000-8000-000000000002', 'ci-verified-professional@shifa.invalid'),
-  ('10000000-0000-4000-8000-000000000003', 'ci-pending-professional@shifa.invalid'),
-  ('10000000-0000-4000-8000-000000000004', 'ci-org-admin@shifa.invalid'),
-  ('10000000-0000-4000-8000-000000000005', 'ci-platform-admin@shifa.invalid')
+INSERT INTO auth.users (id, email, raw_app_meta_data) VALUES
+  ('10000000-0000-4000-8000-000000000001', 'ci-patient@shifa.invalid', '{"role":"patient"}'::jsonb),
+  ('10000000-0000-4000-8000-000000000002', 'ci-verified-professional@shifa.invalid', '{"role":"professional"}'::jsonb),
+  ('10000000-0000-4000-8000-000000000003', 'ci-pending-professional@shifa.invalid', '{"role":"professional"}'::jsonb),
+  ('10000000-0000-4000-8000-000000000004', 'ci-org-admin@shifa.invalid', '{"role":"org_admin"}'::jsonb),
+  ('10000000-0000-4000-8000-000000000005', 'ci-platform-admin@shifa.invalid', '{"role":"platform_admin"}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
+
+DO $signup_assertions$
+DECLARE
+  v_professional_count integer;
+  v_patient_count integer;
+BEGIN
+  IF (SELECT role::text FROM public.user_profiles WHERE id = '10000000-0000-4000-8000-000000000004') <> 'patient'
+     OR (SELECT role::text FROM public.user_profiles WHERE id = '10000000-0000-4000-8000-000000000005') <> 'patient' THEN
+    RAISE EXCEPTION 'FAIL: public signup must never provision org_admin or platform_admin from app metadata';
+  END IF;
+
+  SELECT count(*) INTO v_professional_count
+  FROM public.professionals
+  WHERE user_id IN (
+    '10000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000003'
+  ) AND NULLIF(TRIM(profession), '') IS NOT NULL
+    AND is_verified IS FALSE AND status::text = 'pending';
+  IF v_professional_count <> 2 THEN
+    RAISE EXCEPTION 'FAIL: professional signup must create pending, unverified professional profiles with a required profession title';
+  END IF;
+
+  SELECT count(*) INTO v_patient_count
+  FROM public.patients
+  WHERE user_id IN (
+    '10000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000004',
+    '10000000-0000-4000-8000-000000000005'
+  ) AND shifa_id IS NOT NULL;
+  IF v_patient_count <> 3 THEN
+    RAISE EXCEPTION 'FAIL: patient signup must create patient identity rows with SHIFA IDs';
+  END IF;
+END;
+$signup_assertions$;
 
 -- The auth trigger creates a default patient row for public signups. Remove
 -- those disposable auto-created rows so this suite can install one known patient fixture.
@@ -21,6 +55,11 @@ WHERE user_id IN (
   '10000000-0000-4000-8000-000000000003',
   '10000000-0000-4000-8000-000000000004',
   '10000000-0000-4000-8000-000000000005'
+);
+DELETE FROM public.professionals
+WHERE user_id IN (
+  '10000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000003'
 );
 
 INSERT INTO public.user_profiles (id, email, full_name, role, is_active) VALUES
