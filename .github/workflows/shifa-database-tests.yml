@@ -80,9 +80,9 @@ jobs:
             created_at timestamptz DEFAULT now()
           );
           CREATE FUNCTION private.can_access_transfer(p_transfer_id uuid)
-          RETURNS boolean LANGUAGE sql STABLE AS $
+          RETURNS boolean LANGUAGE sql STABLE AS $$
             SELECT false
-          $;
+          $$;
           CREATE TABLE auth.users (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             email text UNIQUE,
