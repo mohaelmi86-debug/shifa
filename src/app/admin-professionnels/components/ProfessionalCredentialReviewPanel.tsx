@@ -203,41 +203,5 @@ export default function ProfessionalCredentialReviewPanel() {
         </>
       )}
     </section>
-          )}
-          {rows.length === 0 ? (
-            <p className="text-sm mt-5" style={{ color: 'var(--muted-foreground)' }}>Aucun justificatif en attente pour votre établissement.</p>
-          ) : (
-            <div className="mt-5 space-y-4">
-        <p className="text-sm mt-5" style={{ color: 'var(--muted-foreground)' }}>Aucun justificatif en attente pour votre établissement.</p>
-      ) : (
-        <div className="mt-5 space-y-4">
-          {rows.map(row => {
-            const person = row.professionals;
-            return (
-              <article key={row.id} className="rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{person ? person.first_name + ' ' + person.last_name : 'Professionnel'}</p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{person?.profession || 'Profession non renseignée'} · {labels[row.credential_type] || row.credential_type}</p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{row.document_name} · {(row.file_size / 1024 / 1024).toFixed(2)} Mo · Déposé le {new Date(row.created_at).toLocaleDateString('fr-FR')}</p>
-                    {row.license_number && <p className="text-xs mt-1">N° de licence : {row.license_number}</p>}
-                    {row.expires_at && <p className="text-xs mt-1">Expiration : {new Date(row.expires_at).toLocaleDateString('fr-FR')}</p>}
-                  </div>
-                  <button type="button" onClick={() => void openDocument(row)} className="btn-secondary text-xs px-3 py-2">Ouvrir le document</button>
-                </div>
-                <label className="block text-xs font-semibold mt-4 mb-1" htmlFor={'review-note-' + row.id}>Note de contrôle / motif de refus</label>
-                <textarea id={'review-note-' + row.id} value={notes[row.id] || ''} onChange={e => setNotes(current => ({ ...current, [row.id]: e.target.value.slice(0, 2000) }))} maxLength={2000} rows={2} className="input-field w-full text-sm" placeholder="Observations, référence du registre, motif de refus…" />
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <button type="button" disabled={busyId === row.id} onClick={() => void review(row, 'approve')} className="btn-primary text-xs px-4 py-2 disabled:opacity-50">{busyId === row.id ? 'Enregistrement…' : 'Valider le justificatif'}</button>
-                  <button type="button" disabled={busyId === row.id} onClick={() => void review(row, 'reject')} className="btn-secondary text-xs px-4 py-2 disabled:opacity-50">Refuser</button>
-                </div>
-              </article>
-            );
-          })}
-            </div>
-          )}
-        </>
-      )}
-    </section>
   );
 }
