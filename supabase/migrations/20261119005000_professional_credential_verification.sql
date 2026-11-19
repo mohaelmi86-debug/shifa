@@ -164,7 +164,7 @@ USING (
       SELECT 1
       FROM public.professional_credentials pc
       WHERE pc.storage_path = name
-        AND private.org_admin_can_access_professional(pc.professional_id)
+        AND private.org_admin_can_access_professional_in_org(pc.professional_id, pc.organization_id)
     )
     OR private.is_platform_admin()
   )
