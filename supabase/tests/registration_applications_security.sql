@@ -589,7 +589,7 @@ BEGIN
   IF position('up.role::text = ''platform_admin''' IN pg_get_functiondef(
        'private.is_platform_admin_clinical_access_denied()'::regprocedure
      )) = 0
-     OR position('SET search_path TO ''pg_catalog'', ''public'', ''auth'', ''pg_temp''' IN
+     OR position('SET search_path TO ''pg_catalog'', ''auth'', ''public'', ''pg_temp''' IN
        pg_get_functiondef('private.is_platform_admin_clinical_access_denied()'::regprocedure)
      ) = 0 THEN
     RAISE EXCEPTION 'FAIL: platform-admin clinical deny helper must use the platform role and hardened search_path';
