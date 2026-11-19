@@ -4,6 +4,31 @@
 -- workflows (service_role); authenticated clients may create only their own.
 -- This migration is additive and must be tested on staging before production.
 
+-- The historical repository baseline exposes public.is_platform_admin(),
+-- while the linked Supabase project uses private.is_platform_admin().
+-- Create a private compatibility wrapper only on environments that lack it.
+DO $compat$
+BEGIN
+  IF to_regprocedure('private.is_platform_admin()') IS NULL THEN
+    IF to_regprocedure('public.is_platform_admin()') IS NULL THEN
+      RAISE EXCEPTION 'Neither private.is_platform_admin() nor legacy public.is_platform_admin() exists';
+    END IF;
+    EXECUTE $function$
+      CREATE FUNCTION private.is_platform_admin()
+      RETURNS boolean
+      LANGUAGE sql
+      STABLE
+      SECURITY DEFINER
+      SET search_path = pg_catalog, public, auth, pg_temp
+      AS 'SELECT public.is_platform_admin()'
+    $function$;
+  END IF;
+END
+$compat$;
+
+REVOKE ALL ON FUNCTION private.is_platform_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.is_platform_admin() TO authenticated;
+
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS notifications_select ON public.notifications;
