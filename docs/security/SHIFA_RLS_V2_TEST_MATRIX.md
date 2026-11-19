@@ -97,3 +97,29 @@ Run the existing app flows for sign-in, patient self-service, appointment bookin
 Stop rollout if any critical negative test fails, any data fixture touches production, any policy depends on user-editable metadata without server validation, or any migration cannot be replayed from a clean isolated staging database.
 
 No production migration or deployment is authorized by this document.
+
+
+## 7. Executable metadata contract added — 2026-11-19
+
+A fail-closed SQL contract has been added at:
+
+`supabase/tests/rls_v2_policy_contract.sql`
+
+It inspects PostgreSQL catalog metadata only and raises an exception when any of these conditions remains:
+- standing platform-admin or organization-admin bypasses appear in clinical-table policies;
+- a required clinical table lacks a restrictive RLS policy;
+- patient-document SELECT is granted solely by uploader identity;
+- `anon` or `authenticated` retains `TRUNCATE`, `REFERENCES`, or `TRIGGER` on the inspected clinical tables;
+- clinical Storage policies retain a platform-admin bypass;
+- SECURITY DEFINER functions in `public` or `private` use a broad `public` / `pg_temp` search path.
+
+**Expected current behavior:** this contract is expected to FAIL against the current connected project's metadata because the admin policy paths, patient transfer guard, uploader-only document path, Storage bypass, and SECURITY DEFINER search paths are still unresolved. The excessive table privileges are not expected to fail for the nine inspected tables based on the latest metadata read.
+
+### Execution boundary
+
+- The script is read-only: it creates no tables, policies, functions, roles, or fixtures.
+- It must be run only against an isolated, schema-faithful staging database after migration replay.
+- It has deliberately not been wired into the existing PostgreSQL 15 CI workflow: that workflow uses incomplete minimal fixtures and fail-closed helper stubs, so running this contract there would create misleading evidence.
+- No real Supabase staging project was confirmed as provisioned in this session. No production execution was attempted.
+
+This is a metadata regression gate, not a substitute for the synthetic JWT/API and Storage tests in Sections 1–5. The API tests still need actual staging Auth users and a deployed, schema-faithful candidate migration.
