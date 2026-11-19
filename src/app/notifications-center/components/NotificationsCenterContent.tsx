@@ -126,6 +126,35 @@ export default function NotificationsCenterContent() {
           );
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          setAppNotifications((prev) => {
+            const incoming = payload.new as AppNotification;
+            return prev.some((item) => item.id === incoming.id) ? prev : [incoming, ...prev].slice(0, 50);
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          setAppNotifications((prev) =>
+            prev.map((item) => item.id === payload.new.id ? (payload.new as AppNotification) : item)
+          );
+        }
+      )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') setRealtimeStatus('connected');
         else if (status === 'CHANNEL_ERROR') setRealtimeStatus('error');
