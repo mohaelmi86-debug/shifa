@@ -128,6 +128,7 @@ DECLARE
   v_email text;
   v_invitation public.organization_professional_invitations%ROWTYPE;
   v_profile_role text;
+  v_profile_org_id uuid;
   v_professional_id uuid;
 BEGIN
   IF v_user_id IS NULL THEN
@@ -167,7 +168,7 @@ BEGIN
     RAISE EXCEPTION 'ORGANIZATION_NOT_ACTIVE' USING ERRCODE = '55000';
   END IF;
 
-  SELECT role::text INTO v_profile_role
+  SELECT role::text, organization_id INTO v_profile_role, v_profile_org_id
   FROM public.user_profiles
   WHERE id = v_user_id AND is_active IS TRUE
   FOR UPDATE;
@@ -176,15 +177,9 @@ BEGIN
     RAISE EXCEPTION 'ACCOUNT_ROLE_NOT_ELIGIBLE' USING ERRCODE = '42501';
   END IF;
 
-  IF v_profile_role = 'professional' AND EXISTS (
-    SELECT 1 FROM public.user_profiles
-    WHERE id = v_user_id
-      AND organization_id IS NOT NULL
-      AND organization_id <> v_invitation.organization_id
-  ) THEN
-    RAISE EXCEPTION 'PROFESSIONAL_ALREADY_LINKED_TO_ANOTHER_ORGANIZATION' USING ERRCODE = '55000';
-  END IF;
-
+  -- A professional may hold memberships in multiple organizations. The
+  -- profile's organization_id remains its primary/default organization;
+  -- the membership table is the authoritative multi-tenant relationship.
   SELECT id INTO v_professional_id
   FROM public.professionals
   WHERE user_id = v_user_id
@@ -243,7 +238,7 @@ BEGIN
 
   UPDATE public.user_profiles
   SET role = 'professional'::public.user_role,
-      organization_id = v_invitation.organization_id,
+      organization_id = COALESCE(organization_id, v_invitation.organization_id),
       updated_at = now()
   WHERE id = v_user_id;
 
@@ -251,7 +246,7 @@ BEGIN
   SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb)
     || jsonb_build_object(
       'role', 'professional',
-      'organization_id', v_invitation.organization_id::text
+      'organization_id', COALESCE(v_profile_org_id, v_invitation.organization_id)::text
     )
   WHERE id = v_user_id;
 
