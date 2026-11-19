@@ -145,6 +145,22 @@ export async function POST(request: NextRequest) {
       return jsonError(403, 'MODULE_NOT_AUTHORIZED', requestId);
     }
 
+    // Clinical AI is restricted to professionals whose credentials have been
+    // approved and whose professional status remains active in the database.
+    if (moduleName === 'professional') {
+      const { data: professional, error: professionalError } = await supabase
+        .from('professionals')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_verified', true)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (professionalError || !professional) {
+        return jsonError(403, 'PROFESSIONAL_VERIFICATION_REQUIRED', requestId);
+      }
+    }
+
     const provider = process.env.SHIFA_AI_PROVIDER;
     const apiKeyEnv = provider ? PROVIDER_KEY_ENV[provider] : undefined;
     const apiKey = apiKeyEnv ? process.env[apiKeyEnv] : undefined;
