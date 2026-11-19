@@ -19,7 +19,9 @@
   --input: #E8F0FE;
   --ring: #0066FF;
   --radius: 12px;
-  --font-sans: var(--font-plus-jakarta-sans), sans-serif;
+  --font-plus-jakarta-sans: "Aptos", "Segoe UI", system-ui, sans-serif;
+  --font-jetbrains-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --font-sans: var(--font-plus-jakarta-sans);
 
   --shifa-dark: #0A1B3D;
   --shifa-blue: #0066FF;
