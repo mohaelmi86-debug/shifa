@@ -622,6 +622,102 @@ BEGIN
       v_expected_admin_guard_count, v_actual_admin_guard_count;
   END IF;
 
+  -- Organization administrators are not clinical users by virtue of tenant role.
+  IF position('SELECT FALSE' IN pg_get_functiondef(
+       'private.org_admin_can_access_patient(uuid)'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: org-admin patient access must fail closed without an explicit care-assignment model';
+  END IF;
+
+  IF position('professional_has_patient_consultation_in_org' IN pg_get_functiondef(
+       'private.clinical_scope_guard(uuid,uuid)'::regprocedure
+     )) = 0
+     OR position('is_org_admin_for' IN pg_get_functiondef(
+       'private.clinical_scope_guard(uuid,uuid)'::regprocedure
+     )) > 0
+     OR position('is_platform_admin' IN pg_get_functiondef(
+       'private.clinical_scope_guard(uuid,uuid)'::regprocedure
+     )) > 0 THEN
+    RAISE EXCEPTION 'FAIL: clinical scope helper must require patient self-access or exact-org professional care';
+  END IF;
+
+  IF NOT has_function_privilege(
+       'authenticated',
+       'private.is_verified_professional_member_of_org(uuid)',
+       'EXECUTE'
+     )
+     OR has_function_privilege(
+       'anon',
+       'private.is_verified_professional_member_of_org(uuid)',
+       'EXECUTE'
+     )
+     OR position('invitation_status = ''accepted''::public.invitation_status' IN
+       pg_get_functiondef('private.is_verified_professional_member_of_org(uuid)'::regprocedure)
+     ) = 0 THEN
+    RAISE EXCEPTION 'FAIL: clinical workflow creation must require verified professional with accepted exact-org membership';
+  END IF;
+
+  IF (
+    SELECT count(*)
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN (
+        'appointments','blood_requests','consultations','health_records',
+        'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
+        'lab_samples','operating_room_schedules','patient_transfers',
+        'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
+      )
+      AND policyname IN (
+        'org_admin_clinical_relationship_select',
+        'org_admin_clinical_relationship_insert',
+        'org_admin_clinical_relationship_update',
+        'org_admin_clinical_relationship_delete'
+      )
+      AND permissive = 'RESTRICTIVE'
+  ) < 60 THEN
+    RAISE EXCEPTION 'FAIL: command-specific restrictive clinical relationship policies are incomplete';
+  END IF;
+
+  IF NOT EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'patients'
+         AND policyname = 'org_admin_clinical_relationship_guard'
+         AND permissive = 'RESTRICTIVE' AND cmd = 'ALL'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'shifa_cards'
+         AND policyname = 'org_admin_clinical_relationship_guard'
+         AND permissive = 'RESTRICTIVE' AND cmd = 'ALL'
+     ) THEN
+    RAISE EXCEPTION 'FAIL: patient and SHIFA card identity records must not be tenant-admin browsable';
+  END IF;
+
+  IF NOT has_function_privilege(
+       'authenticated',
+       'private.can_access_patient_document(uuid)',
+       'EXECUTE'
+     )
+     OR has_function_privilege(
+       'anon',
+       'private.can_access_patient_document(uuid)',
+       'EXECUTE'
+     )
+     OR EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'patient_documents'
+         AND policyname = 'patient_documents_uploader_select'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'patient_documents'
+         AND policyname = 'patient_documents_relationship_select'
+         AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
+         AND qual ILIKE '%can_access_patient_document%'
+     ) THEN
+    RAISE EXCEPTION 'FAIL: patient document reads must follow patient or treating-professional relationship, never uploader identity alone';
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
