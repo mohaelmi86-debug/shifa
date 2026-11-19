@@ -523,6 +523,15 @@ BEGIN
     RAISE EXCEPTION 'FAIL: transfer notifications must be linked to an accessible transfer and valid participant';
   END IF;
 
+  IF position('po.invitation_status = ''accepted''::public.invitation_status' IN pg_get_functiondef(
+    'private.belongs_to_org(uuid)'::regprocedure
+  )) = 0
+     OR position('po.invitation_status = ''accepted''::public.invitation_status' IN pg_get_functiondef(
+       'private.professional_has_patient_consultation(uuid)'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: clinical organization access must require explicitly accepted membership, not status alone';
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
