@@ -347,6 +347,21 @@ BEGIN
     RAISE EXCEPTION 'FAIL: notification idempotency index is missing';
   END IF;
 
+  IF position('admin_profile.role::text = ''org_admin''' IN pg_get_functiondef(
+    'public.queue_professional_credential_expiry_reminders()'::regprocedure
+  )) = 0
+     OR position('admin_profile.organization_id = po.organization_id' IN pg_get_functiondef(
+       'public.queue_professional_credential_expiry_reminders()'::regprocedure
+     )) = 0
+     OR position('org-credential-expiry:' IN pg_get_functiondef(
+       'public.queue_professional_credential_expiry_reminders()'::regprocedure
+     )) = 0
+     OR position('recipient_role' IN pg_get_functiondef(
+       'public.queue_professional_credential_expiry_reminders()'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: expiry reminders must notify only active admins of the owning organization with recipient-specific idempotency';
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
