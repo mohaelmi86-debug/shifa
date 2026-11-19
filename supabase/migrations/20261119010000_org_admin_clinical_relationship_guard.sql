@@ -435,8 +435,8 @@ BEGIN
       AS RESTRICTIVE
       FOR ALL
       TO authenticated
-      USING (NOT private.is_platform_admin())
-      WITH CHECK (NOT private.is_platform_admin())
+      USING (NOT public.is_platform_admin())
+      WITH CHECK (NOT public.is_platform_admin())
     $policy$;
 
     EXECUTE 'DROP POLICY IF EXISTS transfer_notifications_recipient_scope_guard ON public.transfer_notifications';
