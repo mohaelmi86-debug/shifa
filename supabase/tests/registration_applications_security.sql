@@ -9,6 +9,8 @@ DECLARE
   v_policy_count integer;
   v_config text[];
   v_security_definer boolean;
+  v_invitation_function text;
+  v_existing_professional_update text;
 BEGIN
   SELECT c.relrowsecurity
     INTO v_rls
@@ -145,6 +147,22 @@ BEGIN
     'public.accept_professional_invitation(text)'::regprocedure
   )) = 0 THEN
     RAISE EXCEPTION 'FAIL: accepting an invitation must persist the organization membership row';
+  END IF;
+
+  -- A second invitation must not reset an already verified professional's
+  -- global status. The newly added organization membership remains pending.
+  SELECT pg_get_functiondef('public.accept_professional_invitation(text)'::regprocedure)
+    INTO v_invitation_function;
+  v_existing_professional_update := substring(
+    v_invitation_function
+    FROM position('IF v_professional_id IS NOT NULL THEN' IN v_invitation_function)
+    FOR position('ELSE' IN substring(
+      v_invitation_function FROM position('IF v_professional_id IS NOT NULL THEN' IN v_invitation_function) + 1
+    )) 
+  );
+  IF v_existing_professional_update ILIKE '%is_verified = FALSE%'
+     OR v_existing_professional_update ILIKE '%status = ''pending''%' THEN
+    RAISE EXCEPTION 'FAIL: adding an organization must preserve an existing professional verification state';
   END IF;
 
   -- Verified-professional clinical access checks (requires migration 20261119004000).
