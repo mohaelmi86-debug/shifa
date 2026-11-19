@@ -778,6 +778,20 @@ BEGIN
            AND policyname = 'patient_documents_relationship_delete'
            AND permissive = 'RESTRICTIVE' AND cmd = 'DELETE'
        )
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'patient_documents'
+           AND policyname = 'patient_documents_care_team_select'
+           AND permissive = 'PERMISSIVE' AND cmd = 'SELECT'
+           AND qual ILIKE '%can_access_patient_document%'
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'patient_documents'
+           AND policyname = 'patient_documents_care_team_insert'
+           AND permissive = 'PERMISSIVE' AND cmd = 'INSERT'
+           AND with_check ILIKE '%can_access_patient_document%'
+       )
      ) THEN
     RAISE EXCEPTION 'FAIL: patient document write policies must be relationship-scoped';
   END IF;
