@@ -284,7 +284,6 @@ export default function NotificationsCenterContent() {
             </div>
           </section>
         )}
-      </div>
         {error && (
           <div className="m-4 p-4 rounded-xl border flex items-center gap-3" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5' }}>
             <Icon name="ExclamationCircleIcon" size={18} style={{ color: '#dc2626' }} />
