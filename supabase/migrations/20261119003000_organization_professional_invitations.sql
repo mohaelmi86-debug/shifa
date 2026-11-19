@@ -2,6 +2,16 @@
 -- The raw token is returned once to the authorized organization admin; only its SHA-256 hash is stored.
 -- Acceptance links a verified account to the inviter's organization but does NOT mark credentials verified.
 
+-- Organization administrators have one primary organization on their profile.
+-- Professionals may belong to multiple organizations through professional_organizations.
+ALTER TABLE public.user_profiles
+  ADD COLUMN IF NOT EXISTS organization_id uuid
+  REFERENCES public.organizations(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS user_profiles_organization_id_idx
+  ON public.user_profiles (organization_id)
+  WHERE organization_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS public.organization_professional_invitations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
