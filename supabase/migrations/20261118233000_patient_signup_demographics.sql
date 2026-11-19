@@ -107,7 +107,7 @@ BEGIN
     )
     SELECT
       NEW.id,
-      'SHF-' || UPPER(SUBSTR(REPLACE(NEW.id::text, '-', ''), 1, 12)),
+      'SHF-' || UPPER(REPLACE(NEW.id::text, '-', '')),
       v_first_name, v_last_name,
       COALESCE(NEW.phone, NULLIF(TRIM(NEW.raw_user_meta_data->>'phone'), '')),
       NEW.email,
