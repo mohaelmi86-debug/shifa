@@ -370,10 +370,10 @@ BEGIN
   IF position('ORDER BY joined_at DESC' IN pg_get_functiondef(
     'public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date)'::regprocedure
   )) > 0
-     OR position('PRIMARY_ORGANIZATION_SELECTION_REQUIRED' IN pg_get_functiondef(
+     OR position('ACTIVE_ORGANIZATION_MEMBERSHIP_REQUIRED' IN pg_get_functiondef(
        'public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date)'::regprocedure
      )) = 0 THEN
-    RAISE EXCEPTION 'FAIL: credential submission must not select an arbitrary organization membership';
+    RAISE EXCEPTION 'FAIL: credential submission must validate the explicitly selected accepted organization membership';
   END IF;
 
   IF position('p_decision IS NULL' IN pg_get_functiondef(
