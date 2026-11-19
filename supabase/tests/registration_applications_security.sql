@@ -130,6 +130,17 @@ BEGIN
     RAISE EXCEPTION 'FAIL: authenticated users need invitation RPC grants (authorization remains enforced inside functions)';
   END IF;
 
+  -- Multi-organization membership support: accepting a second invitation must
+  -- preserve the primary organization while inserting the additional membership.
+  IF position('COALESCE(organization_id, v_invitation.organization_id)' IN pg_get_functiondef(
+    'public.accept_professional_invitation(text)'::regprocedure
+  )) = 0
+     OR position('PROFESSIONAL_ALREADY_LINKED_TO_ANOTHER_ORGANIZATION' IN pg_get_functiondef(
+       'public.accept_professional_invitation(text)'::regprocedure
+     )) > 0 THEN
+    RAISE EXCEPTION 'FAIL: professional invitation must support a second organization without replacing the primary organization';
+  END IF;
+
   IF position('professional_organizations' IN pg_get_functiondef(
     'public.accept_professional_invitation(text)'::regprocedure
   )) = 0 THEN
@@ -322,6 +333,15 @@ BEGIN
     'public.review_professional_credential(uuid,text,text)'::regprocedure
   )) = 0 THEN
     RAISE EXCEPTION 'FAIL: approval of a valid professional license or registration must activate the verified profile';
+  END IF;
+
+  IF position('ORDER BY joined_at DESC' IN pg_get_functiondef(
+    'public.submit_professional_credential(text,text,text,text,integer,text,text,date)'::regprocedure
+  )) > 0
+     OR position('PRIMARY_ORGANIZATION_SELECTION_REQUIRED' IN pg_get_functiondef(
+       'public.submit_professional_credential(text,text,text,text,integer,text,text,date)'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: credential submission must not select an arbitrary organization membership';
   END IF;
 
   IF position('p_decision IS NULL' IN pg_get_functiondef(
