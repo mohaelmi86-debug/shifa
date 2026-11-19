@@ -33,6 +33,9 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, { icon: string; color: string; bg
 
 const TABS = ['Toutes', 'Paiements', 'Abonnements', 'Factures', 'Commissions', 'Règlements', 'Taxes', 'Versements'];
 
+const isSafeInternalPath = (value: string | null | undefined): value is string =>
+  Boolean(value && /^\/(?![\\/])/.test(value) && !value.includes('\\'));
+
 type AppNotification = {
   id: string;
   notification_type: string;
@@ -311,7 +314,7 @@ export default function NotificationsCenterContent() {
                     </div>
                     <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--muted-foreground)" }}>{item.body}</p>
                     <div className="flex items-center gap-4 mt-2">
-                      {item.action_url?.startsWith("/") && <a href={item.action_url} className="text-xs font-semibold underline" style={{ color: "var(--shifa-blue)" }}>Ouvrir</a>}
+                      {isSafeInternalPath(item.action_url) && <a href={item.action_url} className="text-xs font-semibold underline" style={{ color: "var(--shifa-blue)" }}>Ouvrir</a>}
                       {!item.is_read && <button onClick={() => handleAppNotificationRead(item)} className="text-xs underline" style={{ color: "var(--muted-foreground)" }}>Marquer comme lue</button>}
                     </div>
                   </div>
