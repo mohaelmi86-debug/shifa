@@ -35,27 +35,23 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
-    env:
-      PGHOST: localhost
-      PGPORT: 5432
-      PGUSER: postgres
-      PGPASSWORD: postgres
-      PGDATABASE: shifa_contract
     steps:
       - uses: actions/checkout@v4
-      - name: Install PostgreSQL client
+      - name: Locate PostgreSQL service container
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          container_id="$(docker ps -q --filter 'ancestor=postgres:17' | head -n 1)"
+          test -n "$container_id"
+          echo "PG_CONTAINER_ID=$container_id" >> "$GITHUB_ENV"
       - name: Build synthetic catalog fixture
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/rls_v2_policy_contract_fixture.sql
+        run: docker exec -i "$PG_CONTAINER_ID" psql -U postgres -d shifa_contract -v ON_ERROR_STOP=1 < supabase/tests/fixtures/rls_v2_policy_contract_fixture.sql
       - name: Contract passes on safe fixture
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_v2_policy_contract.sql
+        run: docker exec -i "$PG_CONTAINER_ID" psql -U postgres -d shifa_contract -v ON_ERROR_STOP=1 < supabase/tests/rls_v2_policy_contract.sql
       - name: Contract rejects a simulated admin bypass
         shell: bash
         run: |
-          psql -v ON_ERROR_STOP=1 -c "CREATE POLICY simulated_platform_admin_bypass ON public.patients FOR SELECT TO authenticated USING (private.is_platform_admin());"
-          if psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_v2_policy_contract.sql; then
+          docker exec "$PG_CONTAINER_ID" psql -U postgres -d shifa_contract -v ON_ERROR_STOP=1 -c "CREATE POLICY simulated_platform_admin_bypass ON public.patients FOR SELECT TO authenticated USING (private.is_platform_admin());"
+          if docker exec -i "$PG_CONTAINER_ID" psql -U postgres -d shifa_contract -v ON_ERROR_STOP=1 < supabase/tests/rls_v2_policy_contract.sql; then
             echo "::error::Policy contract did not reject the simulated admin bypass"
             exit 1
           else
@@ -64,9 +60,9 @@ jobs:
       - name: Contract rejects an admin bypass hidden in a helper
         shell: bash
         run: |
-          psql -v ON_ERROR_STOP=1 -c "DROP POLICY simulated_platform_admin_bypass ON public.patients;"
-          psql -v ON_ERROR_STOP=1 -c "CREATE OR REPLACE FUNCTION private.belongs_to_org(target_org_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS \\$\\$ SELECT private.is_platform_admin() \\$\\$;"
-          if psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_v2_policy_contract.sql; then
+          docker exec "$PG_CONTAINER_ID" psql -U postgres -d shifa_contract -v ON_ERROR_STOP=1 -c "DROP POLICY simulated_platform_admin_bypass ON public.patients;"
+          docker exec "$PG_CONTAINER_ID" psql -U postgres -d shifa_contract -v ON_ERROR_STOP=1 -c "CREATE OR REPLACE FUNCTION private.belongs_to_org(target_org_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS \$\$ SELECT private.is_platform_admin() \$\$;"
+          if docker exec -i "$PG_CONTAINER_ID" psql -U postgres -d shifa_contract -v ON_ERROR_STOP=1 < supabase/tests/rls_v2_policy_contract.sql; then
             echo "::error::Policy contract did not reject the helper-level admin bypass"
             exit 1
           else
