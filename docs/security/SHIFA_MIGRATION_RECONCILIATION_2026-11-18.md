@@ -213,3 +213,32 @@ The current schema metadata confirms that `patients` has no `organization_id`; i
 ### 11.4 Scope and safety
 
 This was a metadata-only read-only inspection. It did not query patient names, clinical notes, documents, lab results, or other patient data. No DDL, DML, policy, grant, Storage, Auth, or production configuration was changed. The branch name remains a Git branch and does not imply a Supabase staging environment.
+
+
+## 12. SECURITY DEFINER and Storage policy inspection — 2026-11-19
+
+A further metadata-only SELECT inspected SECURITY DEFINER function configuration, EXECUTE ACLs, Storage object policies, and public views. No function bodies or patient records were read.
+
+### 12.1 SECURITY DEFINER configuration
+
+- The inspected SECURITY DEFINER functions are owned by `postgres` and use `search_path=public, pg_temp` (including helpers in `private` and several public trigger functions).
+- This path is not the preferred hardened configuration for SECURITY DEFINER routines. Review every function body for unqualified object references and change to a minimal pinned path (typically `pg_catalog` plus explicitly qualified application objects) in a reviewed migration.
+- `authenticated` has EXECUTE on a number of `private` helper functions, including `belongs_to_org`, `clinical_scope_guard`, `can_access_transfer`, `is_platform_admin`, `is_org_admin_for`, `owns_patient_record`, and `professional_has_patient_consultation`. This may be required for policy evaluation, but must be checked against whether the private schema is exposed through PostgREST and whether these helpers reveal sensitive authorization state or can be invoked directly. Do not revoke indiscriminately before testing policy behavior.
+- No EXECUTE grants to `anon` or `PUBLIC` were returned for the inspected function ACL set. This result is limited to functions in `public` and `private` and to the ACL query used.
+
+### 12.2 Storage object policies
+
+Current Storage object policies include:
+- `documents`: insert/select/update/delete based on first folder segment equaling `auth.uid()`.
+- `lab-reports` and `medical-images`: authenticated insert/select based on user-folder prefix **or** `private.is_platform_admin()`.
+- `avatars`: user-folder ownership for insert/update.
+
+These policies do not enforce a patient-professional care relationship for clinical files, and the lab/medical image policies explicitly retain platform-admin access. The documents bucket's uploader-folder rule also needs to be reconciled with patient document ownership and care authorization. Treat Storage authorization as a separate critical release gate; test signed URLs, object listing, overwrite, move, and delete paths with synthetic users.
+
+### 12.3 Views
+
+The metadata query returned no views in the `public` schema. This does not establish that there are no materialized views, RPCs, exposed functions in other schemas, or API-level projections.
+
+### 12.4 Immediate follow-up
+
+Review function definitions and API exposure for every SECURITY DEFINER helper, pin safe search paths with fully qualified references, then test Storage policies against synthetic patient/professional/admin JWTs. No function, grant, Storage policy, or production setting was changed during this inspection.
