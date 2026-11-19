@@ -312,7 +312,7 @@ BEGIN
       AND policyname = 'professional_credentials_storage_delete_guard'
       AND permissive = 'RESTRICTIVE' AND cmd = 'DELETE'
   ) THEN
-    RAISE EXCEPTION 'FAIL: credential cleanup must be restricted to the uploading user's folder';
+    RAISE EXCEPTION 'FAIL: credential cleanup must be restricted to the uploading user''s folder';
   END IF;
 
   IF position('private.org_admin_can_access_professional' IN pg_get_functiondef(
