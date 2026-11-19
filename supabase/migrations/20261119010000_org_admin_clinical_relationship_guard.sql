@@ -192,55 +192,23 @@ REVOKE ALL ON FUNCTION private.can_access_patient_document(uuid)
 GRANT EXECUTE ON FUNCTION private.can_access_patient_document(uuid)
   TO authenticated;
 
-DROP POLICY IF EXISTS clinical_scope_guard ON public.patient_documents;
-DROP POLICY IF EXISTS patient_documents_uploader_select ON public.patient_documents;
-DROP POLICY IF EXISTS patient_documents_uploader_insert ON public.patient_documents;
-
-DROP POLICY IF EXISTS patient_documents_relationship_select ON public.patient_documents;
-CREATE POLICY patient_documents_relationship_select
-  ON public.patient_documents
-  AS RESTRICTIVE
-  FOR SELECT
-  TO authenticated
-  USING (private.can_access_patient_document(patient_id));
-
-DROP POLICY IF EXISTS patient_documents_relationship_insert ON public.patient_documents;
-CREATE POLICY patient_documents_relationship_insert
-  ON public.patient_documents
-  AS RESTRICTIVE
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    private.can_access_patient_document(patient_id)
-    AND uploaded_by = (SELECT auth.uid())
-  );
-
-DROP POLICY IF EXISTS patient_documents_relationship_update ON public.patient_documents;
-CREATE POLICY patient_documents_relationship_update
-  ON public.patient_documents
-  AS RESTRICTIVE
-  FOR UPDATE
-  TO authenticated
-  USING (private.can_access_patient_document(patient_id))
-  WITH CHECK (private.can_access_patient_document(patient_id));
-
-DROP POLICY IF EXISTS patient_documents_relationship_delete ON public.patient_documents;
-CREATE POLICY patient_documents_relationship_delete
-  ON public.patient_documents
-  AS RESTRICTIVE
-  FOR DELETE
-  TO authenticated
-  USING (
-    patient_id = (SELECT auth.uid())
-    OR (
-      EXISTS (
-        SELECT 1
-        FROM public.patients AS patient
-        WHERE patient.user_id = patient_documents.patient_id
-          AND private.professional_has_patient_consultation(patient.id)
-      )
-    )
-  );
+DO $documents$
+BEGIN
+  IF to_regclass('public.patient_documents') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS clinical_scope_guard ON public.patient_documents';
+    EXECUTE 'DROP POLICY IF EXISTS patient_documents_uploader_select ON public.patient_documents';
+    EXECUTE 'DROP POLICY IF EXISTS patient_documents_uploader_insert ON public.patient_documents';
+    EXECUTE 'DROP POLICY IF EXISTS patient_documents_relationship_select ON public.patient_documents';
+    EXECUTE 'CREATE POLICY patient_documents_relationship_select ON public.patient_documents AS RESTRICTIVE FOR SELECT TO authenticated USING (private.can_access_patient_document(patient_id))';
+    EXECUTE 'DROP POLICY IF EXISTS patient_documents_relationship_insert ON public.patient_documents';
+    EXECUTE 'CREATE POLICY patient_documents_relationship_insert ON public.patient_documents AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (private.can_access_patient_document(patient_id) AND uploaded_by = (SELECT auth.uid()))';
+    EXECUTE 'DROP POLICY IF EXISTS patient_documents_relationship_update ON public.patient_documents';
+    EXECUTE 'CREATE POLICY patient_documents_relationship_update ON public.patient_documents AS RESTRICTIVE FOR UPDATE TO authenticated USING (private.can_access_patient_document(patient_id)) WITH CHECK (private.can_access_patient_document(patient_id))';
+    EXECUTE 'DROP POLICY IF EXISTS patient_documents_relationship_delete ON public.patient_documents';
+    EXECUTE 'CREATE POLICY patient_documents_relationship_delete ON public.patient_documents AS RESTRICTIVE FOR DELETE TO authenticated USING (patient_id = (SELECT auth.uid()) OR EXISTS (SELECT 1 FROM public.patients AS patient WHERE patient.user_id = patient_documents.patient_id AND private.professional_has_patient_consultation(patient.id)))';
+  END IF;
+END;
+$documents$;
 
 -- SHIFA cards contain patient identity data but do not carry organization_id.
 -- Access is limited to the card owner or a professional with an appointment.
