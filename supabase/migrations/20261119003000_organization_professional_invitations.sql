@@ -197,8 +197,9 @@ BEGIN
         country_code = v_invitation.country_code,
         phone = v_invitation.phone,
         email = v_email,
-        is_verified = FALSE,
-        status = 'pending'::public.professional_status,
+        -- Adding a second organization must not revoke a professional's
+        -- existing global verification. The new membership itself remains
+        -- pending until this organization's credentials are reviewed.
         updated_at = now()
     WHERE id = v_professional_id;
   ELSE
