@@ -45,7 +45,7 @@ BEGIN
       AND policyname = 'notifications_select'
   ) THEN
     CREATE POLICY notifications_select ON public.notifications
-      FOR SELECT TO authenticated USING (auth.uid() = user_id OR private.is_platform_admin());
+      FOR SELECT USING (auth.uid() = user_id OR public.is_platform_admin());
   END IF;
 
   IF NOT EXISTS (
@@ -54,8 +54,8 @@ BEGIN
       AND policyname = 'notifications_insert'
   ) THEN
     CREATE POLICY notifications_insert ON public.notifications
-      FOR INSERT TO authenticated WITH CHECK (
-        auth.uid() = user_id OR private.is_platform_admin()
+      FOR INSERT WITH CHECK (
+        auth.uid() = user_id OR public.is_platform_admin()
       );
   END IF;
 
@@ -65,7 +65,7 @@ BEGIN
       AND policyname = 'notifications_update'
   ) THEN
     CREATE POLICY notifications_update ON public.notifications
-      FOR UPDATE TO authenticated USING (auth.uid() = user_id OR private.is_platform_admin());
+      FOR UPDATE USING (auth.uid() = user_id OR public.is_platform_admin());
   END IF;
 
   IF NOT EXISTS (
@@ -74,7 +74,7 @@ BEGIN
       AND policyname = 'notifications_delete'
   ) THEN
     CREATE POLICY notifications_delete ON public.notifications
-      FOR DELETE TO authenticated USING (auth.uid() = user_id OR private.is_platform_admin());
+      FOR DELETE USING (auth.uid() = user_id OR public.is_platform_admin());
   END IF;
 END
 $$;
