@@ -103,7 +103,7 @@ export default function ProfessionalVerificationContent() {
       await supabase.storage.from('professional-credentials').remove([storagePath]);
       setError(submitError.message.includes('ACTIVE_ORGANIZATION_MEMBERSHIP_REQUIRED')
         ? 'Votre rattachement à l’établissement doit être finalisé avant le dépôt.'
-        : message.includes('PRIMARY_ORGANIZATION_SELECTION_REQUIRED')
+        : submitError.message.includes('PRIMARY_ORGANIZATION_SELECTION_REQUIRED')
           ? 'Sélectionnez votre établissement principal dans votre profil avant de déposer ce justificatif.'
           : 'Le justificatif n’a pas pu être enregistré. Vérifiez votre rattachement et réessayez.');
     } else {
