@@ -98,7 +98,7 @@ DO $guard$
 DECLARE
   v_table text;
   v_tables text[] := ARRAY[
-    'appointments','blood_requests','consultations','health_records',
+    'ambulance_dispatches','appointments','blood_requests','consultations','health_records',
     'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
     'lab_samples','operating_room_schedules','patient_transfers',
     'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
@@ -478,3 +478,155 @@ BEGIN
   END IF;
 END;
 $notifications$;
+
+
+-- The broader live-schema inventory contains additional patient-linked tables.
+-- Ambulance dispatches are clinical records and use the same exact-care guard.
+-- Insurance claims, messages and access-verification events have dedicated
+-- business/participant semantics and are guarded separately below.
+
+CREATE OR REPLACE FUNCTION private.can_manage_insurance_claims_in_org(
+  p_organization_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, auth, public, pg_temp
+AS $function$
+  SELECT p_organization_id IS NOT NULL
+    AND NOT public.is_platform_admin()
+    AND EXISTS (
+      SELECT 1
+      FROM public.user_profiles AS up
+      WHERE up.id = (SELECT auth.uid())
+        AND up.is_active IS TRUE
+        AND up.organization_id = p_organization_id
+        AND up.role::text IN ('insurance_agent', 'finance', 'org_admin')
+    );
+$function$;
+
+REVOKE ALL ON FUNCTION private.can_manage_insurance_claims_in_org(uuid)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.can_manage_insurance_claims_in_org(uuid)
+  TO authenticated;
+
+DO $claims$
+BEGIN
+  IF to_regclass('public.insurance_claims') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS insurance_claims_relationship_select_guard ON public.insurance_claims';
+    EXECUTE $policy$
+      CREATE POLICY insurance_claims_relationship_select_guard
+      ON public.insurance_claims AS RESTRICTIVE FOR SELECT TO authenticated
+      USING (
+        private.owns_patient_record(patient_id)
+        OR private.can_manage_insurance_claims_in_org(organization_id)
+      )
+    $policy$;
+    EXECUTE 'DROP POLICY IF EXISTS insurance_claims_relationship_insert_guard ON public.insurance_claims';
+    EXECUTE $policy$
+      CREATE POLICY insurance_claims_relationship_insert_guard
+      ON public.insurance_claims AS RESTRICTIVE FOR INSERT TO authenticated
+      WITH CHECK (private.can_manage_insurance_claims_in_org(organization_id))
+    $policy$;
+    EXECUTE 'DROP POLICY IF EXISTS insurance_claims_relationship_update_guard ON public.insurance_claims';
+    EXECUTE $policy$
+      CREATE POLICY insurance_claims_relationship_update_guard
+      ON public.insurance_claims AS RESTRICTIVE FOR UPDATE TO authenticated
+      USING (private.can_manage_insurance_claims_in_org(organization_id))
+      WITH CHECK (private.can_manage_insurance_claims_in_org(organization_id))
+    $policy$;
+    EXECUTE 'DROP POLICY IF EXISTS insurance_claims_relationship_delete_guard ON public.insurance_claims';
+    EXECUTE $policy$
+      CREATE POLICY insurance_claims_relationship_delete_guard
+      ON public.insurance_claims AS RESTRICTIVE FOR DELETE TO authenticated
+      USING (private.can_manage_insurance_claims_in_org(organization_id))
+    $policy$;
+  END IF;
+END;
+$claims$;
+
+DO $messages$
+BEGIN
+  IF to_regclass('public.messages') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS messages_participant_scope_guard ON public.messages';
+    EXECUTE $policy$
+      CREATE POLICY messages_participant_scope_guard
+      ON public.messages AS RESTRICTIVE FOR ALL TO authenticated
+      USING (
+        sender_id = (SELECT auth.uid())
+        OR recipient_id = (SELECT auth.uid())
+      )
+      WITH CHECK (
+        sender_id = (SELECT auth.uid())
+        OR recipient_id = (SELECT auth.uid())
+      )
+    $policy$;
+  END IF;
+END;
+$messages$;
+
+-- Platform event streams may contain patient identifiers in payloads. Platform
+-- admins retain visibility of non-patient operational events only.
+DO $events$
+BEGIN
+  IF to_regclass('public.platform_events') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS platform_events_patient_data_scope_guard ON public.platform_events';
+    EXECUTE $policy$
+      CREATE POLICY platform_events_patient_data_scope_guard
+      ON public.platform_events AS RESTRICTIVE FOR SELECT TO authenticated
+      USING (
+        patient_id IS NULL
+        OR private.owns_patient_record(patient_id)
+        OR private.professional_has_patient_consultation(patient_id)
+      )
+    $policy$;
+  END IF;
+END;
+$events$;
+
+-- Access-verification records are an audit trail: patient, verifier, or an
+-- administrator of the exact organization may read; only a valid participant
+-- may insert. Existing records cannot be edited/deleted by client roles.
+DO $access_verification$
+BEGIN
+  IF to_regclass('public.shifa_access_verifications') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS shifa_access_verifications_scope_guard ON public.shifa_access_verifications';
+    EXECUTE $policy$
+      CREATE POLICY shifa_access_verifications_scope_guard
+      ON public.shifa_access_verifications AS RESTRICTIVE FOR ALL TO authenticated
+      USING (
+        private.owns_patient_record(patient_id)
+        OR verified_by = (SELECT auth.uid())
+        OR (
+          organization_id IS NOT NULL
+          AND private.is_org_admin_for(organization_id)
+          AND NOT public.is_platform_admin()
+        )
+      )
+      WITH CHECK (
+        verified_by = (SELECT auth.uid())
+        AND (
+          (
+            organization_id IS NOT NULL
+            AND private.is_org_admin_for(organization_id)
+            AND NOT public.is_platform_admin()
+          )
+          OR private.is_verified_professional_member_of_org(organization_id)
+        )
+      )
+    $policy$;
+    EXECUTE 'DROP POLICY IF EXISTS shifa_access_verifications_immutable_guard ON public.shifa_access_verifications';
+    EXECUTE $policy$
+      CREATE POLICY shifa_access_verifications_immutable_guard
+      ON public.shifa_access_verifications AS RESTRICTIVE FOR UPDATE TO authenticated
+      USING (FALSE) WITH CHECK (FALSE)
+    $policy$;
+    EXECUTE $policy$
+      CREATE POLICY shifa_access_verifications_no_client_delete_guard
+      ON public.shifa_access_verifications AS RESTRICTIVE FOR DELETE TO authenticated
+      USING (FALSE)
+    $policy$;
+  END IF;
+END;
+$access_verification$;
