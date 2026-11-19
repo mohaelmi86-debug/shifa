@@ -34,15 +34,17 @@ AS $function$
   SELECT EXISTS (
     SELECT 1
     FROM public.user_profiles up
-    JOIN public.organizations org
-      ON org.id = up.organization_id
-     AND org.is_active IS TRUE
     JOIN public.professional_organizations po
-      ON po.organization_id = up.organization_id
+      ON po.professional_id = p_professional_id
+     AND po.status::text = 'active'
+     AND po.invitation_status = 'accepted'::public.invitation_status
+    JOIN public.organizations org
+      ON org.id = po.organization_id
+     AND org.is_active IS TRUE
     WHERE up.id = (SELECT auth.uid())
       AND up.role::text = 'org_admin'
       AND up.is_active IS TRUE
-      AND po.professional_id = p_professional_id
+      AND up.organization_id = po.organization_id
   );
 $function$;
 
