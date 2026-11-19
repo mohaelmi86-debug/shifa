@@ -47,6 +47,33 @@ BEGIN
     RAISE EXCEPTION 'RLS contract: missing restrictive guard on: %', violations;
   END IF;
 
+  -- Helpers used by clinical RLS must not reintroduce standing admin bypasses.
+  SELECT string_agg(format('%I.%I(%s)', n.nspname, p.proname,
+                           pg_get_function_identity_arguments(p.oid)), E'\\n')
+  INTO violations
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'private'
+    AND p.proname IN (
+      'belongs_to_org','clinical_scope_guard','can_access_transfer',
+      'professional_has_patient_consultation','owns_professional_record'
+    )
+    AND pg_get_functiondef(p.oid) ~* '(is_platform_admin|is_org_admin|is_org_admin_for|org_admin_can_access_patient)';
+  IF violations IS NOT NULL THEN
+    RAISE EXCEPTION 'RLS contract: clinical authorization helper contains standing admin bypass:%', E'\\n' || violations;
+  END IF;
+
+  -- anon must have no direct table privileges on clinical tables.
+  SELECT string_agg(format('%I.%I (%s)', table_name, privilege_type), ', ')
+  INTO violations
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public'
+    AND table_name = ANY(clinical_tables)
+    AND grantee = 'anon';
+  IF violations IS NOT NULL THEN
+    RAISE EXCEPTION 'RLS contract: anon has direct clinical table grants: %', violations;
+  END IF;
+
   -- Uploader identity alone must never grant clinical document read access.
   SELECT string_agg(policyname, ', ') INTO violations
   FROM pg_policies
