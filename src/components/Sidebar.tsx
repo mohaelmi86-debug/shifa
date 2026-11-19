@@ -451,7 +451,7 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
                     {!collapsed && <span className="flex-1">{item.label}</span>}
                     {!collapsed && badgeCount > 0 && (
                       <span className="px-1.5 py-0.5 text-xs font-bold rounded-full text-white" style={{ backgroundColor: 'var(--shifa-blue)', minWidth: '20px', textAlign: 'center' }}>
-                        {item.badge}
+                        {badgeCount}
                       </span>
                     )}
                     {collapsed && badgeCount > 0 && (
