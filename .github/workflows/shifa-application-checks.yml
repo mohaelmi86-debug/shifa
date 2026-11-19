@@ -49,6 +49,9 @@ jobs:
       - name: TypeScript check
         run: npm run type-check
 
+      - name: API route integration tests
+        run: npm test -- --reporter=verbose
+
       - name: ESLint changed files
         shell: bash
         run: |
