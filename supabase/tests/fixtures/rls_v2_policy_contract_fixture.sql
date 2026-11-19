@@ -40,3 +40,11 @@ SET search_path = pg_catalog
 AS $$ SELECT false $$;
 
 GRANT USAGE ON SCHEMA private TO authenticated;
+
+CREATE FUNCTION private.belongs_to_org(target_org_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$ SELECT false $$;
