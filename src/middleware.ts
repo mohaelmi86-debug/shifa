@@ -15,6 +15,7 @@ const ADMIN_ROUTES = [
 ];
 const ORGANIZATION_ROUTES = ['/org-onboarding'];
 const PLATFORM_ADMIN_ROUTES = ['/platform-admin', '/registration-review'];
+const NOTIFICATION_ROUTES = ['/notifications-center'];
 const PARTNER_ROLE_ROUTES: Array<{ path: string; roles: string[] }> = [
   { path: '/espace-ministere', roles: ['ministry', 'platform_admin'] },
   { path: '/espace-assurance', roles: ['insurance', 'platform_admin'] },
@@ -29,6 +30,7 @@ function matchesPath(pathname: string, route: string): boolean {
 
 function requiredRoles(pathname: string): string[] | null {
   if (PLATFORM_ADMIN_ROUTES.some((route) => matchesPath(pathname, route))) return ['platform_admin'];
+  if (NOTIFICATION_ROUTES.some((route) => matchesPath(pathname, route))) return ['professional', 'org_admin', 'platform_admin'];
   if (PATIENT_ROUTES.some((route) => matchesPath(pathname, route))) return ['patient'];
   if (PROFESSIONAL_ROUTES.some((route) => matchesPath(pathname, route))) return ['professional'];
   if (ADMIN_ROUTES.some((route) => matchesPath(pathname, route))) return ['org_admin', 'platform_admin'];
