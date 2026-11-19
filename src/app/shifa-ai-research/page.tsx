@@ -4,7 +4,7 @@ import ShifaAIResearchContent from './components/ShifaAIResearchContent';
 
 export default function ShifaAIResearchPage() {
   return (
-    <AppLayout>
+    <AppLayout role="institution" activeRoute="/shifa-ai-research">
       <ShifaAIResearchContent />
     </AppLayout>
   );
