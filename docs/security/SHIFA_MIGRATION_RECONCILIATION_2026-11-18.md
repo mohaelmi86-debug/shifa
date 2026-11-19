@@ -146,3 +146,19 @@ The first RLS v2.0 migration must cover, at minimum:
 7. SECURITY DEFINER helpers: pinned safe search path, fully qualified references, least-privilege EXECUTE grants, and no client-write access to care relationships or break-glass audit rows.
 
 All of the above remains a design and audit record only. No DDL, policy, grant, bucket, or application setting has been changed in Supabase.
+
+
+## 10. Follow-up review of PR #5 and its isolated SQL workflow — 2026-11-19
+
+A read-only review of the current PR #5 migration `20261119008000_professional_clinical_tenant_scope.sql` and workflow `.github/workflows/shifa-database-tests.yml` found additional release gates:
+
+- The migration improves exact professional-to-organization membership checks for selected professional-owned rows and requires `invitation_status = 'accepted'` plus active membership and organization.
+- It is **not** the complete RLS v2.0 authorization model documented in this branch. The replacement `private.belongs_to_org(uuid)` still returns true for `public.is_platform_admin()` and for an active `org_admin` whose profile organization matches. The migration comments also explicitly preserve existing patient, organization-admin and platform-admin policy paths on selected tables. This does not meet the target rule of no standing platform-admin clinical access and restricted-only hospital-admin access. Do not describe PR #5 as completing RLS v2.0 or use it as evidence that those two access paths are closed.
+- The SQL CI workflow provisions PostgreSQL 15, while the connected Supabase project currently reports PostgreSQL 17.11.0.003. Version parity is not established.
+- The workflow creates minimal replacement tables and fail-closed helper stubs (for example, `private.can_access_transfer()` returns false). These fixtures are useful for syntax/structural checks, but they do not reproduce the full historical schema or prove the real authorization behavior of those helpers and policies. A green run must not be presented as an end-to-end RLS/API security pass.
+- The test workflow runs the repository's current migration files in a clean database, not the 16 historical remote migrations. Because those original SQL sources are missing, it cannot prove that the new migrations apply cleanly on top of the actual live schema.
+- The separate branch `security/shifa-rls-v2-staging` is a Git branch, not proof of a provisioned isolated Supabase staging project. The test matrix remains a plan until a separate staging database and synthetic JWT/API fixtures exist.
+
+### Required release interpretation
+
+Keep PR #5 in draft. Treat its application CI as application build/type/lint evidence only. Treat its PostgreSQL workflow as isolated partial SQL checks only. Before merge or rollout, recover or formally baseline the remote schema, run migrations on a schema-faithful disposable PostgreSQL/Supabase environment, and add API/JWT negative tests for cross-patient, cross-tenant, hospital-admin and platform-admin access. No production SQL has been executed as part of this follow-up.
