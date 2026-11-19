@@ -9,7 +9,14 @@ BEGIN
     RAISE EXCEPTION 'FAIL: authenticated users must be able to invoke the AI rate limiter';
   END IF;
   IF has_function_privilege('anon', 'public.consume_shifa_ai_rate_limit()', 'EXECUTE')
-     OR has_function_privilege('PUBLIC', 'public.consume_shifa_ai_rate_limit()', 'EXECUTE') THEN
+     OR EXISTS (
+       SELECT 1
+       FROM pg_proc p
+       CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+       WHERE p.oid = 'public.consume_shifa_ai_rate_limit()'::regprocedure
+         AND acl.grantee = 0
+         AND acl.privilege_type = 'EXECUTE'
+     ) THEN
     RAISE EXCEPTION 'FAIL: anonymous and PUBLIC roles must not execute the AI rate limiter';
   END IF;
   IF has_table_privilege('authenticated', 'private.shifa_ai_rate_limits', 'SELECT')
