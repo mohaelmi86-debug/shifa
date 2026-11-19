@@ -75,6 +75,11 @@ BEGIN
      ) IS NOT TRUE THEN
     RAISE EXCEPTION 'FAIL: verified professional with accepted membership and patient appointment must have scoped clinical access';
   END IF;
+  SELECT count(*) INTO v_visible_count
+  FROM public.patients WHERE id = '30000000-0000-4000-8000-000000000001';
+  IF v_visible_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL: verified treating professional must read the patient assigned by appointment';
+  END IF;
 
   -- Pending/unverified professional is denied, even though a membership row
   -- and patient appointment exist for another professional in that tenant.
@@ -90,6 +95,11 @@ BEGIN
        '20000000-0000-4000-8000-000000000001'
      ) IS NOT FALSE THEN
     RAISE EXCEPTION 'FAIL: pending/unverified professional must be denied clinical access';
+  END IF;
+  SELECT count(*) INTO v_visible_count
+  FROM public.patients WHERE id = '30000000-0000-4000-8000-000000000001';
+  IF v_visible_count <> 0 THEN
+    RAISE EXCEPTION 'FAIL: pending/unverified professional can read patient records';
   END IF;
 
   -- Tenant administration alone is not a care relationship.
