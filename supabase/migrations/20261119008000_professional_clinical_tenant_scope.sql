@@ -120,8 +120,14 @@ AS $function$
           )
           OR (
             recipient.role::text = 'org_admin'
-            AND recipient.organization_id IN (
-              pt.organization_id, pt.from_organization_id, pt.to_organization_id
+            AND EXISTS (
+              SELECT 1
+              FROM public.organizations admin_org
+              WHERE admin_org.id = recipient.organization_id
+                AND admin_org.is_active IS TRUE
+                AND admin_org.id IN (
+                  pt.organization_id, pt.from_organization_id, pt.to_organization_id
+                )
             )
           )
           OR EXISTS (
@@ -129,6 +135,9 @@ AS $function$
             FROM public.professionals pro
             JOIN public.professional_organizations po
               ON po.professional_id = pro.id
+            JOIN public.organizations member_org
+              ON member_org.id = po.organization_id
+             AND member_org.is_active IS TRUE
             WHERE pro.user_id = p_recipient_user_id
               AND pro.status::text = 'active'
               AND po.status::text = 'active'
