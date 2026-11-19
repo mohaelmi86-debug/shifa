@@ -80,9 +80,49 @@ jobs:
             created_at timestamptz DEFAULT now()
           );
           CREATE FUNCTION private.can_access_transfer(p_transfer_id uuid)
-          RETURNS boolean LANGUAGE sql STABLE AS $$
+          RETURNS boolean LANGUAGE sql STABLE AS $
             SELECT false
-          $$;
+          $;
+          CREATE TABLE public.kiosk_checkins (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            patient_id uuid,
+            appointment_id uuid,
+            organization_id uuid,
+            kiosk_id text NOT NULL DEFAULT 'KIOSK-01',
+            queue_number text,
+            department text,
+            status text NOT NULL DEFAULT 'checked_in',
+            checked_in_at timestamptz DEFAULT now(),
+            called_at timestamptz,
+            completed_at timestamptz,
+            patient_user_id uuid
+          );
+          CREATE TABLE public.shifa_ids (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            patient_id uuid,
+            user_id uuid,
+            shifa_id text NOT NULL,
+            status text NOT NULL DEFAULT 'active',
+            verification_level text NOT NULL DEFAULT 'basic',
+            qr_code_data text,
+            last_verified_at timestamptz,
+            created_at timestamptz DEFAULT now(),
+            updated_at timestamptz DEFAULT now(),
+            organization_id uuid
+          );
+          -- Legacy authorization helpers are deliberately fail-closed in CI.
+          CREATE FUNCTION private.owns_patient_record(p_patient_id uuid)
+          RETURNS boolean LANGUAGE sql STABLE AS $
+            SELECT false
+          $;
+          CREATE FUNCTION private.is_org_admin_for(p_org_id uuid)
+          RETURNS boolean LANGUAGE sql STABLE AS $
+            SELECT false
+          $;
+          CREATE FUNCTION private.org_admin_can_access_patient(p_patient_id uuid)
+          RETURNS boolean LANGUAGE sql STABLE AS $
+            SELECT false
+          $;
           CREATE TABLE auth.users (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             email text UNIQUE,
