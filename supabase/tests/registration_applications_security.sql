@@ -757,24 +757,27 @@ BEGIN
     RAISE EXCEPTION 'FAIL: every private SECURITY DEFINER function must use hardened search_path';
   END IF;
 
-  IF NOT EXISTS (
-       SELECT 1 FROM pg_policies
-       WHERE schemaname = 'public' AND tablename = 'patient_documents'
-         AND policyname = 'patient_documents_relationship_insert'
-         AND permissive = 'RESTRICTIVE' AND cmd = 'INSERT'
-         AND with_check ILIKE '%can_access_patient_document%'
-     )
-     OR NOT EXISTS (
-       SELECT 1 FROM pg_policies
-       WHERE schemaname = 'public' AND tablename = 'patient_documents'
-         AND policyname = 'patient_documents_relationship_update'
-         AND permissive = 'RESTRICTIVE' AND cmd = 'UPDATE'
-     )
-     OR NOT EXISTS (
-       SELECT 1 FROM pg_policies
-       WHERE schemaname = 'public' AND tablename = 'patient_documents'
-         AND policyname = 'patient_documents_relationship_delete'
-         AND permissive = 'RESTRICTIVE' AND cmd = 'DELETE'
+  IF to_regclass('public.patient_documents') IS NOT NULL
+     AND (
+       NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'patient_documents'
+           AND policyname = 'patient_documents_relationship_insert'
+           AND permissive = 'RESTRICTIVE' AND cmd = 'INSERT'
+           AND with_check ILIKE '%can_access_patient_document%'
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'patient_documents'
+           AND policyname = 'patient_documents_relationship_update'
+           AND permissive = 'RESTRICTIVE' AND cmd = 'UPDATE'
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'patient_documents'
+           AND policyname = 'patient_documents_relationship_delete'
+           AND permissive = 'RESTRICTIVE' AND cmd = 'DELETE'
+       )
      ) THEN
     RAISE EXCEPTION 'FAIL: patient document write policies must be relationship-scoped';
   END IF;
