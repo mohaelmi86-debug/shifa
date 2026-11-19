@@ -1,0 +1,63 @@
+name: SHIFA RLS v2 policy contract
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/tests/rls_v2_policy_contract.sql'
+      - 'supabase/tests/fixtures/rls_v2_policy_contract_fixture.sql'
+      - '.github/workflows/shifa-rls-policy-contract.yml'
+  push:
+    branches:
+      - security/shifa-rls-v2-staging
+    paths:
+      - 'supabase/tests/rls_v2_policy_contract.sql'
+      - 'supabase/tests/fixtures/rls_v2_policy_contract_fixture.sql'
+      - '.github/workflows/shifa-rls-policy-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shifa_contract
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d shifa_contract"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: shifa_contract
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Build synthetic catalog fixture
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/rls_v2_policy_contract_fixture.sql
+      - name: Contract passes on safe fixture
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_v2_policy_contract.sql
+      - name: Contract rejects a simulated admin bypass
+        shell: bash
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE POLICY simulated_platform_admin_bypass ON public.patients FOR SELECT TO authenticated USING (private.is_platform_admin());"
+          if psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_v2_policy_contract.sql; then
+            echo "::error::Policy contract did not reject the simulated admin bypass"
+            exit 1
+          else
+            echo "Expected rejection confirmed: unsafe admin policy was detected."
+          fi
