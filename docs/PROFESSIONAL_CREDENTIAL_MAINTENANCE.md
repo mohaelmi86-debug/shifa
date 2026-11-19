@@ -24,3 +24,12 @@ Ce workflow prépare l'exécution quotidienne des deux RPC de maintenance, mais 
 ## Limites
 
 Ce workflow n'envoie aucun e-mail, SMS ou push. Il ne fait que suspendre les rattachements expirés et créer des notifications internes. Le workflow planifié ne s'exécutera sur la branche par défaut qu'après intégration de ce fichier à celle-ci. Il ne faut pas activer la variable avant validation staging et déploiement contrôlé des migrations.
+
+## Destinataires des rappels
+
+La file de rappels crée des notifications internes à J-30, J-15 et J-7 :
+
+- pour le professionnel concerné, afin qu'il renouvelle son justificatif ;
+- pour les administrateurs actifs (`user_profiles.role = org_admin`) rattachés au même `organization_id`, afin qu'ils puissent anticiper la vérification au sein de leur établissement.
+
+Les notifications administratives sont isolées par établissement et possèdent une clé de déduplication propre à chaque destinataire. Le centre `/notifications-center` et le menu latéral des administrateurs d'établissement exposent ces alertes. Aucun administrateur d'un autre établissement n'est destinataire.
