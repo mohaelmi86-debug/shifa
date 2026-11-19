@@ -233,7 +233,7 @@ AS $function$
     JOIN public.organizations org
       ON org.id = po.organization_id
      AND org.is_active IS TRUE
-    JOIN public.consultations c
+    JOIN public.appointments c
       ON c.professional_id = pro.id
      AND c.organization_id = po.organization_id
     WHERE pro.user_id = (SELECT auth.uid())
@@ -278,7 +278,7 @@ AS $function$
       JOIN public.organizations org
         ON org.id = po.organization_id
        AND org.is_active IS TRUE
-      JOIN public.consultations c
+      JOIN public.appointments c
         ON c.professional_id = pro.id
        AND c.organization_id = po.organization_id
        AND c.patient_id = p_patient_id
