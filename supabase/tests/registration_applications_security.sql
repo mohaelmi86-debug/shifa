@@ -532,6 +532,36 @@ BEGIN
     RAISE EXCEPTION 'FAIL: clinical organization access must require explicitly accepted membership, not status alone';
   END IF;
 
+  -- Kiosk and SHIFA ID tenant guards (migration 20261119008000).
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'kiosk_checkins'
+      AND policyname = 'kiosk_checkins_tenant_scope_guard'
+      AND permissive = 'RESTRICTIVE' AND cmd = 'ALL'
+      AND qual ILIKE '%belongs_to_org%'
+      AND with_check ILIKE '%belongs_to_org%'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'shifa_ids'
+      AND policyname = 'shifa_ids_tenant_scope_guard'
+      AND permissive = 'RESTRICTIVE' AND cmd = 'ALL'
+      AND qual ILIKE '%professional_has_patient_consultation_in_org%'
+      AND with_check ILIKE '%professional_has_patient_consultation_in_org%'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: kiosk and SHIFA ID records must have restrictive tenant guards';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'private.professional_has_patient_consultation_in_org(uuid,uuid)', 'EXECUTE')
+     OR has_function_privilege('anon', 'private.professional_has_patient_consultation_in_org(uuid,uuid)', 'EXECUTE')
+     OR position('c.organization_id = po.organization_id' IN pg_get_functiondef(
+       'private.professional_has_patient_consultation_in_org(uuid,uuid)'::regprocedure
+     )) = 0
+     OR position('c.patient_id = p_patient_id' IN pg_get_functiondef(
+       'private.professional_has_patient_consultation_in_org(uuid,uuid)'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: SHIFA ID professional access must require exact patient and organization consultation';
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
