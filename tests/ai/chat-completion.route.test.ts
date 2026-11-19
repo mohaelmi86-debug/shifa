@@ -56,6 +56,10 @@ describe('POST /api/ai/chat-completion', () => {
     process.env.SHIFA_AI_PROVIDER = 'OPEN_AI';
     process.env.OPENAI_API_KEY = 'synthetic-api-key';
     process.env.SHIFA_AI_MODEL_RESEARCH = 'synthetic-research-model';
+    process.env.SHIFA_AI_MODEL_INSTITUTION = 'synthetic-institution-model';
+    process.env.SHIFA_AI_MODEL_PATIENT = 'synthetic-patient-model';
+    process.env.SHIFA_AI_MODEL_PROFESSIONAL = 'synthetic-professional-model';
+    process.env.SHIFA_AI_MODEL_ORGANIZATION = 'synthetic-organization-model';
     mocks.completion.mockResolvedValue({
       choices: [{ message: { content: 'Réponse de recherche synthétique.' } }],
     });
@@ -178,4 +182,29 @@ describe('POST /api/ai/chat-completion', () => {
     expect(responseText).not.toContain('private provider detail');
     expect(responseText).not.toContain('synthetic-api-key');
   });
+
+  it.each([
+    { module: 'patient', role: 'patient', model: 'synthetic-patient-model', prompt: 'SHIFA AI' },
+    { module: 'professional', role: 'professional', model: 'synthetic-professional-model', prompt: 'SHIFA AI Clinical' },
+    { module: 'organization', role: 'org_admin', model: 'synthetic-organization-model', prompt: 'SHIFA AI Organisation' },
+    { module: 'institution', role: 'ministry', model: 'synthetic-institution-model', prompt: 'SHIFA AI Institution' },
+    { module: 'research', role: 'university', model: 'synthetic-research-model', prompt: 'SHIFA AI Research' },
+  ])('routes $module requests through the matching server-owned profile', async ({ module, role, model, prompt }) => {
+    configureUser(role);
+
+    const response = await POST(makeRequest({
+      module,
+      messages: [{ role: 'user', content: 'Question synthétique de validation.' }],
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.completion).toHaveBeenCalledWith(expect.objectContaining({
+      model,
+      messages: expect.arrayContaining([
+        expect.objectContaining({ role: 'system', content: expect.stringContaining(prompt) }),
+        expect.objectContaining({ role: 'user', content: 'Question synthétique de validation.' }),
+      ]),
+    }));
+  });
+
 });
