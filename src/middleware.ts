@@ -24,6 +24,7 @@ const PARTNER_ROLE_ROUTES: Array<{ path: string; roles: string[] }> = [
   { path: '/espace-ong', roles: ['ngo', 'platform_admin'] },
   { path: '/espace-sante-publique', roles: ['public_health', 'platform_admin'] },
   { path: '/shifa-ai-institution', roles: ['ministry', 'insurance'] },
+  { path: '/shifa-ai-research', roles: ['university'] },
 ];
 
 function matchesPath(pathname: string, route: string): boolean {
