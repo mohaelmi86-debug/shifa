@@ -23,11 +23,11 @@ The main branch currently contains three SQL migrations under supabase/migration
 - 20260810220000_community_hub.sql
 - 20260811140000_phase2_financial_domains.sql
 
-The connected Supabase project audit reported 15 migration history entries. Therefore, the repository migration history is incomplete relative to the remote project.
+The connected Supabase project audit reported 16 migration history entries (latest: `20261118225231 shifa_revoke_excess_table_privileges`). Therefore, the repository migration history is incomplete relative to the remote project.
 
 **Do not run supabase db reset against this repository until the migration history and live schema have been reconciled.** Do not assume the three committed migrations recreate the current database.
 
-The branch audit/shifa-security-hardening-2026-11 contains an earlier tenant hardening migration. It is retained for review only and must not be copied or applied blindly: its organization-admin ownership rule and SECURITY DEFINER search path require reassessment against the current schema.
+The branch `audit/shifa-security-hardening-2026-11` contains an earlier tenant hardening migration. It is retained for review only and must not be copied or applied blindly: its organization-admin ownership rule and SECURITY DEFINER search path require reassessment against the current schema.
 
 ## 3. Confirmed schema constraints to preserve
 
@@ -46,7 +46,7 @@ Any policy/function must use the correct identifier for each table. Do not infer
 
 ### Phase A — establish a reproducible baseline
 1. Capture the current remote schema as a schema-only artifact in a controlled environment.
-2. Reconcile the 15 remote migration-history entries with the repository's three committed migration files.
+2. Reconcile the 16 remote migration-history entries with the repository's three committed migration files.
 3. Identify dashboard/manual SQL changes and managed Supabase objects that are not represented in migrations.
 4. Rebuild a disposable local database from the reconciled snapshot.
 5. Confirm PostgreSQL/Supabase versions and required extensions.
@@ -122,3 +122,17 @@ These findings must be revalidated against the current project before remediatio
 3. Inspect all policies and grants on the five clinical tables plus Storage.
 4. Build the first RLS v2.0 migration only after these checks.
 5. Add pgTAP/API tests with synthetic fixtures and run them in staging.
+
+
+## 8. Live metadata re-check — 2026-11-19
+
+A fresh metadata-only read against the connected Supabase project (PostgreSQL 17.11) confirms the following current state for the nine inspected clinical tables:
+
+- `authenticated` has direct table-level `SELECT`, `INSERT`, `UPDATE`, and `DELETE` grants only.
+- No direct `anon` table grants were returned for those nine tables.
+- No `TRUNCATE`, `REFERENCES`, or `TRIGGER` grants were returned for `authenticated` on those nine tables. The earlier excess-privilege finding is therefore considered remediated for this inspected set, not globally.
+- Current RLS policy counts: patients 4; patient_documents 4; health_records 8; consultations 5; prescriptions 7; appointments 7; lab_results 9; vital_signs 4; patient_transfers 4.
+
+The principal release blockers remain RLS semantics, not those three excess table privileges: broad platform-admin/org-admin predicates remain in clinical policies; the active care-relationship model is not consistently enforced; uploader-only document reads remain; and patient_transfers has no restrictive policy in the current inventory.
+
+This metadata check read no patient/clinical rows and changed nothing in Supabase. It does not replace a complete audit of function EXECUTE privileges, views/RPCs, Storage policies, and other exposed tables. The nine-table grant result must not be generalized to the whole database.
