@@ -11,6 +11,8 @@ DECLARE
   v_security_definer boolean;
   v_invitation_function text;
   v_existing_professional_update text;
+  v_expected_admin_guard_count integer;
+  v_actual_admin_guard_count integer;
 BEGIN
   SELECT c.relrowsecurity
     INTO v_rls
@@ -591,25 +593,33 @@ BEGIN
     RAISE EXCEPTION 'FAIL: platform-admin clinical deny helper must use the platform role and hardened search_path';
   END IF;
 
-  IF (
-    SELECT count(*)
-    FROM pg_policies
-    WHERE schemaname = 'public'
-      AND tablename IN (
-        'patients','patient_documents','appointments','blood_requests',
-        'consultations','health_records','hospitalizations','imaging_studies',
-        'kiosk_checkins','lab_results','lab_samples','operating_room_schedules',
-        'patient_transfers','pharmacy_pos_transactions','prescriptions',
-        'shifa_cards','shifa_ids','vital_signs'
-      )
-      AND policyname = 'platform_admin_clinical_default_deny'
-      AND permissive = 'RESTRICTIVE'
-      AND roles = '{authenticated}'
-      AND cmd = 'ALL'
-      AND qual ILIKE '%is_platform_admin_clinical_access_denied%'
-      AND with_check ILIKE '%is_platform_admin_clinical_access_denied%'
-  ) < 18 THEN
-    RAISE EXCEPTION 'FAIL: platform-admin clinical default-deny guards are missing from expected RLS tables';
+  SELECT count(*)
+    INTO v_expected_admin_guard_count
+  FROM unnest(ARRAY[
+    'patients','patient_documents','appointments','blood_requests',
+    'consultations','health_records','hospitalizations','imaging_studies',
+    'kiosk_checkins','lab_results','lab_samples','operating_room_schedules',
+    'patient_transfers','pharmacy_pos_transactions','prescriptions',
+    'shifa_cards','shifa_ids','vital_signs'
+  ]) AS expected(tablename)
+  WHERE to_regclass('public.' || expected.tablename) IS NOT NULL;
+
+  SELECT count(*)
+    INTO v_actual_admin_guard_count
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND policyname = 'platform_admin_clinical_default_deny'
+    AND permissive = 'RESTRICTIVE'
+    AND roles = '{authenticated}'
+    AND cmd = 'ALL'
+    AND qual ILIKE '%is_platform_admin_clinical_access_denied%'
+    AND with_check ILIKE '%is_platform_admin_clinical_access_denied%';
+
+  IF v_expected_admin_guard_count < 10
+     OR v_actual_admin_guard_count <> v_expected_admin_guard_count THEN
+    RAISE EXCEPTION
+      'FAIL: platform-admin clinical default-deny guards mismatch (expected %, actual %)',
+      v_expected_admin_guard_count, v_actual_admin_guard_count;
   END IF;
 
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
