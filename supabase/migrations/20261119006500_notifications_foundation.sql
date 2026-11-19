@@ -55,7 +55,7 @@ BEGIN
   ) THEN
     CREATE POLICY notifications_insert ON public.notifications
       FOR INSERT WITH CHECK (
-        auth.uid() = user_id OR public.is_platform_admin() OR private.is_org_admin()
+        auth.uid() = user_id OR public.is_platform_admin()
       );
   END IF;
 
