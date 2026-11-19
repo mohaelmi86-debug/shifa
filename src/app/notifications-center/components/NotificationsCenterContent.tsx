@@ -75,13 +75,17 @@ export default function NotificationsCenterContent() {
     try {
       setLoading(true);
       setError(null);
-      const [data, appResult] = await Promise.all([
+      const [financialResult, appResult] = await Promise.allSettled([
         getFinancialNotifications(user.id),
         createClient().from('notifications').select('id, notification_type, title, body, action_url, is_read, priority, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
       ]);
-      if (appResult.error) throw appResult.error;
-      setNotifications(data);
-      setAppNotifications((appResult.data || []) as AppNotification[]);
+      if (financialResult.status === 'fulfilled') setNotifications(financialResult.value);
+      else setError('Les notifications financières ne sont pas disponibles pour le moment.');
+      if (appResult.status === 'fulfilled' && !appResult.value.error) {
+        setAppNotifications((appResult.value.data || []) as AppNotification[]);
+      } else {
+        setError('Les alertes professionnelles ne sont pas disponibles pour le moment.');
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur de chargement';
       setError(msg);
