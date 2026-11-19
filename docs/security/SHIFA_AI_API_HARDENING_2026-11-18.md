@@ -9,17 +9,18 @@ Nature : durcissement applicatif incrémental ; aucun changement Supabase ni dé
 
 - L'endpoint `POST /api/ai/chat-completion` exige désormais une session Supabase validée côté serveur avec `auth.getUser()`.
 - Le profil est relu depuis `user_profiles` côté serveur ; le compte doit exister et avoir `is_active = true`.
-- Le module est limité à `patient`, `professional` ou `organization`.
+- Le module est limité à `patient`, `professional`, `organization` ou `institution`.
 - Matrice d'accès appliquée dans le handler :
   - `patient` → rôle `patient`
   - `professional` → rôle `professional`
   - `organization` → rôle `org_admin`
+  - `institution` → rôles `ministry` ou `insurance` (données agrégées uniquement)
 - Le prompt système est défini côté serveur ; les messages système fournis par le navigateur sont rejetés.
 - Le navigateur ne choisit plus le fournisseur, le modèle, les clés, le streaming ni les paramètres arbitraires du SDK.
 - Les limites de requête sont contrôlées : 32 Ko sur les octets réels du corps HTTP (indépendamment de l'en-tête Content-Length), 20 messages maximum, 8 000 caractères par message et 24 000 caractères cumulés.
 - Un limiteur PostgreSQL atomique est ajouté dans une migration séparée : 10 requêtes/minute et 200/jour par utilisateur authentifié, avec réponse HTTP 429 et en-tête `Retry-After`. Le limiteur échoue en mode fermé si le RPC est indisponible ; les compteurs agrégés anciens sont nettoyés à chaque appel actif et aucun prompt n'est stocké.
 - Les erreurs publiques sont normalisées et ne renvoient plus les détails bruts du fournisseur.
-- Les trois écrans patient, professionnel et organisation utilisent le nouveau contrat `{ module, messages }` et lisent `output`. Ils vérifient `response.ok` avant d'afficher la réponse.
+- Les écrans patient, professionnel, pharmacie et organisation utilisent le contrat `{ module, messages }` et lisent `output`. L'écran institution utilise également ce contrat depuis le correctif du 19 novembre. Les appels vérifient `response.ok` avant d'afficher la réponse.
 - Le mode professionnel sélectionné est conservé comme contexte de la question, mais ne confère aucun droit d'accès aux données patient.
 
 ## 2. Configuration serveur requise
@@ -34,6 +35,7 @@ Variables à configurer dans l'environnement serveur de déploiement (jamais dan
 | `SHIFA_AI_MODEL_PATIENT` | Identifiant de modèle choisi pour le module patient |
 | `SHIFA_AI_MODEL_PROFESSIONAL` | Identifiant de modèle choisi pour le module professionnel |
 | `SHIFA_AI_MODEL_ORGANIZATION` | Identifiant de modèle choisi pour le module organisation |
+| `SHIFA_AI_MODEL_INSTITUTION` | Identifiant de modèle choisi pour le module institution (ministères/assureurs) |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `PERPLEXITY_API_KEY` | Clé serveur du fournisseur choisi |
 
 Le handler renvoie `503 AI_SERVICE_NOT_CONFIGURED` si la configuration requise manque. Il ne bascule pas silencieusement sur un fournisseur ou un modèle de secours.
@@ -75,7 +77,8 @@ Critères de sortie : migration appliquée sur un staging isolé après réconci
 ## 5. Limites de vérification
 
 - Changements committés sur une branche dédiée GitHub.
-- Aucun build, lint, test automatisé, test navigateur ou appel fournisseur n'a été exécuté depuis cet environnement.
+- Les workflows GitHub Actions exécutent les contrôles de dépendances, TypeScript, ESLint, build de production et tests SQL isolés. Les tests SQL synthétiques de sécurité clinique et de quotas IA ont réussi sur le commit `003adfa`; les contrôles du commit de correction institutionnelle sont en cours de validation CI.
+- Aucun test navigateur ni appel réel au fournisseur IA n'a été exécuté. Aucun résultat de réponse réelle du modèle n'est donc revendiqué.
 - La migration `20261118220000_shifa_ai_rate_limits.sql` est uniquement préparée dans GitHub ; elle n'a pas été appliquée à Supabase. Le ledger de production doit d'abord être réconcilié (15 migrations présentes côté Supabase contre 3 sources sur `main`).
 - Aucun secret, fichier `.env`, dossier patient, compte réel ou donnée Supabase n'a été consulté ou modifié.
 - Aucun déploiement ni changement de production n'a été effectué.
@@ -88,7 +91,7 @@ Critères de sortie : migration appliquée sur un staging isolé après réconci
 - Le workflow a été renforcé : Node.js 22, audit bloquant à partir du niveau élevé et étape de build de production Next.js.
 - Le script `npm start` a été corrigé : il lance désormais `next start -p 4028` au lieu du serveur de développement. `npm run dev` reste réservé au développement.
 - La règle qui ignorait `package-lock.json` a été retirée de `.gitignore`. **Le lockfile n'est toutefois pas encore présent dans le dépôt** ; une installation reproductible via `npm ci` reste à finaliser.
-- Le dernier workflow n'a pas encore fourni de résultat exploitable après ces commits. Le build et le lint corrigé restent donc à confirmer par une exécution CI réussie.
+- Les résultats CI doivent être lus sur le dernier commit de la branche, car les exécutions intermédiaires sont automatiquement annulées lors de nouveaux commits. Le statut courant est consultable dans GitHub Actions.
 
 ## 7. Bloqueur de sécurité transversal à réconcilier
 
@@ -116,3 +119,12 @@ Projet vérifié : `shifa health` (`dxngxejuxeghsdafkkjp`, région `eu-west-3`).
 ## 9. Lockfile CI
 
 Le workflow génère désormais un `package-lock.json` à partir de `package.json`, publie ce fichier comme artefact GitHub Actions (rétention 7 jours), puis installe les dépendances avec `npm ci` avant audit, type-check, lint et build. Le lockfile n'est pas encore committé au dépôt : il devra être récupéré depuis l'artefact et relu avant ajout à la branche.
+
+
+## 10. Correctif du module institutionnel — 19 novembre 2026
+
+- Ajout du module serveur `institution` avec le modèle configuré par `SHIFA_AI_MODEL_INSTITUTION` et une autorisation limitée aux rôles `ministry` et `insurance`.
+- Le prompt serveur impose l'analyse de données agrégées/anonymisées et interdit les dossiers médicaux individuels.
+- L'écran institution transmet désormais `{ module: 'institution', messages }`, n'envoie plus de message `system` depuis le navigateur et lit le champ `output` renvoyé par l'API.
+- Le middleware protège les écrans IA patient, professionnel, pharmacie, organisation, institution et workspace selon les rôles du profil serveur. L'accès institutionnel est limité à `ministry` et `insurance`.
+- La validation TypeScript, ESLint, build et tests SQL doit être confirmée sur le dernier commit avant de considérer ce correctif terminé.
