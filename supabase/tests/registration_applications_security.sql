@@ -782,6 +782,28 @@ BEGIN
     RAISE EXCEPTION 'FAIL: patient document write policies must be relationship-scoped';
   END IF;
 
+  IF to_regclass('storage.objects') IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'storage' AND tablename = 'objects'
+        AND policyname = 'clinical_storage_owner_default_deny'
+        AND permissive = 'RESTRICTIVE' AND cmd = 'ALL'
+        AND qual ILIKE '%lab-reports%'
+        AND qual ILIKE '%medical-images%'
+        AND qual NOT ILIKE '%is_platform_admin%'
+        AND with_check ILIKE '%auth.uid%'
+    )
+    OR EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'storage' AND tablename = 'objects'
+        AND policyname IN ('lab_reports_select','lab_reports_insert',
+                           'medical_images_select','medical_images_insert')
+        AND (COALESCE(qual, '') || COALESCE(with_check, '')) ILIKE '%is_platform_admin%'
+    ) THEN
+      RAISE EXCEPTION 'FAIL: clinical Storage buckets must not expose a platform-admin bypass';
+    END IF;
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
