@@ -59,6 +59,7 @@ jobs:
           CREATE SCHEMA realtime;
           CREATE SCHEMA extensions;
           CREATE SCHEMA IF NOT EXISTS private;
+          GRANT USAGE ON SCHEMA private TO authenticated;
           -- Legacy transfer objects exist in the linked Supabase project but
           -- their original migrations are absent from this repository snapshot.
           -- These fixtures model only the referenced columns; access helper is
