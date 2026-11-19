@@ -149,6 +149,7 @@ const adminNav: NavItem[] = [
   { key: 'nav-adm-accounting-ledger', label: 'Comptabilité générale', icon: 'CalculatorIcon', href: '/accounting-ledger', group: 'gestion' },
   { key: 'nav-adm-module-catalog', label: 'Catalogue modules', icon: 'PuzzlePieceIcon', href: '/module-catalog', group: 'gestion' },
   { key: 'nav-adm-professionnels', label: 'Professionnels', icon: 'UserGroupIcon', href: '/admin-professionnels', badge: 3, group: 'gestion' },
+  { key: 'nav-adm-notifications', label: 'Notifications', icon: 'BellIcon', href: '/notifications-center', group: 'gestion' },
   { key: 'nav-adm-utilisateurs', label: 'Utilisateurs', icon: 'UsersIcon', href: '/admin-utilisateurs', group: 'gestion' },
   { key: 'nav-adm-modules', label: 'Modules', icon: 'PuzzlePieceIcon', href: '/admin-modules', group: 'gestion' },
   { key: 'nav-adm-roles', label: 'Rôles & Droits', icon: 'ShieldCheckIcon', href: '/admin-roles', group: 'gestion' },
@@ -355,7 +356,7 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
   const [professionalUnreadCount, setProfessionalUnreadCount] = useState(0);
 
   const refreshProfessionalUnreadCount = useCallback(async () => {
-    if (role !== 'professional' || !user?.id) {
+    if ((role !== 'professional' && role !== 'admin') || !user?.id) {
       setProfessionalUnreadCount(0);
       return;
     }
@@ -368,7 +369,7 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
   }, [role, user?.id]);
 
   useEffect(() => {
-    if (role !== 'professional' || !user?.id) return;
+    if ((role !== 'professional' && role !== 'admin') || !user?.id) return;
     const supabase = createClient();
     void refreshProfessionalUnreadCount();
     const channel = supabase
@@ -436,7 +437,7 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
               )}
               {items.map((item) => {
                 const isActive = activeRoute === item.href || (item.href !== '/patient-home' && activeRoute.startsWith(item.href));
-                const badgeCount = role === 'professional' && item.href === '/notifications-center'
+                const badgeCount = (role === 'professional' || role === 'admin') && item.href === '/notifications-center'
                   ? professionalUnreadCount
                   : item.badge ?? 0;
                 return (
