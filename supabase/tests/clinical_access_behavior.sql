@@ -12,6 +12,17 @@ INSERT INTO auth.users (id, email) VALUES
   ('10000000-0000-4000-8000-000000000005', 'ci-platform-admin@shifa.invalid')
 ON CONFLICT (id) DO NOTHING;
 
+-- The auth trigger creates a default patient row for public signups. Remove
+-- those disposable auto-created rows so this suite can install one known patient fixture.
+DELETE FROM public.patients
+WHERE user_id IN (
+  '10000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000003',
+  '10000000-0000-4000-8000-000000000004',
+  '10000000-0000-4000-8000-000000000005'
+);
+
 INSERT INTO public.user_profiles (id, email, full_name, role, is_active) VALUES
   ('10000000-0000-4000-8000-000000000001', 'ci-patient@shifa.invalid', 'CI Patient', 'patient', true),
   ('10000000-0000-4000-8000-000000000002', 'ci-verified-professional@shifa.invalid', 'CI Verified Professional', 'professional', true),
