@@ -267,11 +267,25 @@ BEGIN
     RAISE EXCEPTION 'FAIL: credential metadata must be read-scoped, immutable to clients, and review notes private';
   END IF;
 
-  IF NOT has_function_privilege('authenticated', 'public.submit_professional_credential(text,text,text,text,integer,text,text,date)', 'EXECUTE')
+  IF NOT has_function_privilege('authenticated', 'public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date)', 'EXECUTE')
      OR NOT has_function_privilege('authenticated', 'public.review_professional_credential(uuid,text,text)', 'EXECUTE')
-     OR has_function_privilege('anon', 'public.submit_professional_credential(text,text,text,text,integer,text,text,date)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date)', 'EXECUTE')
      OR has_function_privilege('anon', 'public.review_professional_credential(uuid,text,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'FAIL: credential RPC grants are not correctly scoped';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'public.list_my_professional_credential_organizations()', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.list_my_professional_credential_organizations()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: organization picker RPC grants are not correctly scoped';
+  END IF;
+
+  IF position('p_organization_id' IN pg_get_functiondef(
+    'public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date)'::regprocedure
+  )) = 0
+     OR position('organization_id = p_organization_id' IN pg_get_functiondef(
+       'public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date)'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: credential submission must validate the explicitly selected organization';
   END IF;
 
   IF NOT EXISTS (
@@ -354,10 +368,10 @@ BEGIN
   END IF;
 
   IF position('ORDER BY joined_at DESC' IN pg_get_functiondef(
-    'public.submit_professional_credential(text,text,text,text,integer,text,text,date)'::regprocedure
+    'public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date)'::regprocedure
   )) > 0
      OR position('PRIMARY_ORGANIZATION_SELECTION_REQUIRED' IN pg_get_functiondef(
-       'public.submit_professional_credential(text,text,text,text,integer,text,text,date)'::regprocedure
+       'public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date)'::regprocedure
      )) = 0 THEN
     RAISE EXCEPTION 'FAIL: credential submission must not select an arbitrary organization membership';
   END IF;
