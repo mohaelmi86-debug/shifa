@@ -248,3 +248,115 @@ COMMENT ON FUNCTION private.belongs_to_org(uuid) IS
   'Organization membership requires an active org admin or a verified active professional with an explicitly accepted active membership in the exact active organization.';
 COMMENT ON FUNCTION private.professional_has_patient_consultation(uuid) IS
   'Patient consultation visibility requires verified active professional status and accepted active membership in the consultation organization.';
+
+
+-- Exact patient + organization relationship for SHIFA ID clinical reads.
+CREATE OR REPLACE FUNCTION private.professional_has_patient_consultation_in_org(
+  p_patient_id uuid,
+  p_organization_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $function$
+  SELECT p_patient_id IS NOT NULL
+    AND p_organization_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM public.professionals pro
+      JOIN public.user_profiles up
+        ON up.id = pro.user_id
+       AND up.is_active IS TRUE
+       AND up.role::text = 'professional'
+      JOIN public.professional_organizations po
+        ON po.professional_id = pro.id
+       AND po.organization_id = p_organization_id
+       AND po.status::text = 'active'
+       AND po.invitation_status = 'accepted'::public.invitation_status
+      JOIN public.organizations org
+        ON org.id = po.organization_id
+       AND org.is_active IS TRUE
+      JOIN public.consultations c
+        ON c.professional_id = pro.id
+       AND c.organization_id = po.organization_id
+       AND c.patient_id = p_patient_id
+      WHERE pro.user_id = (SELECT auth.uid())
+        AND private.is_verified_active_professional()
+    );
+$function$;
+
+REVOKE ALL ON FUNCTION private.professional_has_patient_consultation_in_org(uuid,uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.professional_has_patient_consultation_in_org(uuid,uuid) TO authenticated;
+
+-- Kiosk queue rows are tenant operational data. The former broad
+-- is_clinical_role() permissive path must not expose every organization's queue.
+DROP POLICY IF EXISTS kiosk_checkins_tenant_scope_guard ON public.kiosk_checkins;
+CREATE POLICY kiosk_checkins_tenant_scope_guard
+  ON public.kiosk_checkins
+  AS RESTRICTIVE
+  FOR ALL
+  TO authenticated
+  USING (
+    private.is_platform_admin()
+    OR (patient_user_id = (SELECT auth.uid()))
+    OR private.owns_patient_record(patient_id)
+    OR (
+      organization_id IS NOT NULL
+      AND (private.belongs_to_org(organization_id) OR private.is_org_admin_for(organization_id))
+    )
+  )
+  WITH CHECK (
+    private.is_platform_admin()
+    OR (patient_user_id = (SELECT auth.uid()))
+    OR private.owns_patient_record(patient_id)
+    OR (
+      organization_id IS NOT NULL
+      AND (private.belongs_to_org(organization_id) OR private.is_org_admin_for(organization_id))
+    )
+  );
+
+-- SHIFA IDs are patient identity records: a professional must have a
+-- consultation for that patient in the exact organization on the ID row.
+DROP POLICY IF EXISTS shifa_ids_tenant_scope_guard ON public.shifa_ids;
+CREATE POLICY shifa_ids_tenant_scope_guard
+  ON public.shifa_ids
+  AS RESTRICTIVE
+  FOR ALL
+  TO authenticated
+  USING (
+    private.is_platform_admin()
+    OR user_id = (SELECT auth.uid())
+    OR private.owns_patient_record(patient_id)
+    OR (
+      organization_id IS NOT NULL
+      AND patient_id IS NOT NULL
+      AND (
+        private.professional_has_patient_consultation_in_org(patient_id, organization_id)
+        OR (
+          private.is_org_admin_for(organization_id)
+          AND private.org_admin_can_access_patient(patient_id)
+        )
+      )
+    )
+  )
+  WITH CHECK (
+    private.is_platform_admin()
+    OR user_id = (SELECT auth.uid())
+    OR private.owns_patient_record(patient_id)
+    OR (
+      organization_id IS NOT NULL
+      AND patient_id IS NOT NULL
+      AND (
+        private.professional_has_patient_consultation_in_org(patient_id, organization_id)
+        OR (
+          private.is_org_admin_for(organization_id)
+          AND private.org_admin_can_access_patient(patient_id)
+        )
+      )
+    )
+  );
+
+COMMENT ON FUNCTION private.professional_has_patient_consultation_in_org(uuid,uuid) IS
+  'Clinical SHIFA ID access requires an active verified professional, accepted active membership and a consultation for the patient in the exact active organization.';
