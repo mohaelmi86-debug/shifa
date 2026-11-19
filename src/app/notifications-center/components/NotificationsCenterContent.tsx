@@ -189,7 +189,9 @@ export default function NotificationsCenterContent() {
     try {
       await markFinancialNotificationRead(id);
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    } catch {}
+    } catch {
+      setError('Impossible de marquer cette notification financière comme lue.');
+    }
   };
 
   const handleMarkAllRead = async () => {
@@ -197,7 +199,9 @@ export default function NotificationsCenterContent() {
     try {
       await markAllFinancialNotificationsRead(user.id);
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch {}
+    } catch {
+      setError('Impossible de mettre à jour les notifications financières.');
+    }
   };
 
   const tabFilter = TABS[activeTab];
