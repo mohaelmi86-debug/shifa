@@ -15,6 +15,7 @@ DECLARE
   v_first_name text;
   v_last_name text;
   v_specialty text;
+  v_profession text;
   v_date_of_birth date;
   v_gender public.gender_type;
 BEGIN
@@ -66,15 +67,16 @@ BEGIN
 
   IF v_role = 'professional'::public.user_role THEN
     v_specialty := COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'specialty'), ''), 'general_practice');
+    v_profession := LEFT(COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'profession'), ''), 'health_professional'), 100);
     IF v_specialty NOT IN ('general_practice', 'cardiology', 'dermatology', 'endocrinology', 'gastroenterology', 'gynecology', 'neurology', 'oncology', 'ophthalmology', 'orthopedics', 'pediatrics', 'psychiatry', 'pulmonology', 'radiology', 'surgery', 'urology', 'emergency_medicine', 'anesthesiology', 'pathology', 'other') THEN
       v_specialty := 'other';
     END IF;
 
     INSERT INTO public.professionals (
-      user_id, first_name, last_name, specialty, license_number,
+      user_id, first_name, last_name, profession, specialty, license_number,
       country_code, phone, email, is_verified
     ) VALUES (
-      NEW.id, v_first_name, v_last_name, v_specialty,
+      NEW.id, v_first_name, v_last_name, v_profession, v_specialty,
       NULLIF(TRIM(NEW.raw_user_meta_data->>'license_number'), ''),
       COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'country'), ''), 'FR'),
       NULLIF(TRIM(NEW.raw_user_meta_data->>'phone'), ''),
