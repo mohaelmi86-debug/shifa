@@ -33,6 +33,17 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, { icon: string; color: string; bg
 
 const TABS = ['Toutes', 'Paiements', 'Abonnements', 'Factures', 'Commissions', 'Règlements', 'Taxes', 'Versements'];
 
+type AppNotification = {
+  id: string;
+  notification_type: string;
+  title: string;
+  body: string;
+  action_url: string | null;
+  is_read: boolean;
+  priority: string | null;
+  created_at: string;
+};
+
 function formatAmount(amount?: number, currency?: string): string {
   if (!amount) return '';
   return `${amount.toLocaleString('fr-FR')} ${currency || 'XOF'}`;
@@ -54,6 +65,7 @@ export default function NotificationsCenterContent() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [notifications, setNotifications] = useState<FinancialNotification[]>([]);
+  const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
@@ -63,8 +75,13 @@ export default function NotificationsCenterContent() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getFinancialNotifications(user.id);
+      const [data, appResult] = await Promise.all([
+        getFinancialNotifications(user.id),
+        createClient().from('notifications').select('id, notification_type, title, body, action_url, is_read, priority, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+      ]);
+      if (appResult.error) throw appResult.error;
       setNotifications(data);
+      setAppNotifications((appResult.data || []) as AppNotification[]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur de chargement';
       setError(msg);
@@ -119,6 +136,22 @@ export default function NotificationsCenterContent() {
     };
   }, [user?.id]);
 
+  const handleAppNotificationRead = async (item: AppNotification) => {
+    if (item.is_read || !user?.id) return;
+    const supabase = createClient();
+    const { error: updateError } = await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', item.id).eq('user_id', user.id).eq('is_read', false);
+    if (updateError) { setError('Impossible de marquer cette alerte comme lue.'); return; }
+    setAppNotifications((prev) => prev.map((n) => n.id === item.id ? { ...n, is_read: true } : n));
+  };
+
+  const handleMarkAllAppRead = async () => {
+    if (!user?.id) return;
+    const supabase = createClient();
+    const { error: updateError } = await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('user_id', user.id).eq('is_read', false);
+    if (updateError) { setError('Impossible de mettre à jour les alertes.'); return; }
+    setAppNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  };
+
   const handleMarkRead = async (id: string) => {
     try {
       await markFinancialNotificationRead(id);
@@ -144,6 +177,7 @@ export default function NotificationsCenterContent() {
         });
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const appUnreadCount = appNotifications.filter((n) => !n.is_read).length;
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--background)' }}>
@@ -220,6 +254,37 @@ export default function NotificationsCenterContent() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {appNotifications.length > 0 && (
+          <section className="m-4 rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
+            <div className="px-5 py-4 flex items-center justify-between gap-3 border-b" style={{ borderColor: "var(--border)" }}>
+              <div>
+                <h2 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Alertes professionnelles SHIFA</h2>
+                <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>{appUnreadCount} non lue{appUnreadCount > 1 ? "s" : ""}</p>
+              </div>
+              {appUnreadCount > 0 && <button onClick={handleMarkAllAppRead} className="text-xs underline" style={{ color: "var(--shifa-blue)" }}>Tout marquer comme lu</button>}
+            </div>
+            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+              {appNotifications.map((item) => (
+                <div key={item.id} className="px-5 py-4 flex items-start gap-3" style={{ backgroundColor: item.is_read ? "transparent" : "rgba(245,158,11,.06)" }}>
+                  <Icon name="ShieldCheckIcon" size={18} style={{ color: item.priority === "high" ? "#dc2626" : "#d97706" }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{item.title}</p>
+                      <span className="text-xs shrink-0" style={{ color: "var(--muted-foreground)" }}>{timeAgo(item.created_at)}</span>
+                    </div>
+                    <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--muted-foreground)" }}>{item.body}</p>
+                    <div className="flex items-center gap-4 mt-2">
+                      {item.action_url?.startsWith("/") && <a href={item.action_url} className="text-xs font-semibold underline" style={{ color: "var(--shifa-blue)" }}>Ouvrir</a>}
+                      {!item.is_read && <button onClick={() => handleAppNotificationRead(item)} className="text-xs underline" style={{ color: "var(--muted-foreground)" }}>Marquer comme lue</button>}
+                    </div>
+                  </div>
+                  {!item.is_read && <span className="w-2 h-2 rounded-full mt-1 shrink-0" style={{ backgroundColor: "#d97706" }} />}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
         {error && (
           <div className="m-4 p-4 rounded-xl border flex items-center gap-3" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5' }}>
             <Icon name="ExclamationCircleIcon" size={18} style={{ color: '#dc2626' }} />
