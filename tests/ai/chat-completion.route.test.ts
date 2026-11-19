@@ -23,6 +23,7 @@ function configureUser(
   role = 'university',
   isActive = true,
   rateLimit: { allowed: boolean; retry_after_seconds?: number } = { allowed: true },
+  professionalVerified = true,
 ) {
   const query = {
     select: vi.fn(),
@@ -35,6 +36,17 @@ function configureUser(
   query.select.mockReturnValue(query);
   query.eq.mockReturnValue(query);
 
+  const professionalQuery = {
+    select: vi.fn(),
+    eq: vi.fn(),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: professionalVerified ? { id: 'synthetic-professional' } : null,
+      error: null,
+    }),
+  };
+  professionalQuery.select.mockReturnValue(professionalQuery);
+  professionalQuery.eq.mockReturnValue(professionalQuery);
+
   const rpc = vi.fn().mockResolvedValue({ data: rateLimit, error: null });
   const getUser = vi.fn().mockResolvedValue({
     data: { user: { id: 'synthetic-user' } },
@@ -43,7 +55,7 @@ function configureUser(
 
   mocks.createClient.mockResolvedValue({
     auth: { getUser },
-    from: vi.fn().mockReturnValue(query),
+    from: vi.fn((table: string) => table === 'professionals' ? professionalQuery : query),
     rpc,
   });
 
@@ -181,6 +193,21 @@ describe('POST /api/ai/chat-completion', () => {
     expect(responseText).toContain('AI_REQUEST_FAILED');
     expect(responseText).not.toContain('private provider detail');
     expect(responseText).not.toContain('synthetic-api-key');
+  });
+
+
+  it('denies clinical AI to a professional whose credentials are pending or inactive', async () => {
+    const { rpc } = configureUser('professional', true, { allowed: true }, false);
+
+    const response = await POST(makeRequest({
+      module: 'professional',
+      messages: [{ role: 'user', content: 'Question clinique synthétique.' }],
+    }));
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toBe('PROFESSIONAL_VERIFICATION_REQUIRED');
+    expect(rpc).not.toHaveBeenCalled();
+    expect(mocks.completion).not.toHaveBeenCalled();
   });
 
   it.each([
