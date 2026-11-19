@@ -48,7 +48,7 @@ BEGIN
   v_last_name := COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'last_name'), ''), NULLIF(TRIM(substr(v_full_name, length(v_first_name) + 2)), ''), v_first_name);
 
   INSERT INTO public.user_profiles (
-    id, email, full_name, phone, role, organization_id, country, is_active
+    id, email, full_name, phone, role, organization_id, country_code, is_active
   ) VALUES (
     NEW.id,
     NEW.email,
