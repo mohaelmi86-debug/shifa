@@ -156,7 +156,7 @@ export default function ShifaAIResearchContent() {
           <div className="p-3 rounded-xl" style={{ background: '#fef9c3' }}>
             <p className="text-xs font-semibold" style={{ color: '#a16207' }}>⚠ Avertissement</p>
             <p className="text-xs mt-1" style={{ color: '#92400e' }}>
-              Cet assistant ne remplace pas l'expertise d'un biostatisticien ou d'un comité d'éthique.
+              Cet assistant ne remplace pas l&apos;expertise d&apos;un biostatisticien ou d&apos;un comité d&apos;éthique.
             </p>
           </div>
         </div>
