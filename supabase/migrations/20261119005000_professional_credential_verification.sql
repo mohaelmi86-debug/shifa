@@ -89,7 +89,7 @@ FOR SELECT TO authenticated
 USING (
   submitted_by = (SELECT auth.uid())
   OR private.org_admin_can_access_professional_in_org(professional_id, organization_id)
-  OR private.is_platform_admin()
+  OR public.is_platform_admin()
 );
 
 DROP POLICY IF EXISTS professional_credentials_storage_upload ON storage.objects;
@@ -115,7 +115,7 @@ USING (
       WHERE pc.storage_path = name
         AND private.org_admin_can_access_professional_in_org(pc.professional_id, pc.organization_id)
     )
-    OR private.is_platform_admin()
+    OR public.is_platform_admin()
   )
 );
 
@@ -166,7 +166,7 @@ USING (
       WHERE pc.storage_path = name
         AND private.org_admin_can_access_professional_in_org(pc.professional_id, pc.organization_id)
     )
-    OR private.is_platform_admin()
+    OR public.is_platform_admin()
   )
 );
 
