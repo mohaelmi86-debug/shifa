@@ -161,8 +161,12 @@ BEGIN
     )) 
   );
   IF v_existing_professional_update ILIKE '%is_verified = FALSE%'
-     OR v_existing_professional_update ILIKE '%status = ''pending''%' THEN
-    RAISE EXCEPTION 'FAIL: adding an organization must preserve an existing professional verification state';
+     OR v_existing_professional_update ILIKE '%status = ''pending''%'
+     OR v_existing_professional_update ILIKE '%first_name = v_invitation.%'
+     OR v_existing_professional_update ILIKE '%last_name = v_invitation.%'
+     OR v_existing_professional_update ILIKE '%license_number = v_invitation.%'
+     OR v_existing_professional_update ILIKE '%email = v_email%' THEN
+    RAISE EXCEPTION 'FAIL: adding an organization must preserve the existing global professional profile and verification state';
   END IF;
 
   -- Verified-professional clinical access checks (requires migration 20261119004000).
