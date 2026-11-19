@@ -58,50 +58,88 @@ GRANT EXECUTE ON FUNCTION private.clinical_scope_guard(uuid,uuid)
 COMMENT ON FUNCTION private.clinical_scope_guard(uuid,uuid) IS
   'Clinical RLS guard: patient self-access or verified active professional with accepted active membership and appointment in the exact active organization. Org/platform administration alone is never sufficient.';
 
--- Replace the old broad admin allowance on every clinical table with both
--- patient_id and organization_id. Existing permissive policies remain in place,
--- but this restrictive policy intersects with them and blocks admin-only paths.
+-- Exact organization membership permits a professional to create a new
+-- clinical workflow row, but does not grant read access to existing patient data.
+CREATE OR REPLACE FUNCTION private.is_verified_professional_member_of_org(
+  p_organization_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth, pg_temp
+AS $function$
+  SELECT p_organization_id IS NOT NULL
+    AND private.is_verified_active_professional()
+    AND EXISTS (
+      SELECT 1
+      FROM public.professionals AS pro
+      JOIN public.professional_organizations AS po
+        ON po.professional_id = pro.id
+       AND po.organization_id = p_organization_id
+       AND po.status::text = 'active'
+       AND po.invitation_status = 'accepted'::public.invitation_status
+      JOIN public.organizations AS org
+        ON org.id = po.organization_id
+       AND org.is_active IS TRUE
+      WHERE pro.user_id = (SELECT auth.uid())
+    );
+$function$;
+
+REVOKE ALL ON FUNCTION private.is_verified_professional_member_of_org(uuid)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.is_verified_professional_member_of_org(uuid)
+  TO authenticated;
+
+-- Restrictive command-specific policies avoid blocking the creation of a new
+-- appointment by a verified professional who has just been assigned to the
+-- patient, while still preventing tenant-admin browsing of existing records.
 DO $guard$
 DECLARE
   v_table text;
   v_tables text[] := ARRAY[
-    'appointments',
-    'blood_requests',
-    'consultations',
-    'health_records',
-    'hospitalizations',
-    'imaging_studies',
-    'kiosk_checkins',
-    'lab_results',
-    'lab_samples',
-    'operating_room_schedules',
-    'patient_transfers',
-    'pharmacy_pos_transactions',
-    'prescriptions',
-    'shifa_ids',
-    'vital_signs'
+    'appointments','blood_requests','consultations','health_records',
+    'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
+    'lab_samples','operating_room_schedules','patient_transfers',
+    'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
   ];
+  v_policy text;
 BEGIN
   FOREACH v_table IN ARRAY v_tables LOOP
     IF to_regclass(format('public.%I', v_table)) IS NOT NULL
        AND EXISTS (
          SELECT 1 FROM information_schema.columns
-         WHERE table_schema = 'public'
-           AND table_name = v_table
+         WHERE table_schema = 'public' AND table_name = v_table
            AND column_name = 'patient_id'
        )
        AND EXISTS (
          SELECT 1 FROM information_schema.columns
-         WHERE table_schema = 'public'
-           AND table_name = v_table
+         WHERE table_schema = 'public' AND table_name = v_table
            AND column_name = 'organization_id'
        ) THEN
+      FOREACH v_policy IN ARRAY ARRAY[
+        'org_admin_clinical_relationship_select',
+        'org_admin_clinical_relationship_insert',
+        'org_admin_clinical_relationship_update',
+        'org_admin_clinical_relationship_delete'
+      ] LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', v_policy, v_table);
+      END LOOP;
+
       EXECUTE format(
-        'DROP POLICY IF EXISTS org_admin_clinical_relationship_guard ON public.%I',
+        'CREATE POLICY org_admin_clinical_relationship_select ON public.%I AS RESTRICTIVE FOR SELECT TO authenticated USING (private.clinical_scope_guard(patient_id, organization_id))',
         v_table
       );
       EXECUTE format(
-        'CREATE POLICY org_admin_clinical_relationship_guard ON public.%I AS RESTRICTIVE FOR ALL TO authenticated USING (private.clinical_scope_guard(patient_id, organization_id)) WITH CHECK (private.clinical_scope_guard(patient_id, organization_id))',
+        'CREATE POLICY org_admin_clinical_relationship_insert ON public.%I AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (private.owns_patient_record(patient_id) OR private.is_verified_professional_member_of_org(organization_id))',
+        v_table
+      );
+      EXECUTE format(
+        'CREATE POLICY org_admin_clinical_relationship_update ON public.%I AS RESTRICTIVE FOR UPDATE TO authenticated USING (private.clinical_scope_guard(patient_id, organization_id)) WITH CHECK (private.clinical_scope_guard(patient_id, organization_id))',
+        v_table
+      );
+      EXECUTE format(
+        'CREATE POLICY org_admin_clinical_relationship_delete ON public.%I AS RESTRICTIVE FOR DELETE TO authenticated USING (private.clinical_scope_guard(patient_id, organization_id))',
         v_table
       );
     END IF;
