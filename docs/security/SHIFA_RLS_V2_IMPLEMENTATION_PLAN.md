@@ -136,3 +136,15 @@ A fresh metadata-only read against the connected Supabase project (PostgreSQL 17
 The principal release blockers remain RLS semantics, not those three excess table privileges: broad platform-admin/org-admin predicates remain in clinical policies; the active care-relationship model is not consistently enforced; uploader-only document reads remain; and patient_transfers has no restrictive policy in the current inventory.
 
 This metadata check read no patient/clinical rows and changed nothing in Supabase. It does not replace a complete audit of function EXECUTE privileges, views/RPCs, Storage policies, and other exposed tables. The nine-table grant result must not be generalized to the whole database.
+
+
+## 9. Additional live security-surface gates — 2026-11-19
+
+The connected project's metadata-only re-check also found:
+
+- SECURITY DEFINER functions are owned by `postgres` and use `search_path=public, pg_temp`. Review function bodies for unqualified object references and migrate to a minimal pinned path with explicit qualification. Do not mass-edit function configuration without reviewing dependencies and testing.
+- `authenticated` has EXECUTE on multiple `private` authorization helpers. Determine whether the private schema is exposed through the API and whether direct invocation leaks sensitive state; preserve grants needed for RLS evaluation until tested.
+- Storage policies for `documents` use user-folder ownership only; `lab-reports` and `medical-images` additionally permit `private.is_platform_admin()`. None demonstrates the required patient-professional care relationship for clinical file access.
+- The metadata query returned no ordinary views in `public`; materialized views, RPC exposure, other schemas, and API configuration still require review.
+
+These are additional release gates. No production functions, grants, Storage policies, or configuration were changed. The detailed evidence is in the migration reconciliation report.
