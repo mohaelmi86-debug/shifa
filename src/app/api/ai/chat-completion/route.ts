@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
-type AiModule = 'patient' | 'professional' | 'organization';
+type AiModule = 'patient' | 'professional' | 'organization' | 'institution';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const PROVIDER_KEY_ENV: Record<string, string> = {
@@ -30,6 +30,11 @@ const MODULE_CONFIG: Record<AiModule, { modelEnv: string; allowedRoles: string[]
     modelEnv: 'SHIFA_AI_MODEL_ORGANIZATION',
     allowedRoles: ['org_admin'],
     systemPrompt: "Tu es SHIFA AI Organisation, un assistant d'analyse opérationnelle d'établissement de santé. Réponds en français, de manière concise et actionnable. N'accède pas aux dossiers médicaux individuels, ne demande pas de données directement identifiantes et distingue clairement les hypothèses des faits. Toute décision reste sous validation humaine.",
+  },
+  institution: {
+    modelEnv: 'SHIFA_AI_MODEL_INSTITUTION',
+    allowedRoles: ['ministry', 'insurance'],
+    systemPrompt: "Tu es SHIFA AI Institution, un assistant d'analyse agrégée pour les ministères de la santé et les organismes d'assurance. Réponds en français, de manière précise et professionnelle. Tu ne dois utiliser que des données agrégées et anonymisées, ne jamais demander ni exposer de données identifiantes ou de dossiers médicaux individuels, et distinguer les faits des hypothèses. Toute décision reste sous validation humaine.",
   },
 };
 
