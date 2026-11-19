@@ -4,6 +4,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
+type CredentialOrganization = {
+  organization_id: string;
+  organization_name: string;
+  membership_status: string;
+  is_primary: boolean;
+};
+
 type Credential = {
   id: string;
   credential_type: string;
@@ -25,6 +32,8 @@ const credentialLabels: Record<string, string> = {
 export default function ProfessionalVerificationContent() {
   const supabase = useMemo(() => createClient(), []);
   const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [organizations, setOrganizations] = useState<CredentialOrganization[]>([]);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState('');
   const [credentialType, setCredentialType] = useState('professional_license');
   const [issuingCountry, setIssuingCountry] = useState('FR');
   const [licenseNumber, setLicenseNumber] = useState('');
@@ -36,12 +45,26 @@ export default function ProfessionalVerificationContent() {
   const [error, setError] = useState('');
 
   const loadCredentials = async () => {
-    const { data, error: queryError } = await supabase
-      .from('professional_credentials')
-      .select('id, credential_type, document_name, status, created_at, expires_at')
-      .order('created_at', { ascending: false });
+    const [{ data, error: queryError }, { data: orgData, error: orgError }] = await Promise.all([
+      supabase
+        .from('professional_credentials')
+        .select('id, credential_type, document_name, status, created_at, expires_at')
+        .order('created_at', { ascending: false }),
+      supabase.rpc('list_my_professional_credential_organizations'),
+    ]);
     if (queryError) setError('Impossible de charger vos justificatifs.');
     else setCredentials((data || []) as Credential[]);
+    if (orgError) {
+      setError('Impossible de charger vos établissements. Actualisez la page ou contactez le support.');
+    } else {
+      const available = (orgData || []) as CredentialOrganization[];
+      setOrganizations(available);
+      setSelectedOrganizationId(current =>
+        available.some(org => org.organization_id === current)
+          ? current
+          : (available.find(org => org.is_primary)?.organization_id || available[0]?.organization_id || '')
+      );
+    }
     setLoading(false);
   };
 
@@ -53,6 +76,10 @@ export default function ProfessionalVerificationContent() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!selectedOrganizationId) {
+      setError('Sélectionnez l’établissement auquel rattacher ce justificatif.');
+      return;
+    }
     if (!file) {
       setError('Sélectionnez un fichier PDF, JPG ou PNG.');
       return;
@@ -89,6 +116,7 @@ export default function ProfessionalVerificationContent() {
     }
 
     const { error: submitError } = await supabase.rpc('submit_professional_credential', {
+      p_organization_id: selectedOrganizationId,
       p_credential_type: credentialType,
       p_document_name: file.name,
       p_storage_path: storagePath,
@@ -102,9 +130,9 @@ export default function ProfessionalVerificationContent() {
     if (submitError) {
       await supabase.storage.from('professional-credentials').remove([storagePath]);
       setError(submitError.message.includes('ACTIVE_ORGANIZATION_MEMBERSHIP_REQUIRED')
-        ? 'Votre rattachement à l’établissement doit être finalisé avant le dépôt.'
-        : submitError.message.includes('PRIMARY_ORGANIZATION_SELECTION_REQUIRED')
-          ? 'Sélectionnez votre établissement principal dans votre profil avant de déposer ce justificatif.'
+        ? 'Vous ne disposez pas d’un rattachement accepté à cet établissement.'
+        : submitError.message.includes('ORGANIZATION_SELECTION_REQUIRED')
+          ? 'Sélectionnez l’établissement concerné.'
           : 'Le justificatif n’a pas pu être enregistré. Vérifiez votre rattachement et réessayez.');
     } else {
       setMessage('Justificatif transmis. L’administrateur de votre établissement doit maintenant l’examiner.');
@@ -128,10 +156,18 @@ export default function ProfessionalVerificationContent() {
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--shifa-blue)' }}>SHIFA Health OS</p>
           <h1 className="text-2xl font-bold mt-2" style={{ color: 'var(--foreground)' }}>Vérification de mon profil professionnel</h1>
           <p className="text-sm leading-6 mt-3" style={{ color: 'var(--muted-foreground)' }}>
-            Déposez vos justificatifs officiels pour votre établissement principal SHIFA. Les autres rattachements restent indépendants. Les fichiers sont conservés dans un espace privé et accessibles uniquement à vous et aux administrateurs habilités de l’établissement concerné. Une invitation ne constitue pas une validation de vos qualifications.
+            Sélectionnez l’établissement auquel rattacher chaque justificatif. Vos rattachements restent indépendants : un document transmis à un établissement n’est pas automatiquement partagé avec les autres. Les fichiers sont conservés dans un espace privé et accessibles uniquement à vous et aux administrateurs habilités de l’établissement concerné. Une invitation ne constitue pas une validation de vos qualifications.
           </p>
 
           <form onSubmit={submit} className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label htmlFor="credential-organization" className="block text-sm font-semibold mb-1">Établissement concerné</label>
+              <select id="credential-organization" value={selectedOrganizationId} onChange={e => setSelectedOrganizationId(e.target.value)} className="input-field w-full" required disabled={organizations.length === 0}>
+                <option value="">Choisir un établissement…</option>
+                {organizations.map(org => <option key={org.organization_id} value={org.organization_id}>{org.organization_name}{org.is_primary ? ' · Principal' : ''}</option>)}
+              </select>
+              {organizations.length === 0 && <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>Aucun rattachement accepté. Une invitation d’établissement doit d’abord être acceptée.</p>}
+            </div>
             <div className="sm:col-span-2">
               <label htmlFor="credential-type" className="block text-sm font-semibold mb-1">Type de justificatif</label>
               <select id="credential-type" value={credentialType} onChange={e => setCredentialType(e.target.value)} className="input-field w-full">
@@ -157,7 +193,7 @@ export default function ProfessionalVerificationContent() {
             {error && <p role="alert" className="sm:col-span-2 text-sm" style={{ color: 'var(--shifa-red)' }}>{error}</p>}
             {message && <p role="status" className="sm:col-span-2 text-sm" style={{ color: 'var(--shifa-green)' }}>{message}</p>}
             <div className="sm:col-span-2">
-              <button type="submit" disabled={busy || !file} className="btn-primary px-5 py-3 text-sm disabled:opacity-50">
+              <button type="submit" disabled={busy || !file || !selectedOrganizationId} className="btn-primary px-5 py-3 text-sm disabled:opacity-50">
                 {busy ? 'Transmission sécurisée…' : 'Transmettre le justificatif'}
               </button>
             </div>
