@@ -44,7 +44,7 @@ AS $function$
     WHERE up.id = (SELECT auth.uid())
       AND up.role::text = 'org_admin'
       AND up.is_active IS TRUE
-      AND up.organization_id = po.organization_id
+      AND org.id = po.organization_id
   );
 $function$;
 
