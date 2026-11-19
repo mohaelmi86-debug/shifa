@@ -72,3 +72,20 @@ Les inventaires détaillés des colonnes, contraintes, index, fonctions, trigger
 Le fichier de branche `20261118220000_shifa_ai_rate_limits.sql` porte un timestamp antérieur à la version distante déjà enregistrée `20261118225231`. Il est donc potentiellement considéré comme une migration locale en retard par rapport au ledger distant. Les migrations suivantes `20261118233000` et `20261119...` sont postérieures.
 
 **Ne pas supposer que la migration antérieure peut être poussée sans impact.** Il faut d'abord déterminer si son contenu est entièrement absent du projet distant, si des objets équivalents existent déjà et si son application est sûre/idempotente. Aucun réordonnancement de fichier ni réparation de ledger ne doit être effectué sans cette preuve.
+
+
+## Vérification de présence des objets des migrations en attente — 19/11/2026
+
+Contrôle metadata-only ciblé du schéma distant :
+
+| Objet | Présent |
+|---|---|
+| `private.shifa_ai_rate_limits` | Non |
+| `public.consume_shifa_ai_rate_limit()` | Non |
+| `public.notifications` | Oui |
+| `public.registration_applications` | Non |
+| `public.professional_invitations` | Non |
+
+Interprétation limitée : l'absence des deux objets de quota confirme que la migration de quota n'est pas déjà matérialisée sous ces noms dans le schéma interrogé. Les tables de candidatures et d'invitations sont également absentes. La table `notifications` existe déjà, ce qui confirme le risque de collision de la migration de fondation correspondante. Il faut comparer les définitions complètes avant de conclure à une équivalence ou à une incompatibilité.
+
+Ce contrôle ne prouve pas qu'aucune fonction ou table alternative ne fournit une logique équivalente. Il ne constitue pas une autorisation d'exécution.
