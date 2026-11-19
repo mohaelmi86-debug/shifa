@@ -818,6 +818,28 @@ BEGIN
     END IF;
   END IF;
 
+  IF to_regclass('public.transfer_notifications') IS NOT NULL THEN
+    IF position('NOT private.is_platform_admin()' IN pg_get_functiondef(
+         'private.can_access_transfer(uuid)'::regprocedure
+       )) = 0
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'transfer_notifications'
+           AND policyname = 'transfer_notifications_recipient_scope_guard'
+           AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
+           AND qual ILIKE '%recipient_user_id%'
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'transfer_notifications'
+           AND policyname = 'transfer_notifications_platform_admin_guard'
+           AND permissive = 'RESTRICTIVE' AND cmd = 'ALL'
+           AND qual ILIKE '%is_platform_admin%'
+       ) THEN
+      RAISE EXCEPTION 'FAIL: transfer notifications must be recipient-scoped and deny platform-admin bypass';
+    END IF;
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
