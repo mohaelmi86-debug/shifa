@@ -241,7 +241,13 @@ BEGIN
     AND permissive = 'RESTRICTIVE';
 
   IF v_policy_count < 19 THEN
-    RAISE EXCEPTION 'FAIL: expected restrictive verification guards on patients and clinical tables; found %', v_policy_count;
+    RAISE EXCEPTION 'FAIL: expected restrictive verification guards on patients and clinical tables; found %. Existing guards: %',
+      v_policy_count,
+      (SELECT string_agg(tablename || ':' || policyname, ', ' ORDER BY tablename)
+       FROM pg_policies
+       WHERE schemaname = 'public'
+         AND policyname LIKE '%_professional_verification_guard'
+         AND permissive = 'RESTRICTIVE');
   END IF;
 
   -- Professional credential submission and review workflow (migration 20261119005000).
