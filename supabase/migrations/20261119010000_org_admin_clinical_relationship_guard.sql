@@ -361,3 +361,102 @@ BEGIN
   END IF;
 END;
 $storage$;
+
+
+-- Transfer notifications are limited to the intended recipient and legitimate
+-- transfer participants. Platform administration is not a notification bypass.
+CREATE OR REPLACE FUNCTION private.can_access_transfer(p_transfer_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, auth, public, pg_temp
+AS $function$
+  SELECT NOT private.is_platform_admin()
+    AND EXISTS (
+      SELECT 1
+      FROM public.patient_transfers AS pt
+      WHERE pt.id = p_transfer_id
+        AND (
+          private.owns_patient_record(pt.patient_id)
+          OR (
+            pt.organization_id IS NOT NULL
+            AND (
+              private.belongs_to_org(pt.organization_id)
+              OR private.is_org_admin_for(pt.organization_id)
+            )
+          )
+          OR (
+            pt.from_organization_id IS NOT NULL
+            AND (
+              private.belongs_to_org(pt.from_organization_id)
+              OR private.is_org_admin_for(pt.from_organization_id)
+            )
+          )
+          OR (
+            pt.to_organization_id IS NOT NULL
+            AND (
+              private.belongs_to_org(pt.to_organization_id)
+              OR private.is_org_admin_for(pt.to_organization_id)
+            )
+          )
+        )
+    );
+$function$;
+
+REVOKE ALL ON FUNCTION private.can_access_transfer(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.can_access_transfer(uuid) TO authenticated;
+
+DO $notifications$
+BEGIN
+  IF to_regclass('public.transfer_notifications') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS transfer_notifications_platform_admin_guard ON public.transfer_notifications';
+    EXECUTE $policy$
+      CREATE POLICY transfer_notifications_platform_admin_guard
+      ON public.transfer_notifications
+      AS RESTRICTIVE
+      FOR ALL
+      TO authenticated
+      USING (NOT private.is_platform_admin())
+      WITH CHECK (NOT private.is_platform_admin())
+    $policy$;
+
+    EXECUTE 'DROP POLICY IF EXISTS transfer_notifications_recipient_scope_guard ON public.transfer_notifications';
+    EXECUTE $policy$
+      CREATE POLICY transfer_notifications_recipient_scope_guard
+      ON public.transfer_notifications
+      AS RESTRICTIVE
+      FOR SELECT
+      TO authenticated
+      USING (recipient_user_id = (SELECT auth.uid()))
+    $policy$;
+
+    EXECUTE 'DROP POLICY IF EXISTS transfer_notifications_insert_scope_guard ON public.transfer_notifications';
+    EXECUTE $policy$
+      CREATE POLICY transfer_notifications_insert_scope_guard
+      ON public.transfer_notifications
+      AS RESTRICTIVE
+      FOR INSERT
+      TO authenticated
+      WITH CHECK (
+        private.can_access_transfer(transfer_id)
+        AND private.is_transfer_notification_recipient(
+          transfer_id,
+          recipient_user_id
+        )
+      )
+    $policy$;
+
+    EXECUTE 'DROP POLICY IF EXISTS transfer_notifications_update_scope_guard ON public.transfer_notifications';
+    EXECUTE $policy$
+      CREATE POLICY transfer_notifications_update_scope_guard
+      ON public.transfer_notifications
+      AS RESTRICTIVE
+      FOR UPDATE
+      TO authenticated
+      USING (recipient_user_id = (SELECT auth.uid()))
+      WITH CHECK (recipient_user_id = (SELECT auth.uid()))
+    $policy$;
+  END IF;
+END;
+$notifications$;
