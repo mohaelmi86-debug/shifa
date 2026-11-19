@@ -160,7 +160,7 @@ CREATE POLICY transfer_notifications_insert_scope_guard
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    private.is_platform_admin()
+    public.is_platform_admin()
     OR (
       private.can_access_transfer(transfer_id)
       AND (
@@ -184,7 +184,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
   SELECT CASE
     WHEN target_org_id IS NULL THEN FALSE
-    WHEN private.is_platform_admin() THEN TRUE
+    WHEN public.is_platform_admin() THEN TRUE
     ELSE EXISTS (
       SELECT 1
       FROM public.user_profiles up
@@ -299,7 +299,7 @@ CREATE POLICY kiosk_checkins_tenant_scope_guard
   FOR ALL
   TO authenticated
   USING (
-    private.is_platform_admin()
+    public.is_platform_admin()
     OR (patient_user_id = (SELECT auth.uid()))
     OR private.owns_patient_record(patient_id)
     OR (
@@ -308,7 +308,7 @@ CREATE POLICY kiosk_checkins_tenant_scope_guard
     )
   )
   WITH CHECK (
-    private.is_platform_admin()
+    public.is_platform_admin()
     OR (patient_user_id = (SELECT auth.uid()))
     OR private.owns_patient_record(patient_id)
     OR (
@@ -326,7 +326,7 @@ CREATE POLICY shifa_ids_tenant_scope_guard
   FOR ALL
   TO authenticated
   USING (
-    private.is_platform_admin()
+    public.is_platform_admin()
     OR user_id = (SELECT auth.uid())
     OR private.owns_patient_record(patient_id)
     OR (
@@ -342,7 +342,7 @@ CREATE POLICY shifa_ids_tenant_scope_guard
     )
   )
   WITH CHECK (
-    private.is_platform_admin()
+    public.is_platform_admin()
     OR user_id = (SELECT auth.uid())
     OR private.owns_patient_record(patient_id)
     OR (
