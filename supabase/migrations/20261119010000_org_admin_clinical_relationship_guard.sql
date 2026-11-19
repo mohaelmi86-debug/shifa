@@ -255,3 +255,75 @@ BEGIN
   END LOOP;
 END;
 $search_path$;
+
+
+-- Storage object ownership is not clinical access. Platform administrators
+-- must not bypass private-folder boundaries for medical documents/images.
+DO $storage$
+BEGIN
+  IF to_regclass('storage.objects') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS lab_reports_select ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS lab_reports_insert ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS medical_images_select ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS medical_images_insert ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS clinical_storage_owner_default_deny ON storage.objects';
+
+    EXECUTE $policy$
+      CREATE POLICY clinical_storage_owner_default_deny
+      ON storage.objects
+      AS RESTRICTIVE
+      FOR ALL
+      TO authenticated
+      USING (
+        bucket_id NOT IN ('lab-reports', 'medical-images')
+        OR (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      )
+      WITH CHECK (
+        bucket_id NOT IN ('lab-reports', 'medical-images')
+        OR (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      )
+    $policy$;
+
+    EXECUTE $policy$
+      CREATE POLICY lab_reports_select
+      ON storage.objects
+      FOR SELECT
+      TO authenticated
+      USING (
+        bucket_id = 'lab-reports'
+        AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      )
+    $policy$;
+    EXECUTE $policy$
+      CREATE POLICY lab_reports_insert
+      ON storage.objects
+      FOR INSERT
+      TO authenticated
+      WITH CHECK (
+        bucket_id = 'lab-reports'
+        AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      )
+    $policy$;
+    EXECUTE $policy$
+      CREATE POLICY medical_images_select
+      ON storage.objects
+      FOR SELECT
+      TO authenticated
+      USING (
+        bucket_id = 'medical-images'
+        AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      )
+    $policy$;
+    EXECUTE $policy$
+      CREATE POLICY medical_images_insert
+      ON storage.objects
+      FOR INSERT
+      TO authenticated
+      WITH CHECK (
+        bucket_id = 'medical-images'
+        AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      )
+    $policy$;
+  END IF;
+END;
+$storage$;
