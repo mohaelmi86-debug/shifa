@@ -170,7 +170,42 @@ USING (
   )
 );
 
+-- Return only the authenticated professional's accepted organization memberships.
+-- The client uses this list to choose the tenant for each credential submission.
+CREATE OR REPLACE FUNCTION public.list_my_professional_credential_organizations()
+RETURNS TABLE (
+  organization_id uuid,
+  organization_name text,
+  membership_status text,
+  is_primary boolean
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $function$
+  SELECT org.id, org.name::text, po.status::text,
+         (profile.organization_id = org.id) AS is_primary
+  FROM public.user_profiles profile
+  JOIN public.professionals pro ON pro.user_id = profile.id
+  JOIN public.professional_organizations po ON po.professional_id = pro.id
+  JOIN public.organizations org ON org.id = po.organization_id
+  WHERE profile.id = (SELECT auth.uid())
+    AND profile.role::text = 'professional'
+    AND profile.is_active IS TRUE
+    AND po.invitation_status = 'accepted'::public.invitation_status
+    AND org.is_active IS TRUE
+  ORDER BY (profile.organization_id = org.id) DESC, org.name;
+$function$;
+
+REVOKE ALL ON FUNCTION public.list_my_professional_credential_organizations() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.list_my_professional_credential_organizations() TO authenticated;
+
+-- Replace the earlier primary-organization-only RPC with an explicit tenant argument.
+DROP FUNCTION IF EXISTS public.submit_professional_credential(text,text,text,text,integer,text,text,date);
+
 CREATE OR REPLACE FUNCTION public.submit_professional_credential(
+  p_organization_id uuid,
   p_credential_type text,
   p_document_name text,
   p_storage_path text,
@@ -189,8 +224,6 @@ DECLARE
   v_user_id uuid := auth.uid();
   v_professional public.professionals%ROWTYPE;
   v_membership public.professional_organizations%ROWTYPE;
-  v_profile_org_id uuid;
-  v_membership_count integer;
   v_object_size bigint;
   v_object_mime text;
   v_id uuid;
@@ -221,40 +254,24 @@ BEGIN
     RAISE EXCEPTION 'PROFESSIONAL_PROFILE_REQUIRED' USING ERRCODE = 'P0002';
   END IF;
 
-  -- Resolve the credential's tenant deterministically. Prefer the account's
-  -- primary organization; for legacy single-organization accounts only, allow
-  -- an unambiguous fallback. Never pick an arbitrary membership by timestamp.
-  SELECT organization_id INTO v_profile_org_id
-  FROM public.user_profiles
-  WHERE id = v_user_id
-    AND role::text = 'professional'
-    AND is_active IS TRUE;
-
-  IF v_profile_org_id IS NOT NULL THEN
-    SELECT * INTO v_membership
-    FROM public.professional_organizations
-    WHERE professional_id = v_professional.id
-      AND organization_id = v_profile_org_id
-      AND invitation_status = 'accepted'::public.invitation_status
-    LIMIT 1;
-  ELSE
-    SELECT count(*) INTO v_membership_count
-    FROM public.professional_organizations
-    WHERE professional_id = v_professional.id
-      AND invitation_status = 'accepted'::public.invitation_status;
-
-    IF v_membership_count = 1 THEN
-      SELECT * INTO v_membership
-      FROM public.professional_organizations
-      WHERE professional_id = v_professional.id
-        AND invitation_status = 'accepted'::public.invitation_status
-      LIMIT 1;
-    ELSIF v_membership_count > 1 THEN
-      RAISE EXCEPTION 'PRIMARY_ORGANIZATION_SELECTION_REQUIRED' USING ERRCODE = '42501';
-    END IF;
+  -- The tenant is explicitly selected by the professional. Validate the exact
+  -- accepted membership; never infer a tenant from profile defaults or timestamps.
+  IF p_organization_id IS NULL THEN
+    RAISE EXCEPTION 'ORGANIZATION_SELECTION_REQUIRED' USING ERRCODE = '22023';
   END IF;
 
-  IF NOT FOUND OR v_membership.organization_id IS NULL THEN
+  SELECT * INTO v_membership
+  FROM public.professional_organizations
+  WHERE professional_id = v_professional.id
+    AND organization_id = p_organization_id
+    AND invitation_status = 'accepted'::public.invitation_status
+  LIMIT 1;
+
+  IF NOT FOUND OR v_membership.organization_id IS NULL
+     OR NOT EXISTS (
+       SELECT 1 FROM public.organizations
+       WHERE id = p_organization_id AND is_active IS TRUE
+     ) THEN
     RAISE EXCEPTION 'ACTIVE_ORGANIZATION_MEMBERSHIP_REQUIRED' USING ERRCODE = '42501';
   END IF;
 
@@ -292,8 +309,8 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.submit_professional_credential(text,text,text,text,integer,text,text,date) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.submit_professional_credential(text,text,text,text,integer,text,text,date) TO authenticated;
+REVOKE ALL ON FUNCTION public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.submit_professional_credential(uuid,text,text,text,text,integer,text,text,date) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.review_professional_credential(
   p_credential_id uuid,
