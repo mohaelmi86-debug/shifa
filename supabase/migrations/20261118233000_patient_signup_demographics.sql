@@ -98,10 +98,12 @@ BEGIN
     END;
 
     INSERT INTO public.patients (
-      user_id, first_name, last_name, phone, email, country_code,
+      user_id, shifa_id, first_name, last_name, phone, email, country_code,
       date_of_birth, gender
     ) VALUES (
-      NEW.id, v_first_name, v_last_name,
+      NEW.id,
+      'SHF-' || UPPER(SUBSTR(REPLACE(NEW.id::text, '-', ''), 1, 12)),
+      v_first_name, v_last_name,
       COALESCE(NEW.phone, NULLIF(TRIM(NEW.raw_user_meta_data->>'phone'), '')),
       NEW.email,
       COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'country'), ''), 'FR'),
