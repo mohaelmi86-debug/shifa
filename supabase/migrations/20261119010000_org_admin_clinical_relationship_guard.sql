@@ -390,7 +390,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, auth, public, pg_temp
 AS $function$
-  SELECT NOT private.is_platform_admin()
+  SELECT NOT public.is_platform_admin()
     AND EXISTS (
       SELECT 1
       FROM public.patient_transfers AS pt
