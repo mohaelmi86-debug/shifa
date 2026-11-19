@@ -162,3 +162,54 @@ A read-only review of the current PR #5 migration `20261119008000_professional_c
 ### Required release interpretation
 
 Keep PR #5 in draft. Treat its application CI as application build/type/lint evidence only. Treat its PostgreSQL workflow as isolated partial SQL checks only. Before merge or rollout, recover or formally baseline the remote schema, run migrations on a schema-faithful disposable PostgreSQL/Supabase environment, and add API/JWT negative tests for cross-patient, cross-tenant, hospital-admin and platform-admin access. No production SQL has been executed as part of this follow-up.
+
+
+## 11. Current-state verification against connected Supabase — 2026-11-19
+
+This section supersedes any earlier statements in sections 7 and 8.3 about the *current* table-level grants. A fresh metadata-only SELECT was executed against the connected project. No clinical rows were read.
+
+### 11.1 Runtime and grants (current observation)
+
+- PostgreSQL reports `17.11`.
+- For the nine inspected clinical tables (`patients`, `patient_documents`, `health_records`, `consultations`, `prescriptions`, `appointments`, `lab_results`, `vital_signs`, `patient_transfers`), the only direct table grants returned for `authenticated` are `SELECT`, `INSERT`, `UPDATE`, and `DELETE`.
+- No direct table grants were returned for `anon` on those nine tables.
+- No `TRUNCATE`, `REFERENCES`, or `TRIGGER` grants were returned for `authenticated` on those nine tables.
+
+**Interpretation:** the earlier broad-privilege finding appears remediated for this inspected clinical-table set. The ledger includes `20261118225231 shifa_revoke_excess_table_privileges`, which is consistent with that result, but the metadata inspection alone does not prove which change caused it. This is not a database-wide grant audit; other schemas/tables and function EXECUTE privileges remain outside this check. Normal CRUD grants remain and must continue to be constrained by correct RLS.
+
+### 11.2 Current RLS policy inventory
+
+The current policy counts returned by `pg_policies` are:
+
+| Table | Policies |
+|---|---:|
+| patients | 4 |
+| patient_documents | 4 |
+| health_records | 8 |
+| consultations | 5 |
+| prescriptions | 7 |
+| appointments | 7 |
+| lab_results | 9 |
+| vital_signs | 4 |
+| patient_transfers | 4 |
+
+The policy review still shows unresolved authorization paths:
+- `patients_select` grants full-row access to platform administrators and organization administrators, in addition to patient ownership and the consultation helper.
+- `appointments`, `consultations`, `health_records`, `prescriptions`, `lab_results`, and `vital_signs` retain permissive policies containing platform-admin and/or organization-admin access, or broad organization/clinical-role predicates.
+- `patient_documents_uploader_select` still grants uploader-based SELECT independently of an explicit active care relationship. Its patient identifier model remains distinct from the `patients.id` model.
+- `patient_transfers` still has no restrictive policy in the current inventory; its access helper and source/destination facility semantics need dedicated negative tests.
+
+The current schema metadata confirms that `patients` has no `organization_id`; it also confirms that `patient_documents` has `patient_id` and `uploaded_by` columns, while the earlier FK inspection identified the different referenced identity model. No clinical record values were queried.
+
+### 11.3 Updated risk prioritization
+
+1. **Critical release blocker:** close the standing platform-admin and broad org-admin clinical access paths; introduce explicit, auditable break-glass only for platform administrators.
+2. **Critical release blocker:** implement and enforce a revocable patient-professional care relationship for all clinical read/write paths.
+3. **Critical release blocker:** remove uploader-only access from patient documents and reconcile its auth-user identifier with care authorization.
+4. **Critical release blocker:** add restrictive transfer authorization for both source and destination organizations, consent, workflow state, and patient visibility.
+5. **Completed for inspected tables:** excess direct table privileges (TRUNCATE/REFERENCES/TRIGGER) are no longer present for `authenticated`; `anon` has no direct table grants on the nine inspected tables.
+6. **Still required:** inspect function EXECUTE privileges, private-schema objects, Storage object policies, views/RPCs, and every other exposed table before declaring a database-wide least-privilege pass.
+
+### 11.4 Scope and safety
+
+This was a metadata-only read-only inspection. It did not query patient names, clinical notes, documents, lab results, or other patient data. No DDL, DML, policy, grant, Storage, Auth, or production configuration was changed. The branch name remains a Git branch and does not imply a Supabase staging environment.
