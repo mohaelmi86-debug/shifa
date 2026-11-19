@@ -734,6 +734,46 @@ BEGIN
     RAISE EXCEPTION 'FAIL: patient document reads must follow patient or treating-professional relationship, never uploader identity alone';
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc AS p
+    JOIN pg_namespace AS n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'private'
+      AND p.prosecdef IS TRUE
+      AND NOT COALESCE(
+        EXISTS (
+          SELECT 1
+          FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg(value)
+          WHERE cfg.value = 'search_path=pg_catalog, auth, public, pg_temp'
+        ),
+        FALSE
+      )
+  ) THEN
+    RAISE EXCEPTION 'FAIL: every private SECURITY DEFINER function must use hardened search_path';
+  END IF;
+
+  IF NOT EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'patient_documents'
+         AND policyname = 'patient_documents_relationship_insert'
+         AND permissive = 'RESTRICTIVE' AND cmd = 'INSERT'
+         AND with_check ILIKE '%can_access_patient_document%'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'patient_documents'
+         AND policyname = 'patient_documents_relationship_update'
+         AND permissive = 'RESTRICTIVE' AND cmd = 'UPDATE'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'patient_documents'
+         AND policyname = 'patient_documents_relationship_delete'
+         AND permissive = 'RESTRICTIVE' AND cmd = 'DELETE'
+     ) THEN
+    RAISE EXCEPTION 'FAIL: patient document write policies must be relationship-scoped';
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
