@@ -276,6 +276,46 @@ BEGIN
     RAISE EXCEPTION 'FAIL: credential review must be performed by a SECURITY DEFINER RPC with organization checks';
   END IF;
 
+  -- Credential access must be scoped to the exact organization, not merely to a professional
+  -- who may have memberships in multiple organizations.
+  IF NOT has_function_privilege('authenticated', 'private.org_admin_can_access_professional_in_org(uuid,uuid)', 'EXECUTE')
+     OR has_function_privilege('anon', 'private.org_admin_can_access_professional_in_org(uuid,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: tenant-scoped credential helper grants are not correctly restricted';
+  END IF;
+
+  IF position('p_organization_id' IN pg_get_functiondef(
+    'private.org_admin_can_access_professional_in_org(uuid,uuid)'::regprocedure
+  )) = 0
+     OR position('po.organization_id = p_organization_id' IN pg_get_functiondef(
+       'private.org_admin_can_access_professional_in_org(uuid,uuid)'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: credential access helper must match the administrator organization exactly';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'professional_credentials'
+      AND policyname = 'professional_credentials_read_scope'
+      AND qual ILIKE '%org_admin_can_access_professional_in_org%'
+      AND qual ILIKE '%organization_id%'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename = 'objects'
+      AND policyname = 'professional_credentials_storage_read_guard'
+      AND qual ILIKE '%org_admin_can_access_professional_in_org%'
+      AND qual ILIKE '%organization_id%'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: credential table and Storage reads must enforce exact organization scope';
+  END IF;
+
+  IF position('org_admin_can_access_professional_in_org' IN pg_get_functiondef(
+    'public.review_professional_credential(uuid,text,text)'::regprocedure
+  )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: credential review RPC must enforce exact organization scope';
+  END IF;
+
   IF position('professional_license' IN pg_get_functiondef(
     'public.review_professional_credential(uuid,text,text)'::regprocedure
   )) = 0 OR position('is_verified = TRUE' IN pg_get_functiondef(
