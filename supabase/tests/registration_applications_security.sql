@@ -598,7 +598,7 @@ BEGIN
   SELECT count(*)
     INTO v_expected_admin_guard_count
   FROM unnest(ARRAY[
-    'patients','patient_documents','appointments','blood_requests',
+    'patients','patient_documents','ambulance_dispatches','appointments','blood_requests',
     'consultations','health_records','hospitalizations','imaging_studies',
     'kiosk_checkins','lab_results','lab_samples','operating_room_schedules',
     'patient_transfers','pharmacy_pos_transactions','prescriptions',
@@ -666,7 +666,7 @@ BEGIN
     FROM information_schema.columns
     WHERE table_schema = 'public'
       AND table_name = ANY(ARRAY[
-        'appointments','blood_requests','consultations','health_records',
+        'ambulance_dispatches','appointments','blood_requests','consultations','health_records',
         'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
         'lab_samples','operating_room_schedules','patient_transfers',
         'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
@@ -681,7 +681,7 @@ BEGIN
   FROM pg_policies
   WHERE schemaname = 'public'
     AND tablename = ANY(ARRAY[
-      'appointments','blood_requests','consultations','health_records',
+      'ambulance_dispatches','appointments','blood_requests','consultations','health_records',
       'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
       'lab_samples','operating_room_schedules','patient_transfers',
       'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
@@ -844,6 +844,70 @@ BEGIN
        ) THEN
       RAISE EXCEPTION 'FAIL: transfer notifications must be recipient-scoped and deny platform-admin bypass';
     END IF;
+  END IF;
+
+  IF to_regclass('public.insurance_claims') IS NOT NULL THEN
+    IF NOT has_function_privilege(
+         'authenticated',
+         'private.can_manage_insurance_claims_in_org(uuid)',
+         'EXECUTE'
+       )
+       OR has_function_privilege(
+         'anon',
+         'private.can_manage_insurance_claims_in_org(uuid)',
+         'EXECUTE'
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'insurance_claims'
+           AND policyname = 'insurance_claims_relationship_select_guard'
+           AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
+           AND qual ILIKE '%can_manage_insurance_claims_in_org%'
+       ) THEN
+      RAISE EXCEPTION 'FAIL: insurance claims must be isolated to the patient or authorized staff of the exact organization';
+    END IF;
+  END IF;
+
+  IF to_regclass('public.messages') IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'messages'
+         AND policyname = 'messages_participant_scope_guard'
+         AND permissive = 'RESTRICTIVE' AND cmd = 'ALL'
+         AND qual ILIKE '%sender_id%' AND qual ILIKE '%recipient_id%'
+     ) THEN
+    RAISE EXCEPTION 'FAIL: messages must be restricted to sender and recipient, not tenant/platform admins';
+  END IF;
+
+  IF to_regclass('public.platform_events') IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = 'platform_events'
+         AND policyname = 'platform_events_patient_data_scope_guard'
+         AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
+         AND qual ILIKE '%patient_id IS NULL%'
+         AND qual ILIKE '%professional_has_patient_consultation%'
+     ) THEN
+    RAISE EXCEPTION 'FAIL: patient-linked platform events must not be visible to platform admins by default';
+  END IF;
+
+  IF to_regclass('public.shifa_access_verifications') IS NOT NULL
+     AND (
+       NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'shifa_access_verifications'
+           AND policyname = 'shifa_access_verifications_scope_guard'
+           AND permissive = 'RESTRICTIVE' AND cmd = 'ALL'
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'shifa_access_verifications'
+           AND policyname = 'shifa_access_verifications_immutable_guard'
+           AND permissive = 'RESTRICTIVE' AND cmd = 'UPDATE'
+           AND qual ILIKE '%false%'
+       )
+     ) THEN
+    RAISE EXCEPTION 'FAIL: SHIFA access verification records must be scoped and immutable to clients';
   END IF;
 
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
