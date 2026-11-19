@@ -13,6 +13,8 @@ DECLARE
   v_existing_professional_update text;
   v_expected_admin_guard_count integer;
   v_actual_admin_guard_count integer;
+  v_expected_clinical_table_count integer;
+  v_actual_clinical_policy_count integer;
 BEGIN
   SELECT c.relrowsecurity
     INTO v_rls
@@ -657,25 +659,39 @@ BEGIN
     RAISE EXCEPTION 'FAIL: clinical workflow creation must require verified professional with accepted exact-org membership';
   END IF;
 
-  IF (
-    SELECT count(*)
-    FROM pg_policies
-    WHERE schemaname = 'public'
-      AND tablename IN (
-        'appointments','blood_requests','consultations','health_records',
-        'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
-        'lab_samples','operating_room_schedules','patient_transfers',
-        'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
-      )
-      AND policyname IN (
-        'org_admin_clinical_relationship_select',
-        'org_admin_clinical_relationship_insert',
-        'org_admin_clinical_relationship_update',
-        'org_admin_clinical_relationship_delete'
-      )
-      AND permissive = 'RESTRICTIVE'
-  ) < 60 THEN
-    RAISE EXCEPTION 'FAIL: command-specific restrictive clinical relationship policies are incomplete';
+  SELECT count(*)
+    INTO v_expected_clinical_table_count
+  FROM information_schema.tables
+  WHERE table_schema = 'public'
+    AND table_name = ANY(ARRAY[
+      'appointments','blood_requests','consultations','health_records',
+      'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
+      'lab_samples','operating_room_schedules','patient_transfers',
+      'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
+    ]);
+
+  SELECT count(*)
+    INTO v_actual_clinical_policy_count
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = ANY(ARRAY[
+      'appointments','blood_requests','consultations','health_records',
+      'hospitalizations','imaging_studies','kiosk_checkins','lab_results',
+      'lab_samples','operating_room_schedules','patient_transfers',
+      'pharmacy_pos_transactions','prescriptions','shifa_ids','vital_signs'
+    ])
+    AND policyname IN (
+      'org_admin_clinical_relationship_select',
+      'org_admin_clinical_relationship_insert',
+      'org_admin_clinical_relationship_update',
+      'org_admin_clinical_relationship_delete'
+    )
+    AND permissive = 'RESTRICTIVE';
+
+  IF v_actual_clinical_policy_count <> (v_expected_clinical_table_count * 4) THEN
+    RAISE EXCEPTION
+      'FAIL: command-specific restrictive clinical relationship policies mismatch (expected %, actual %)',
+      v_expected_clinical_table_count * 4, v_actual_clinical_policy_count;
   END IF;
 
   IF NOT EXISTS (
