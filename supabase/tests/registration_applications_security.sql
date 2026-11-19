@@ -819,7 +819,7 @@ BEGIN
   END IF;
 
   IF to_regclass('public.transfer_notifications') IS NOT NULL THEN
-    IF position('NOT private.is_platform_admin()' IN pg_get_functiondef(
+    IF position('NOT public.is_platform_admin()' IN pg_get_functiondef(
          'private.can_access_transfer(uuid)'::regprocedure
        )) = 0
        OR NOT EXISTS (
