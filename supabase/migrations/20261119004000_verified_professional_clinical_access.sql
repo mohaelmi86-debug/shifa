@@ -61,7 +61,7 @@ FOR SELECT
 TO authenticated
 USING (
   user_id = (SELECT auth.uid())
-  OR private.is_platform_admin()
+  OR public.is_platform_admin()
   OR (status = 'active'::public.professional_status AND is_verified IS TRUE)
   OR private.org_admin_can_access_professional(id)
 );
@@ -97,7 +97,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
   SELECT CASE
     WHEN target_org_id IS NULL THEN FALSE
-    WHEN private.is_platform_admin() THEN TRUE
+    WHEN public.is_platform_admin() THEN TRUE
     ELSE EXISTS (
       SELECT 1
       FROM public.user_profiles up
