@@ -163,3 +163,79 @@ CREATE POLICY transfer_notifications_insert_scope_guard
 
 COMMENT ON FUNCTION private.is_transfer_notification_recipient(uuid,uuid) IS
   'Checks that a transfer notification recipient is the patient or an active participant of the transfer source/destination organization.';
+
+-- Membership must be both active and explicitly accepted. A pending invitation
+-- is not an authorization grant even if a stale status value says "active".
+CREATE OR REPLACE FUNCTION private.belongs_to_org(target_org_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $function$
+  SELECT CASE
+    WHEN target_org_id IS NULL THEN FALSE
+    WHEN private.is_platform_admin() THEN TRUE
+    ELSE EXISTS (
+      SELECT 1
+      FROM public.user_profiles up
+      WHERE up.id = (SELECT auth.uid())
+        AND up.organization_id = target_org_id
+        AND up.is_active IS TRUE
+        AND up.role::text = 'org_admin'
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.professionals pro
+      JOIN public.user_profiles up
+        ON up.id = pro.user_id
+       AND up.is_active IS TRUE
+       AND up.role::text = 'professional'
+      JOIN public.professional_organizations po
+        ON po.professional_id = pro.id
+      JOIN public.organizations org
+        ON org.id = po.organization_id
+       AND org.is_active IS TRUE
+      WHERE pro.user_id = (SELECT auth.uid())
+        AND private.is_verified_active_professional()
+        AND po.organization_id = target_org_id
+        AND po.status::text = 'active'
+        AND po.invitation_status = 'accepted'::public.invitation_status
+    )
+  END;
+$function$;
+
+CREATE OR REPLACE FUNCTION private.professional_has_patient_consultation(p_patient_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.professionals pro
+    JOIN public.user_profiles up
+      ON up.id = pro.user_id
+     AND up.is_active IS TRUE
+     AND up.role::text = 'professional'
+    JOIN public.professional_organizations po
+      ON po.professional_id = pro.id
+    JOIN public.organizations org
+      ON org.id = po.organization_id
+     AND org.is_active IS TRUE
+    JOIN public.consultations c
+      ON c.professional_id = pro.id
+     AND c.organization_id = po.organization_id
+    WHERE pro.user_id = (SELECT auth.uid())
+      AND private.is_verified_active_professional()
+      AND po.status::text = 'active'
+      AND po.invitation_status = 'accepted'::public.invitation_status
+      AND c.patient_id = p_patient_id
+  );
+$function$;
+
+COMMENT ON FUNCTION private.belongs_to_org(uuid) IS
+  'Organization membership requires an active org admin or a verified active professional with an explicitly accepted active membership in the exact active organization.';
+COMMENT ON FUNCTION private.professional_has_patient_consultation(uuid) IS
+  'Patient consultation visibility requires verified active professional status and accepted active membership in the consultation organization.';
