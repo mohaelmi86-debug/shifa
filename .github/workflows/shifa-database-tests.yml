@@ -110,6 +110,19 @@ jobs:
             updated_at timestamptz DEFAULT now(),
             organization_id uuid
           );
+          -- The historical foundation includes these clinical tables; the
+          -- repository snapshot omits their original migrations. Minimal
+          -- fixtures let the verification migration exercise every guard.
+          CREATE TABLE public.blood_requests (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.consultations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.hospitalizations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.imaging_studies (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.lab_results (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.lab_samples (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.operating_room_schedules (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.pharmacy_pos_transactions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.shifa_cards (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.vital_signs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
           -- Legacy authorization helpers are deliberately fail-closed in CI.
           CREATE FUNCTION private.owns_patient_record(p_patient_id uuid)
           RETURNS boolean LANGUAGE sql STABLE AS $$
