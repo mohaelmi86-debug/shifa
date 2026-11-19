@@ -87,6 +87,18 @@ jobs:
             owner_id uuid,
             created_at timestamptz DEFAULT now()
           );
+          CREATE FUNCTION storage.foldername(object_name text)
+          RETURNS text[]
+          LANGUAGE sql
+          IMMUTABLE
+          STRICT
+          AS $
+            SELECT CASE
+              WHEN array_length(string_to_array(object_name, '/'), 1) > 1
+              THEN (string_to_array(object_name, '/'))[1:array_length(string_to_array(object_name, '/'), 1) - 1]
+              ELSE ARRAY[]::text[]
+            END
+          $;
           CREATE TABLE realtime.messages (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
           CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
           CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
