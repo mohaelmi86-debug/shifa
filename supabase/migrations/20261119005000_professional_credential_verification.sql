@@ -42,6 +42,38 @@ CREATE INDEX IF NOT EXISTS idx_professional_credentials_org_status_created
 CREATE INDEX IF NOT EXISTS idx_professional_credentials_professional
   ON public.professional_credentials (professional_id, created_at DESC);
 
+-- Tenant-scoped authorization: a manager may only access credentials for a
+-- professional's membership in that manager's own active organization.
+CREATE OR REPLACE FUNCTION private.org_admin_can_access_professional_in_org(
+  p_professional_id uuid,
+  p_organization_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_profiles up
+    JOIN public.organizations org
+      ON org.id = up.organization_id
+     AND org.is_active IS TRUE
+    JOIN public.professional_organizations po
+      ON po.organization_id = up.organization_id
+     AND po.professional_id = p_professional_id
+     AND po.organization_id = p_organization_id
+     AND po.invitation_status = 'accepted'::public.invitation_status
+    WHERE up.id = (SELECT auth.uid())
+      AND up.role::text = 'org_admin'
+      AND up.is_active IS TRUE
+  );
+$function$;
+
+REVOKE ALL ON FUNCTION private.org_admin_can_access_professional_in_org(uuid,uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.org_admin_can_access_professional_in_org(uuid,uuid) TO authenticated;
+
 ALTER TABLE public.professional_credentials ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.professional_credentials FROM PUBLIC, anon, authenticated;
 GRANT SELECT (
@@ -56,7 +88,7 @@ ON public.professional_credentials
 FOR SELECT TO authenticated
 USING (
   submitted_by = (SELECT auth.uid())
-  OR private.org_admin_can_access_professional(professional_id)
+  OR private.org_admin_can_access_professional_in_org(professional_id, organization_id)
   OR private.is_platform_admin()
 );
 
@@ -81,7 +113,7 @@ USING (
       SELECT 1
       FROM public.professional_credentials pc
       WHERE pc.storage_path = name
-        AND private.org_admin_can_access_professional(pc.professional_id)
+        AND private.org_admin_can_access_professional_in_org(pc.professional_id, pc.organization_id)
     )
     OR private.is_platform_admin()
   )
@@ -269,7 +301,7 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'CREDENTIAL_NOT_FOUND' USING ERRCODE = 'P0002';
   END IF;
-  IF NOT private.org_admin_can_access_professional(v_credential.professional_id) THEN
+  IF NOT private.org_admin_can_access_professional_in_org(v_credential.professional_id, v_credential.organization_id) THEN
     RAISE EXCEPTION 'ORGANIZATION_ADMIN_REQUIRED' USING ERRCODE = '42501';
   END IF;
   IF v_credential.status <> 'pending' THEN
@@ -331,3 +363,7 @@ GRANT EXECUTE ON FUNCTION public.review_professional_credential(uuid,text,text) 
 
 COMMENT ON TABLE public.professional_credentials IS
   'Private professional qualification evidence. Access is limited to the submitting professional and the linked organization administrators.';
+
+
+COMMENT ON FUNCTION private.org_admin_can_access_professional_in_org(uuid,uuid) IS
+  'Organization admins may access professional credentials only for an accepted membership in their own active organization.';
