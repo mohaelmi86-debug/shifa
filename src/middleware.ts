@@ -3,15 +3,16 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const PATIENT_ROUTES = [
   '/patient-home', '/patient-explorer', '/appointment-booking',
-  '/dossier-de-sant', '/patient-messages', '/shifa-card', '/patient-settings',
+  '/dossier-de-sant', '/patient-messages', '/shifa-card', '/patient-settings', '/shifa-ai-patient',
 ];
 const PROFESSIONAL_ROUTES = [
   '/workspace-professionnel', '/professional-verification', '/consultation-workspace', '/pro-patients',
   '/pro-agenda', '/pro-prescriptions', '/pro-resultats', '/pro-messages', '/pro-parametres',
+  '/shifa-ai-pro', '/shifa-ai-pharmacy', '/shifa-ai-workspace',
 ];
 const ADMIN_ROUTES = [
   '/administration-tablissement', '/admin-modules', '/admin-roles', '/admin-audit',
-  '/admin-professionnels', '/admin-utilisateurs', '/admin-activite', '/admin-parametres',
+  '/admin-professionnels', '/admin-utilisateurs', '/admin-activite', '/admin-parametres', '/shifa-ai-org',
 ];
 const ORGANIZATION_ROUTES = ['/org-onboarding'];
 const PLATFORM_ADMIN_ROUTES = ['/platform-admin', '/registration-review'];
