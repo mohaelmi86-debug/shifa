@@ -29,6 +29,7 @@ const labels: Record<string, string> = {
 export default function ProfessionalCredentialReviewPanel() {
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<CredentialRow[]>([]);
+  const [expiringRows, setExpiringRows] = useState<CredentialRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -37,18 +38,42 @@ export default function ProfessionalCredentialReviewPanel() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error: queryError } = await supabase
-      .from('professional_credentials')
-      .select('id, professional_id, credential_type, document_name, storage_path, mime_type, file_size, license_number, expires_at, status, created_at, professionals(first_name,last_name,profession)')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true });
-    if (queryError) {
-      setError('Impossible de charger les justificatifs. Vérifiez les droits de votre établissement.');
+    const horizon = new Date();
+    horizon.setDate(horizon.getDate() + 30);
+    const horizonDate = [
+      horizon.getFullYear(),
+      String(horizon.getMonth() + 1).padStart(2, '0'),
+      String(horizon.getDate()).padStart(2, '0'),
+    ].join('-');
+    const selectFields = 'id, professional_id, credential_type, document_name, storage_path, mime_type, file_size, license_number, expires_at, status, created_at, professionals(first_name,last_name,profession)';
+    const [pendingResult, expiryResult] = await Promise.all([
+      supabase
+        .from('professional_credentials')
+        .select(selectFields)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('professional_credentials')
+        .select(selectFields)
+        .eq('status', 'approved')
+        .not('expires_at', 'is', null)
+        .lte('expires_at', horizonDate)
+        .order('expires_at', { ascending: true })
+        .limit(50),
+    ]);
+    if (pendingResult.error) {
+      setError('Impossible de charger les justificatifs en attente. Vérifiez les droits de votre établissement.');
       setRows([]);
     } else {
-      setRows((data || []) as unknown as CredentialRow[]);
-      setError('');
+      setRows((pendingResult.data || []) as unknown as CredentialRow[]);
     }
+    if (expiryResult.error) {
+      setError('Impossible de charger les échéances des justificatifs.');
+      setExpiringRows([]);
+    } else {
+      setExpiringRows((expiryResult.data || []) as unknown as CredentialRow[]);
+    }
+    if (!pendingResult.error && !expiryResult.error) setError('');
     setLoading(false);
   }, [supabase]);
 
@@ -113,7 +138,41 @@ export default function ProfessionalCredentialReviewPanel() {
       </div>
       {error && <p role="alert" className="text-sm mt-4" style={{ color: 'var(--shifa-red)' }}>{error}</p>}
       {notice && <p role="status" className="text-sm mt-4" style={{ color: 'var(--shifa-green)' }}>{notice}</p>}
-      {loading ? <p className="text-sm mt-5">Chargement des dossiers…</p> : rows.length === 0 ? (
+      {loading ? <p className="text-sm mt-5">Chargement des dossiers…</p> : (
+        <>
+          {expiringRows.length > 0 && (
+            <section className="mt-5 rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Échéances à surveiller</h3>
+                  <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>Justificatifs approuvés expirés ou arrivant à échéance dans les 30 jours</p>
+                </div>
+                <span className="text-xs font-bold rounded-full px-2 py-1" style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}>{expiringRows.length}</span>
+              </div>
+              <div className="space-y-2">
+                {expiringRows.map(row => {
+                  const person = row.professionals;
+                  const expired = Boolean(row.expires_at && row.expires_at < new Date().toISOString().slice(0, 10));
+                  return (
+                    <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg p-3" style={{ backgroundColor: 'var(--background)' }}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{person ? person.first_name + ' ' + person.last_name : 'Professionnel'}</p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{labels[row.credential_type] || row.credential_type} · {row.document_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-semibold" style={{ color: expired ? 'var(--shifa-red)' : 'var(--shifa-amber)' }}>{expired ? 'Expiré' : 'Expire le'}</p>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{row.expires_at ? new Date(row.expires_at + 'T00:00:00').toLocaleDateString('fr-FR') : 'Date inconnue'}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+          {rows.length === 0 ? (
+            <p className="text-sm mt-5" style={{ color: 'var(--muted-foreground)' }}>Aucun justificatif en attente pour votre établissement.</p>
+          ) : (
+            <div className="mt-5 space-y-4">
         <p className="text-sm mt-5" style={{ color: 'var(--muted-foreground)' }}>Aucun justificatif en attente pour votre établissement.</p>
       ) : (
         <div className="mt-5 space-y-4">
@@ -140,7 +199,9 @@ export default function ProfessionalCredentialReviewPanel() {
               </article>
             );
           })}
-        </div>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
