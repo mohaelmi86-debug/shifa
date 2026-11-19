@@ -188,19 +188,12 @@ BEGIN
   FOR UPDATE;
 
   IF v_professional_id IS NOT NULL THEN
+    -- The professional record is global, while role_title and verification
+    -- for this employer belong to the organization membership. Do not let a
+    -- second employer's invitation overwrite the professional's global
+    -- identity, contact details, license number, or existing verification.
     UPDATE public.professionals
-    SET first_name = v_invitation.first_name,
-        last_name = v_invitation.last_name,
-        profession = v_invitation.profession,
-        specialty = v_invitation.specialty,
-        license_number = v_invitation.license_number,
-        country_code = v_invitation.country_code,
-        phone = v_invitation.phone,
-        email = v_email,
-        -- Adding a second organization must not revoke a professional's
-        -- existing global verification. The new membership itself remains
-        -- pending until this organization's credentials are reviewed.
-        updated_at = now()
+    SET updated_at = now()
     WHERE id = v_professional_id;
   ELSE
     INSERT INTO public.professionals (
