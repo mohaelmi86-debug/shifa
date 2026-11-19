@@ -318,6 +318,35 @@ BEGIN
     RAISE EXCEPTION 'FAIL: expiry processor must suspend organization membership and create an audit record';
   END IF;
 
-  RAISE NOTICE 'PASS: registration and organization invitation privilege, RLS, trigger and RPC configuration assertions';
+
+  -- Expiry reminders (migration 20261119007000): in-app queue only, no external delivery.
+  IF NOT has_function_privilege('service_role', 'public.queue_professional_credential_expiry_reminders()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.queue_professional_credential_expiry_reminders()', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.queue_professional_credential_expiry_reminders()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: credential expiry reminder queue must be executable only by service_role';
+  END IF;
+
+  IF position('ARRAY[30, 15, 7]' IN pg_get_functiondef(
+    'public.queue_professional_credential_expiry_reminders()'::regprocedure
+  )) = 0
+     OR position('ON CONFLICT' IN upper(pg_get_functiondef(
+       'public.queue_professional_credential_expiry_reminders()'::regprocedure
+     ))) = 0
+     OR position('credential_expiry' IN pg_get_functiondef(
+       'public.queue_professional_credential_expiry_reminders()'::regprocedure
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: reminder queue must target 30/15/7-day windows and be idempotent';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'notifications'
+      AND indexname = 'uq_notifications_user_dedupe_key'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: notification idempotency index is missing';
+  END IF;
+
+  RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
