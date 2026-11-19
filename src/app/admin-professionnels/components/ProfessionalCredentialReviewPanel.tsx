@@ -15,6 +15,7 @@ type CredentialRow = {
   expires_at: string | null;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  reviewed_at: string | null;
   professionals?: { first_name: string; last_name: string; profession: string } | null;
 };
 
@@ -30,6 +31,7 @@ export default function ProfessionalCredentialReviewPanel() {
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<CredentialRow[]>([]);
   const [expiringRows, setExpiringRows] = useState<CredentialRow[]>([]);
+  const [reviewedRows, setReviewedRows] = useState<CredentialRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -45,8 +47,8 @@ export default function ProfessionalCredentialReviewPanel() {
       String(horizon.getMonth() + 1).padStart(2, '0'),
       String(horizon.getDate()).padStart(2, '0'),
     ].join('-');
-    const selectFields = 'id, professional_id, credential_type, document_name, storage_path, mime_type, file_size, license_number, expires_at, status, created_at, professionals(first_name,last_name,profession)';
-    const [pendingResult, expiryResult] = await Promise.all([
+    const selectFields = 'id, professional_id, credential_type, document_name, storage_path, mime_type, file_size, license_number, expires_at, status, created_at, reviewed_at, professionals(first_name,last_name,profession)';
+    const [pendingResult, expiryResult, historyResult] = await Promise.all([
       supabase
         .from('professional_credentials')
         .select(selectFields)
@@ -59,6 +61,13 @@ export default function ProfessionalCredentialReviewPanel() {
         .not('expires_at', 'is', null)
         .lte('expires_at', horizonDate)
         .order('expires_at', { ascending: true })
+        .limit(50),
+      supabase
+        .from('professional_credentials')
+        .select(selectFields)
+        .in('status', ['approved', 'rejected'])
+        .not('reviewed_at', 'is', null)
+        .order('reviewed_at', { ascending: false })
         .limit(50),
     ]);
     if (pendingResult.error) {
@@ -73,7 +82,13 @@ export default function ProfessionalCredentialReviewPanel() {
     } else {
       setExpiringRows((expiryResult.data || []) as unknown as CredentialRow[]);
     }
-    if (!pendingResult.error && !expiryResult.error) setError('');
+    if (historyResult.error) {
+      setError('Impossible de charger l’historique des décisions.');
+      setReviewedRows([]);
+    } else {
+      setReviewedRows((historyResult.data || []) as unknown as CredentialRow[]);
+    }
+    if (!pendingResult.error && !expiryResult.error && !historyResult.error) setError('');
     setLoading(false);
   }, [supabase]);
 
@@ -171,6 +186,35 @@ export default function ProfessionalCredentialReviewPanel() {
               </div>
             </section>
           )}
+          <section className="mt-5 rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Historique des décisions</h3>
+                <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>Dernières 50 validations et refus de votre établissement. Les notes internes restent confidentielles.</p>
+              </div>
+              <span className="text-xs font-bold rounded-full px-2 py-1" style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}>{reviewedRows.length}</span>
+            </div>
+            {reviewedRows.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Aucune décision enregistrée pour le moment.</p>
+            ) : (
+              <div className="space-y-2">
+                {reviewedRows.map(row => {
+                  const person = row.professionals;
+                  const approved = row.status === 'approved';
+                  return (
+                    <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg p-3" style={{ backgroundColor: 'var(--background)' }}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{person ? person.first_name + ' ' + person.last_name : 'Professionnel'}</p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{labels[row.credential_type] || row.credential_type} · {row.document_name}</p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>Décision du {row.reviewed_at ? new Date(row.reviewed_at).toLocaleString('fr-FR') : 'date inconnue'}</p>
+                      </div>
+                      <span className="text-xs font-semibold rounded-full px-2 py-1" style={{ color: approved ? 'var(--shifa-green)' : 'var(--shifa-red)', backgroundColor: 'var(--muted)' }}>{approved ? 'Validé' : 'Refusé'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
           {rows.length === 0 ? (
             <p className="text-sm mt-5" style={{ color: 'var(--muted-foreground)' }}>Aucun justificatif en attente pour votre établissement.</p>
           ) : (
