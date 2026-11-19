@@ -212,27 +212,57 @@ $documents$;
 
 -- SHIFA cards contain patient identity data but do not carry organization_id.
 -- Access is limited to the card owner or a professional with an appointment.
-DROP POLICY IF EXISTS org_admin_clinical_relationship_guard ON public.shifa_cards;
-CREATE POLICY org_admin_clinical_relationship_guard
-  ON public.shifa_cards
-  AS RESTRICTIVE
-  FOR ALL
-  TO authenticated
-  USING (
-    user_id = (SELECT auth.uid())
-    OR (
-      patient_id IS NOT NULL
-      AND private.professional_has_patient_consultation(patient_id)
-    )
-  )
-  WITH CHECK (
-    user_id = (SELECT auth.uid())
-    OR (
-      patient_id IS NOT NULL
-      AND private.professional_has_patient_consultation(patient_id)
-    )
-  );
-
+DO $cards$
+BEGIN
+  IF to_regclass('public.shifa_cards') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS org_admin_clinical_relationship_guard ON public.shifa_cards';
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'shifa_cards'
+        AND column_name = 'user_id'
+    ) THEN
+      EXECUTE $policy$
+        CREATE POLICY org_admin_clinical_relationship_guard
+        ON public.shifa_cards
+        AS RESTRICTIVE
+        FOR ALL
+        TO authenticated
+        USING (
+          user_id = (SELECT auth.uid())
+          OR (
+            patient_id IS NOT NULL
+            AND private.professional_has_patient_consultation(patient_id)
+          )
+        )
+        WITH CHECK (
+          user_id = (SELECT auth.uid())
+          OR (
+            patient_id IS NOT NULL
+            AND private.professional_has_patient_consultation(patient_id)
+          )
+        )
+      $policy$;
+    ELSE
+      EXECUTE $policy$
+        CREATE POLICY org_admin_clinical_relationship_guard
+        ON public.shifa_cards
+        AS RESTRICTIVE
+        FOR ALL
+        TO authenticated
+        USING (
+          patient_id IS NOT NULL
+          AND private.professional_has_patient_consultation(patient_id)
+        )
+        WITH CHECK (
+          patient_id IS NOT NULL
+          AND private.professional_has_patient_consultation(patient_id)
+        )
+      $policy$;
+    END IF;
+  END IF;
+END;
+$cards$;
 
 -- Harden name resolution for every SECURITY DEFINER helper in the private
 -- schema. pg_catalog is first, auth is explicit, public is retained for the
