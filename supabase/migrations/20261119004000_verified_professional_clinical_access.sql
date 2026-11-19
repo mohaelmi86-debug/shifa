@@ -135,7 +135,7 @@ AS $function$
       AND up.is_active IS TRUE
       AND up.role::text = 'professional'
     JOIN public.professional_organizations po ON po.professional_id = pro.id
-    JOIN public.consultations c
+    JOIN public.appointments c
       ON c.professional_id = pro.id
      AND c.organization_id = po.organization_id
     WHERE pro.user_id = (SELECT auth.uid())
