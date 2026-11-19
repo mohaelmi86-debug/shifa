@@ -75,14 +75,16 @@ BEGIN
     INSERT INTO public.professionals (
       user_id, first_name, last_name, profession, specialty, license_number,
       country_code, phone, email, is_verified
-    ) VALUES (
+    )
+    SELECT
       NEW.id, v_first_name, v_last_name, v_profession, v_specialty,
       NULLIF(TRIM(NEW.raw_user_meta_data->>'license_number'), ''),
       COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'country'), ''), 'FR'),
       NULLIF(TRIM(NEW.raw_user_meta_data->>'phone'), ''),
       NEW.email, FALSE
-    )
-    ON CONFLICT (user_id) DO NOTHING;
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.professionals WHERE user_id = NEW.id
+    );
   ELSE
     -- Invalid optional demographic values must not prevent account creation.
     BEGIN
@@ -102,7 +104,8 @@ BEGIN
     INSERT INTO public.patients (
       user_id, shifa_id, first_name, last_name, phone, email, country_code,
       date_of_birth, gender
-    ) VALUES (
+    )
+    SELECT
       NEW.id,
       'SHF-' || UPPER(SUBSTR(REPLACE(NEW.id::text, '-', ''), 1, 12)),
       v_first_name, v_last_name,
@@ -111,8 +114,9 @@ BEGIN
       COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'country'), ''), 'FR'),
       v_date_of_birth,
       v_gender
-    )
-    ON CONFLICT (user_id) DO NOTHING;
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.patients WHERE user_id = NEW.id
+    );
   END IF;
 
   RETURN NEW;
