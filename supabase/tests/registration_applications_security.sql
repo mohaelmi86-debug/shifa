@@ -568,6 +568,51 @@ BEGIN
     RAISE EXCEPTION 'FAIL: SHIFA ID professional access must require exact patient and organization consultation';
   END IF;
 
+  -- Platform admins manage tenants; they do not receive direct clinical access.
+  IF NOT has_function_privilege(
+       'authenticated',
+       'private.is_platform_admin_clinical_access_denied()',
+       'EXECUTE'
+     )
+     OR has_function_privilege(
+       'anon',
+       'private.is_platform_admin_clinical_access_denied()',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'FAIL: platform-admin clinical deny helper grants are incorrect';
+  END IF;
+
+  IF position('up.role::text = ''platform_admin''' IN pg_get_functiondef(
+       'private.is_platform_admin_clinical_access_denied()'::regprocedure
+     )) = 0
+     OR position('search_path=pg_catalog, public, auth, pg_temp' IN replace(
+       pg_get_functiondef('private.is_platform_admin_clinical_access_denied()'::regprocedure),
+       '"', ''
+     )) = 0 THEN
+    RAISE EXCEPTION 'FAIL: platform-admin clinical deny helper must use the platform role and hardened search_path';
+  END IF;
+
+  IF (
+    SELECT count(*)
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN (
+        'patients','patient_documents','appointments','blood_requests',
+        'consultations','health_records','hospitalizations','imaging_studies',
+        'kiosk_checkins','lab_results','lab_samples','operating_room_schedules',
+        'patient_transfers','pharmacy_pos_transactions','prescriptions',
+        'shifa_cards','shifa_ids','vital_signs'
+      )
+      AND policyname = 'platform_admin_clinical_default_deny'
+      AND permissive = 'RESTRICTIVE'
+      AND roles = '{authenticated}'
+      AND cmd = 'ALL'
+      AND qual ILIKE '%is_platform_admin_clinical_access_denied%'
+      AND with_check ILIKE '%is_platform_admin_clinical_access_denied%'
+  ) < 18 THEN
+    RAISE EXCEPTION 'FAIL: platform-admin clinical default-deny guards are missing from expected RLS tables';
+  END IF;
+
   RAISE NOTICE 'PASS: registration, invitation, credential verification, expiry suspension and reminder queue security assertions';
 END;
 $$;
