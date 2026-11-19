@@ -103,7 +103,9 @@ export default function ProfessionalVerificationContent() {
       await supabase.storage.from('professional-credentials').remove([storagePath]);
       setError(submitError.message.includes('ACTIVE_ORGANIZATION_MEMBERSHIP_REQUIRED')
         ? 'Votre rattachement à l’établissement doit être finalisé avant le dépôt.'
-        : 'Le justificatif n’a pas pu être enregistré. Vérifiez votre rattachement et réessayez.');
+        : message.includes('PRIMARY_ORGANIZATION_SELECTION_REQUIRED')
+          ? 'Sélectionnez votre établissement principal dans votre profil avant de déposer ce justificatif.'
+          : 'Le justificatif n’a pas pu être enregistré. Vérifiez votre rattachement et réessayez.');
     } else {
       setMessage('Justificatif transmis. L’administrateur de votre établissement doit maintenant l’examiner.');
       setFile(null);
@@ -126,7 +128,7 @@ export default function ProfessionalVerificationContent() {
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--shifa-blue)' }}>SHIFA Health OS</p>
           <h1 className="text-2xl font-bold mt-2" style={{ color: 'var(--foreground)' }}>Vérification de mon profil professionnel</h1>
           <p className="text-sm leading-6 mt-3" style={{ color: 'var(--muted-foreground)' }}>
-            Déposez vos justificatifs officiels. Les fichiers sont conservés dans un espace privé et accessibles uniquement à vous et aux administrateurs habilités de votre établissement. Une invitation ne constitue pas une validation de vos qualifications.
+            Déposez vos justificatifs officiels pour votre établissement principal SHIFA. Les autres rattachements restent indépendants. Les fichiers sont conservés dans un espace privé et accessibles uniquement à vous et aux administrateurs habilités de l’établissement concerné. Une invitation ne constitue pas une validation de vos qualifications.
           </p>
 
           <form onSubmit={submit} className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
