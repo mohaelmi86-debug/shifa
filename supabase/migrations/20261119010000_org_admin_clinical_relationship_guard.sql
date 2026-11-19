@@ -198,6 +198,10 @@ BEGIN
     EXECUTE 'DROP POLICY IF EXISTS clinical_scope_guard ON public.patient_documents';
     EXECUTE 'DROP POLICY IF EXISTS patient_documents_uploader_select ON public.patient_documents';
     EXECUTE 'DROP POLICY IF EXISTS patient_documents_uploader_insert ON public.patient_documents';
+    EXECUTE 'DROP POLICY IF EXISTS patient_documents_care_team_select ON public.patient_documents';
+    EXECUTE 'CREATE POLICY patient_documents_care_team_select ON public.patient_documents FOR SELECT TO authenticated USING (private.can_access_patient_document(patient_id) AND uploaded_by = (SELECT auth.uid()))';
+    EXECUTE 'DROP POLICY IF EXISTS patient_documents_care_team_insert ON public.patient_documents';
+    EXECUTE 'CREATE POLICY patient_documents_care_team_insert ON public.patient_documents FOR INSERT TO authenticated WITH CHECK (private.can_access_patient_document(patient_id) AND uploaded_by = (SELECT auth.uid()))';
     EXECUTE 'DROP POLICY IF EXISTS patient_documents_relationship_select ON public.patient_documents';
     EXECUTE 'CREATE POLICY patient_documents_relationship_select ON public.patient_documents AS RESTRICTIVE FOR SELECT TO authenticated USING (private.can_access_patient_document(patient_id))';
     EXECUTE 'DROP POLICY IF EXISTS patient_documents_relationship_insert ON public.patient_documents';
