@@ -107,3 +107,21 @@ Correctifs préparés dans cette branche :
 - Test `supabase/tests/notifications_security.sql` et étape CI dédiés.
 
 Le flux de notification vers un autre utilisateur doit passer par un workflow serveur de confiance (service role) avec validation métier et audit. Cette migration est préparée uniquement ; elle n'a pas été appliquée à Supabase distant. Elle doit passer la CI et une validation staging avant toute mise en production.
+
+
+## Réconciliation de la migration distante manquante — 19/11/2026
+
+Le fichier `20261118225231_shifa_revoke_excess_table_privileges.sql` n'a pas été retrouvé dans l'historique Git (requête de commits par chemin : aucun résultat). En revanche, le ledger Supabase confirme que cette version a déjà été exécutée.
+
+Un fichier de reconstruction a été ajouté sous le même numéro de version. **Il ne prétend pas être le SQL original** : il reproduit le contrat ACL observé sur le projet distant, à partir de métadonnées seulement :
+- 64 tables publiques ;
+- `authenticated` : SELECT, INSERT, UPDATE, DELETE sur les 64 ;
+- `service_role` : privilèges complets sur les 64 ;
+- `anon` : SELECT uniquement sur `availability_slots`, `funding_campaigns`, `health_services`, `marketplace_products` ;
+- aucun privilège de table attribué à `PUBLIC`.
+
+Le fichier est utile pour rendre les installations neuves reproductibles. Sur le projet distant, le ledger contient déjà cette version : Supabase CLI doit la considérer comme exécutée et ne pas la rejouer. Cette reconstruction ne justifie pas un `migration repair` et ne modifie pas le ledger.
+
+La migration `20261118220000_shifa_ai_rate_limits.sql` reste une migration locale antérieure non inscrite au ledger distant. Son contenu et ses objets ont été vérifiés séparément : la table `private.shifa_ai_rate_limits` et la fonction `public.consume_shifa_ai_rate_limit()` sont absentes. Il faudra la pousser comme migration en attente, même si son timestamp est inférieur à la dernière version déjà appliquée ; avant cela, vérifier le comportement de la version Supabase CLI utilisée et l'ordre exact du plan `db push --dry-run`.
+
+**Point de contrôle avant tout push :** exporter `supabase migration list`, exécuter `supabase db push --dry-run` (ou équivalent CLI) et vérifier qu'aucune migration distante n'est proposée à la réparation ou au rejeu. Le push réel reste suspendu à validation explicite.
