@@ -89,3 +89,21 @@ Contrôle metadata-only ciblé du schéma distant :
 Interprétation limitée : l'absence des deux objets de quota confirme que la migration de quota n'est pas déjà matérialisée sous ces noms dans le schéma interrogé. Les tables de candidatures et d'invitations sont également absentes. La table `notifications` existe déjà, ce qui confirme le risque de collision de la migration de fondation correspondante. Il faut comparer les définitions complètes avant de conclure à une équivalence ou à une incompatibilité.
 
 Ce contrôle ne prouve pas qu'aucune fonction ou table alternative ne fournit une logique équivalente. Il ne constitue pas une autorisation d'exécution.
+
+
+## Écart confirmé — policies de notifications
+
+Comparaison ciblée entre `public.notifications` en production (métadonnées uniquement) et `20261119006500_notifications_foundation.sql` :
+
+- Les 15 colonnes attendues sont présentes.
+- Les contraintes CHECK de type/priorité, les clés étrangères et les quatre index applicatifs attendus sont présents.
+- Les quatre policies existantes sont permissives et ciblent `PUBLIC`.
+- La policy INSERT distante inclut `private.is_org_admin()` sans argument de tenant, ce qui autorise un administrateur d'organisation à créer une notification pour un autre utilisateur sans preuve d'appartenance à la même organisation.
+- Les fonctions réelles sont dans le schéma `private` (`private.is_platform_admin()` et `private.is_org_admin()`), pas dans `public`.
+
+Correctifs préparés dans cette branche :
+- Le baseline `20261119006500_notifications_foundation.sql` utilise désormais `private.is_platform_admin()` et cible explicitement `authenticated`.
+- Nouvelle migration `20261119011000_notifications_policy_hardening.sql` : remplace les quatre policies, limite les opérations des clients authentifiés à leurs propres notifications (ou au platform admin), retire l'insertion cross-user par org admin et révoque les droits directs de `anon`.
+- Test `supabase/tests/notifications_security.sql` et étape CI dédiés.
+
+Le flux de notification vers un autre utilisateur doit passer par un workflow serveur de confiance (service role) avec validation métier et audit. Cette migration est préparée uniquement ; elle n'a pas été appliquée à Supabase distant. Elle doit passer la CI et une validation staging avant toute mise en production.
