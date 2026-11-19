@@ -222,10 +222,7 @@ CREATE POLICY patient_documents_relationship_update
   FOR UPDATE
   TO authenticated
   USING (private.can_access_patient_document(patient_id))
-  WITH CHECK (
-    private.can_access_patient_document(patient_id)
-    AND uploaded_by = (SELECT auth.uid())
-  );
+  WITH CHECK (private.can_access_patient_document(patient_id));
 
 DROP POLICY IF EXISTS patient_documents_relationship_delete ON public.patient_documents;
 CREATE POLICY patient_documents_relationship_delete
