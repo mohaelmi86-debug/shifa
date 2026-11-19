@@ -264,3 +264,26 @@ CREATE POLICY org_admin_clinical_relationship_guard
       AND private.professional_has_patient_consultation(patient_id)
     )
   );
+
+
+-- Harden name resolution for every SECURITY DEFINER helper in the private
+-- schema. pg_catalog is first, auth is explicit, public is retained for the
+-- schema-qualified application objects, and pg_temp is last.
+DO $search_path$
+DECLARE
+  v_function record;
+BEGIN
+  FOR v_function IN
+    SELECT p.oid
+    FROM pg_proc AS p
+    JOIN pg_namespace AS n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'private'
+      AND p.prosecdef IS TRUE
+  LOOP
+    EXECUTE format(
+      'ALTER FUNCTION %s SET search_path = pg_catalog, auth, public, pg_temp',
+      v_function.oid::regprocedure
+    );
+  END LOOP;
+END;
+$search_path$;
