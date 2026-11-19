@@ -719,17 +719,22 @@ BEGIN
        'private.can_access_patient_document(uuid)',
        'EXECUTE'
      )
-     OR EXISTS (
-       SELECT 1 FROM pg_policies
-       WHERE schemaname = 'public' AND tablename = 'patient_documents'
-         AND policyname = 'patient_documents_uploader_select'
-     )
-     OR NOT EXISTS (
-       SELECT 1 FROM pg_policies
-       WHERE schemaname = 'public' AND tablename = 'patient_documents'
-         AND policyname = 'patient_documents_relationship_select'
-         AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
-         AND qual ILIKE '%can_access_patient_document%'
+     OR (
+       to_regclass('public.patient_documents') IS NOT NULL
+       AND (
+         EXISTS (
+           SELECT 1 FROM pg_policies
+           WHERE schemaname = 'public' AND tablename = 'patient_documents'
+             AND policyname = 'patient_documents_uploader_select'
+         )
+         OR NOT EXISTS (
+           SELECT 1 FROM pg_policies
+           WHERE schemaname = 'public' AND tablename = 'patient_documents'
+             AND policyname = 'patient_documents_relationship_select'
+             AND permissive = 'RESTRICTIVE' AND cmd = 'SELECT'
+             AND qual ILIKE '%can_access_patient_document%'
+         )
+       )
      ) THEN
     RAISE EXCEPTION 'FAIL: patient document reads must follow patient or treating-professional relationship, never uploader identity alone';
   END IF;
