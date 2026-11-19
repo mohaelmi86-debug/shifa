@@ -1,11 +1,11 @@
 # SHIFA HEALTH — migration reconciliation
-**Date:** 2026-11-18  
+**Date:** 2026-11-19 (verified against the connected project)  
 **Scope:** read-only comparison of the connected Supabase migration ledger and GitHub repository history.  
 **Status:** findings documented; no database or production changes performed.
 
 ## 1. Supabase migration ledger
 
-The connected Supabase project reports these 15 registered migrations:
+The connected Supabase project reports these 16 registered migrations (read-only check on 2026-11-19):
 
 | Version | Migration |
 |---|---|
@@ -24,6 +24,7 @@ The connected Supabase project reports these 15 registered migrations:
 | 20261111204501 | p0_active_professional_org_membership |
 | 20261111204719 | fix_subscription_user_upsert_conflict |
 | 20261111204721 | fix_subscription_upsert_unique_user |
+| 20261118225231 | shifa_revoke_excess_table_privileges |
 
 ## 2. Git repository inventory
 
@@ -33,7 +34,7 @@ On `main`, only these three SQL migrations were found:
 - `supabase/migrations/20260810220000_community_hub.sql`
 - `supabase/migrations/20260811140000_phase2_financial_domains.sql`
 
-Therefore, 12 migrations present in the connected Supabase ledger are not represented by those three files on `main`. Their original SQL bodies must be recovered from the authoritative source (original development machine, backup, CI artifact, or the commit/branch where they were authored) before the repository can be considered reproducible.
+The three files on `main` use August 2026 version identifiers and do not match any of the 16 November migration versions in the connected remote ledger. Therefore, all 16 remotely registered migration sources are absent from the current `main` migration inventory. Their original SQL bodies must be recovered from the authoritative source (original development machine, backup, CI artifact, or the commit/branch where they were authored) before the repository can be considered reproducible. Do not infer or recreate their contents from migration names.
 
 The separate branch `audit/shifa-security-hardening-2026-11` contains `20261111220000_tenant_rls_hardening.sql`. That file is not among the 15 migrations registered in Supabase and is not part of `main`. Treat it as an unmerged proposal, not as applied database history.
 
