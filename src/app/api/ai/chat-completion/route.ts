@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
-type AiModule = 'patient' | 'professional' | 'organization' | 'institution';
+type AiModule = 'patient' | 'professional' | 'organization' | 'institution' | 'research';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const PROVIDER_KEY_ENV: Record<string, string> = {
@@ -35,6 +35,11 @@ const MODULE_CONFIG: Record<AiModule, { modelEnv: string; allowedRoles: string[]
     modelEnv: 'SHIFA_AI_MODEL_INSTITUTION',
     allowedRoles: ['ministry', 'insurance'],
     systemPrompt: "Tu es SHIFA AI Institution, un assistant d'analyse agrégée pour les ministères de la santé et les organismes d'assurance. Réponds en français, de manière précise et professionnelle. Tu ne dois utiliser que des données agrégées et anonymisées, ne jamais demander ni exposer de données identifiantes ou de dossiers médicaux individuels, et distinguer les faits des hypothèses. Toute décision reste sous validation humaine.",
+  },
+  research: {
+    modelEnv: 'SHIFA_AI_MODEL_RESEARCH',
+    allowedRoles: ['university'],
+    systemPrompt: "Tu es SHIFA AI Research, un assistant spécialisé dans la recherche en santé. Tu aides à la revue de littérature, la conception de protocoles, l'analyse statistique, la gestion de cohortes, l'éthique et la rédaction scientifique. Réponds en français avec rigueur, distingue les faits des hypothèses et ne fabrique jamais de références bibliographiques. Tes suggestions ne remplacent pas l'expertise d'un biostatisticien, d'un chercheur qualifié ou d'un comité d'éthique. Ne demande ni ne traite de données directement identifiantes ou de dossiers médicaux individuels.",
   },
 };
 
