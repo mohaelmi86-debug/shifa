@@ -19,7 +19,7 @@ BEGIN
       LANGUAGE sql
       STABLE
       SECURITY DEFINER
-      SET search_path = pg_catalog, public, auth, pg_temp
+      SET search_path = pg_catalog, auth, public, pg_temp
       AS 'SELECT public.is_platform_admin()'
     $function$;
   END IF;
