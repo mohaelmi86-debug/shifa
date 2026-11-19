@@ -13,6 +13,7 @@ type CredentialOrganization = {
 
 type Credential = {
   id: string;
+  organization_id: string;
   credential_type: string;
   document_name: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -48,7 +49,7 @@ export default function ProfessionalVerificationContent() {
     const [{ data, error: queryError }, { data: orgData, error: orgError }] = await Promise.all([
       supabase
         .from('professional_credentials')
-        .select('id, credential_type, document_name, status, created_at, expires_at')
+        .select('id, organization_id, credential_type, document_name, status, created_at, expires_at')
         .order('created_at', { ascending: false }),
       supabase.rpc('list_my_professional_credential_organizations'),
     ]);
@@ -210,7 +211,7 @@ export default function ProfessionalVerificationContent() {
                 <li key={item.id} className="py-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold text-sm">{credentialLabels[item.credential_type] || item.credential_type}</p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{item.document_name} · Déposé le {new Date(item.created_at).toLocaleDateString('fr-FR')}{item.expires_at ? ` · Expire le ${new Date(item.expires_at).toLocaleDateString('fr-FR')}` : ''}</p>{item.expires_at && item.status === 'approved' && (() => { const days = Math.ceil((new Date(item.expires_at + 'T00:00:00').getTime() - new Date(new Date().toDateString()).getTime()) / 86400000); return days <= 30 ? <p className="text-xs mt-1 font-semibold" style={{ color: days <= 7 ? 'var(--shifa-red)' : 'var(--shifa-amber)' }}>{days < 0 ? 'Justificatif expiré — renouvellement requis' : days === 0 ? 'Expire aujourd’hui — renouvellement requis' : `Expire dans ${days} jour${days > 1 ? 's' : ''} — pensez à le renouveler`}</p> : null; })()}
+                    <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{organizations.find(org => org.organization_id === item.organization_id)?.organization_name || 'Établissement'} · {item.document_name} · Déposé le {new Date(item.created_at).toLocaleDateString('fr-FR')}{item.expires_at ? ` · Expire le ${new Date(item.expires_at).toLocaleDateString('fr-FR')}` : ''}</p>{item.expires_at && item.status === 'approved' && (() => { const days = Math.ceil((new Date(item.expires_at + 'T00:00:00').getTime() - new Date(new Date().toDateString()).getTime()) / 86400000); return days <= 30 ? <p className="text-xs mt-1 font-semibold" style={{ color: days <= 7 ? 'var(--shifa-red)' : 'var(--shifa-amber)' }}>{days < 0 ? 'Justificatif expiré — renouvellement requis' : days === 0 ? 'Expire aujourd’hui — renouvellement requis' : `Expire dans ${days} jour${days > 1 ? 's' : ''} — pensez à le renouveler`}</p> : null; })()}
                   </div>
                   <span className="text-xs font-semibold rounded-full px-3 py-1" style={{ background: item.status === 'approved' ? 'rgba(16,185,129,.12)' : item.status === 'rejected' ? 'rgba(239,68,68,.12)' : 'rgba(245,158,11,.12)', color: item.status === 'approved' ? 'var(--shifa-green)' : item.status === 'rejected' ? 'var(--shifa-red)' : 'var(--shifa-amber)' }}>{statusLabel(item.status)}</span>
                 </li>
