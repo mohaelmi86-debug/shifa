@@ -189,6 +189,8 @@ DECLARE
   v_user_id uuid := auth.uid();
   v_professional public.professionals%ROWTYPE;
   v_membership public.professional_organizations%ROWTYPE;
+  v_profile_org_id uuid;
+  v_membership_count integer;
   v_object_size bigint;
   v_object_mime text;
   v_id uuid;
@@ -219,14 +221,40 @@ BEGIN
     RAISE EXCEPTION 'PROFESSIONAL_PROFILE_REQUIRED' USING ERRCODE = 'P0002';
   END IF;
 
-  SELECT * INTO v_membership
-  FROM public.professional_organizations
-  WHERE professional_id = v_professional.id
-    AND invitation_status = 'accepted'::public.invitation_status
-  ORDER BY joined_at DESC NULLS LAST
-  LIMIT 1;
+  -- Resolve the credential's tenant deterministically. Prefer the account's
+  -- primary organization; for legacy single-organization accounts only, allow
+  -- an unambiguous fallback. Never pick an arbitrary membership by timestamp.
+  SELECT organization_id INTO v_profile_org_id
+  FROM public.user_profiles
+  WHERE id = v_user_id
+    AND role::text = 'professional'
+    AND is_active IS TRUE;
 
-  IF NOT FOUND THEN
+  IF v_profile_org_id IS NOT NULL THEN
+    SELECT * INTO v_membership
+    FROM public.professional_organizations
+    WHERE professional_id = v_professional.id
+      AND organization_id = v_profile_org_id
+      AND invitation_status = 'accepted'::public.invitation_status
+    LIMIT 1;
+  ELSE
+    SELECT count(*) INTO v_membership_count
+    FROM public.professional_organizations
+    WHERE professional_id = v_professional.id
+      AND invitation_status = 'accepted'::public.invitation_status;
+
+    IF v_membership_count = 1 THEN
+      SELECT * INTO v_membership
+      FROM public.professional_organizations
+      WHERE professional_id = v_professional.id
+        AND invitation_status = 'accepted'::public.invitation_status
+      LIMIT 1;
+    ELSIF v_membership_count > 1 THEN
+      RAISE EXCEPTION 'PRIMARY_ORGANIZATION_SELECTION_REQUIRED' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  IF NOT FOUND OR v_membership.organization_id IS NULL THEN
     RAISE EXCEPTION 'ACTIVE_ORGANIZATION_MEMBERSHIP_REQUIRED' USING ERRCODE = '42501';
   END IF;
 
