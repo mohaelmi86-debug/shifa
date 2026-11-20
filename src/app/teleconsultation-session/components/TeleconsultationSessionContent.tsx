@@ -216,7 +216,7 @@ export default function TeleconsultationSessionContent() {
                     value={motif}
                     onChange={e => setMotif(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg text-sm text-white border outline-none focus:ring-1"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', focusRingColor: '#60a5fa' }}
+                    style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)' }}
                     placeholder="Motif de consultation..."
                   />
                 </div>
@@ -295,7 +295,7 @@ export default function TeleconsultationSessionContent() {
                 <button className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
                   style={{ backgroundColor: 'rgba(16,185,129,0.3)', border: '1px solid rgba(16,185,129,0.4)' }}>
                   <Icon name="DocumentCheckIcon" size={15} className="inline mr-1.5" />
-                  Valider l'ordonnance
+                  Valider l&apos;ordonnance
                 </button>
               </div>
             )}

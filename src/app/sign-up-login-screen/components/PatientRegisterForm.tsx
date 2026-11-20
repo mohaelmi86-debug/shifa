@@ -33,10 +33,16 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
     setIsLoading(true);
     setRegisterError('');
     try {
-      await signUp(data.email, data.password, {
-        fullName: `${data.firstName} ${data.lastName}`,
+      const result = await signUp(data.email, data.password, {
+        fullName: `${data.firstName.trim()} ${data.lastName.trim()}`,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender === 'F' ? 'female' : data.gender === 'M' ? 'male' : 'other',
+        country: data.country,
+        phone: data.phone.trim(),
       });
-      router.push('/patient-home');
+      router.push(result.session ? '/patient-home' : '/registration-pending');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
@@ -131,8 +137,9 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
               <select className="input-field" {...register('country', { required: 'Requis' })}>
                 <option value="">Sélectionner votre pays</option>
                 <option value="FR">France</option>
+                <option value="KM">Comores</option>
                 <option value="SN">Sénégal</option>
-                <option value="CI">Côte d'Ivoire</option>
+                <option value="CI">Côte d&apos;Ivoire</option>
                 <option value="MA">Maroc</option>
                 <option value="DZ">Algérie</option>
                 <option value="TN">Tunisie</option>
@@ -191,8 +198,8 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
             <div className="flex items-start gap-2.5">
               <input type="checkbox" id="acceptTerms" className="w-4 h-4 mt-0.5 rounded accent-primary cursor-pointer" {...register('acceptTerms', { required: 'Vous devez accepter les conditions' })} />
               <label htmlFor="acceptTerms" className="text-xs cursor-pointer leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
-                J'accepte les{' '}
-                <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions d'utilisation</a>{' '}
+                J&apos;accepte les{' '}
+                <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions d&apos;utilisation</a>{' '}
                 et la{' '}
                 <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Politique de confidentialité</a>{' '}
                 de SHIFA Health OS.

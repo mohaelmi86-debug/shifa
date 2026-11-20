@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { useChat } from '@/lib/hooks/useChat';
 
 type Tool = 'interactions' | 'substitutions' | 'dosage' | 'contraindications' | 'pregnancy' | 'renal';
 
@@ -38,7 +37,6 @@ export default function ShifaAIPharmacyContent() {
   const [loading, setLoading] = useState(false);
   const [showAlerts, setShowAlerts] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage } = useChat();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,8 +52,20 @@ export default function ShifaAIPharmacyContent() {
     setInput('');
     setLoading(true);
     try {
-      const response = await sendMessage(fullPrompt);
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      const response = await fetch('/api/ai/chat-completion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          module: 'professional',
+          messages: [{ role: 'user', content: fullPrompt }],
+        }),
+      });
+
+      const data: { output?: string; error?: string } = await response.json();
+      if (!response.ok || typeof data.output !== 'string') {
+        throw new Error(data.error || 'AI_SERVICE_ERROR');
+      }
+      setMessages(prev => [...prev, { role: 'assistant', content: data.output as string }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Erreur lors de la génération de la réponse. Veuillez réessayer.' }]);
     } finally {
@@ -192,7 +202,7 @@ export default function ShifaAIPharmacyContent() {
           <div className="px-5 py-2 bg-amber-50 border-t border-amber-200 shrink-0">
             <p className="text-xs text-amber-700 flex items-center gap-1.5">
               <Icon name="ExclamationTriangleIcon" size={13} />
-              Outil d'aide à la décision — Ne remplace pas le jugement clinique du pharmacien ou du médecin
+              Outil d&apos;aide à la décision — Ne remplace pas le jugement clinique du pharmacien ou du médecin
             </p>
           </div>
 

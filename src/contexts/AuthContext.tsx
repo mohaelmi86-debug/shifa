@@ -48,14 +48,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [supabase]);
 
   // Email/Password Sign Up
-  const signUp = async (email: string, password: string, metadata = {}) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    metadata: {
+      fullName?: string;
+      avatarUrl?: string;
+      firstName?: string;
+      lastName?: string;
+      dateOfBirth?: string;
+      gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+      country?: string;
+      phone?: string;
+      registrationType?: 'professional' | 'organization';
+      registrationData?: Record<string, string>;
+    } = {}
+  ) => {
+    // Profile fields and optional application details are forwarded as untrusted metadata.
+    // Authorization roles, organization IDs, and verification flags are never accepted.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: (metadata as any)?.fullName || '',
-          avatar_url: (metadata as any)?.avatarUrl || ''
+          full_name: metadata.fullName || '',
+          avatar_url: metadata.avatarUrl || '',
+          first_name: metadata.firstName || '',
+          last_name: metadata.lastName || '',
+          date_of_birth: metadata.dateOfBirth || '',
+          gender: metadata.gender || '',
+          country: metadata.country || '',
+          phone: metadata.phone || '',
+          // These fields are untrusted application details, never authorization claims.
+          registration_type: metadata.registrationType || '',
+          registration_data: metadata.registrationData || {}
         },
         emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`
       }

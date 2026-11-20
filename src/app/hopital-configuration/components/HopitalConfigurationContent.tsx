@@ -166,7 +166,7 @@ function DepartmentModal({ dept, onClose, onSave }: { dept: Department | null; o
                 value={form[key] as string | number}
                 onChange={e => set(key, type === 'number' ? Number(e.target.value) : e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2"
-                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)', focusRingColor: 'var(--shifa-blue)' }}
+                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
               />
             </div>
           ))}
@@ -253,7 +253,7 @@ export default function HopitalConfigurationContent() {
       <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>Configuration de l'hôpital</h1>
+            <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>Configuration de l&apos;hôpital</h1>
             <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Gérez les départements, services, lits et personnel</p>
           </div>
           <div className="flex items-center gap-2">

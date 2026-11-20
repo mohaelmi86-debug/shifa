@@ -1,0 +1,46 @@
+name: SHIFA lockfile synchronization
+
+on:
+  push:
+    branches:
+      - security/shifa-ai-api-hardening
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shifa-lockfile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout security branch
+        uses: actions/checkout@v4
+        with:
+          ref: security/shifa-ai-api-hardening
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate deterministic npm lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Commit lockfile when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "package-lock.json is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build(deps): commit deterministic npm lockfile"
+          git push origin HEAD:security/shifa-ai-api-hardening

@@ -114,7 +114,7 @@ export default function InteroperabilityHubContent() {
               <Icon name="ArrowsRightLeftIcon" size={20} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)', fontFamily: 'DM Sans, sans-serif' }}>Hub d'Interopérabilité</h1>
+              <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)', fontFamily: 'DM Sans, sans-serif' }}>Hub d&apos;Interopérabilité</h1>
               <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>FHIR R4 · HL7 v2 · DICOM · APIs · Webhooks</p>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function InteroperabilityHubContent() {
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Derniers événements</h3>
                 <button onClick={() => setActiveTab('logs')} className="text-xs font-medium" style={{ color: 'var(--shifa-blue)' }}>Voir tous les journaux →</button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" >
                 {logs.slice(0, 5).map(log => {
                   const s = statusConfig[log.statut];
                   return (
@@ -272,7 +272,7 @@ export default function InteroperabilityHubContent() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                  <tbody className="divide-y" >
                     {apis.map(api => {
                       const s = statusConfig[api.statut];
                       const pct = Math.round((api.appels_jour / api.quota) * 100);
@@ -310,7 +310,7 @@ export default function InteroperabilityHubContent() {
                   Ajouter webhook
                 </button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" >
                 {webhooks.map(wh => {
                   const s = statusConfig[wh.statut];
                   return (
@@ -356,7 +356,7 @@ export default function InteroperabilityHubContent() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                <tbody className="divide-y" >
                   {integrations.map(int => {
                     const s = statusConfig[int.statut];
                     return (
@@ -417,7 +417,7 @@ export default function InteroperabilityHubContent() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                  <tbody className="divide-y" >
                     {filteredLogs.map(log => {
                       const s = statusConfig[log.statut];
                       return (

@@ -63,21 +63,19 @@ export default function ShifaAIPatientContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          module: 'patient',
           messages: [
-            {
-              role: 'system',
-              content: 'Tu es SHIFA AI, un assistant santé pour les patients. Tu fournis des informations générales de santé en français, de manière claire et bienveillante. Tu ne poses pas de diagnostic. Tu rappelles toujours de consulter un professionnel de santé pour tout problème médical. Tu ne donnes jamais d\'informations médicales personnelles sur d\'autres patients.',
-            },
             ...messages.map(m => ({ role: m.role, content: m.content })),
             { role: 'user', content: text },
           ],
         }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'AI request failed');
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.content || 'Je suis désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.',
+        content: data.output || 'Je suis désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.',
         timestamp: 'Maintenant',
       };
       setMessages(prev => [...prev, aiMsg]);

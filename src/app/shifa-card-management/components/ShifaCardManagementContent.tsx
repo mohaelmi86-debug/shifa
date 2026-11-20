@@ -319,7 +319,7 @@ export default function ShifaCardManagementContent() {
                   <input type="text" placeholder="SH-X-XX-XXXX-XXXX" className="w-full px-3 py-2 rounded-lg border text-sm font-mono" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: 'var(--muted-foreground)' }}>Code d'activation (4 chiffres)</label>
+                  <label className="text-xs font-medium block mb-1" style={{ color: 'var(--muted-foreground)' }}>Code d&apos;activation (4 chiffres)</label>
                   <input type="text" placeholder="••••" maxLength={4} className="w-full px-3 py-2 rounded-lg border text-sm font-mono" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
                 </div>
               </div>
@@ -328,9 +328,9 @@ export default function ShifaCardManagementContent() {
 
             <div className="rounded-xl border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
               <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Historique d'activation</h3>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Historique d&apos;activation</h3>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" >
                 {activationHistory.map(act => {
                   const s = statusConfig[act.statut];
                   return (
@@ -405,7 +405,7 @@ export default function ShifaCardManagementContent() {
               <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Historique des scans QR</h3>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" >
                 {qrScans.map(scan => {
                   const s = statusConfig[scan.statut];
                   return (
@@ -435,7 +435,7 @@ export default function ShifaCardManagementContent() {
                 <h3 className="text-sm font-bold" style={{ color: 'var(--shifa-red)' }}>Signaler une carte perdue ou volée</h3>
               </div>
               <p className="text-xs mb-4" style={{ color: 'var(--muted-foreground)' }}>
-                En signalant votre carte, elle sera immédiatement bloquée et une nouvelle carte vous sera envoyée. Toutes les tentatives d'utilisation seront enregistrées.
+                En signalant votre carte, elle sera immédiatement bloquée et une nouvelle carte vous sera envoyée. Toutes les tentatives d&apos;utilisation seront enregistrées.
               </p>
               {!showLostForm ? (
                 <button

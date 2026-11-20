@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ShifaBrand from '@/components/ui/ShifaBrand';
@@ -7,6 +7,7 @@ import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import LanguageSelector from '@/components/ui/LanguageSelector';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { createClient } from '@/lib/supabase/client';
 
 interface NavItem {
   key: string;
@@ -148,6 +149,7 @@ const adminNav: NavItem[] = [
   { key: 'nav-adm-accounting-ledger', label: 'Comptabilité générale', icon: 'CalculatorIcon', href: '/accounting-ledger', group: 'gestion' },
   { key: 'nav-adm-module-catalog', label: 'Catalogue modules', icon: 'PuzzlePieceIcon', href: '/module-catalog', group: 'gestion' },
   { key: 'nav-adm-professionnels', label: 'Professionnels', icon: 'UserGroupIcon', href: '/admin-professionnels', badge: 3, group: 'gestion' },
+  { key: 'nav-adm-notifications', label: 'Notifications', icon: 'BellIcon', href: '/notifications-center', group: 'gestion' },
   { key: 'nav-adm-utilisateurs', label: 'Utilisateurs', icon: 'UsersIcon', href: '/admin-utilisateurs', group: 'gestion' },
   { key: 'nav-adm-modules', label: 'Modules', icon: 'PuzzlePieceIcon', href: '/admin-modules', group: 'gestion' },
   { key: 'nav-adm-roles', label: 'Rôles & Droits', icon: 'ShieldCheckIcon', href: '/admin-roles', group: 'gestion' },
@@ -350,7 +352,34 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const [professionalUnreadCount, setProfessionalUnreadCount] = useState(0);
+
+  const refreshProfessionalUnreadCount = useCallback(async () => {
+    if ((role !== 'professional' && role !== 'admin') || !user?.id) {
+      setProfessionalUnreadCount(0);
+      return;
+    }
+    const { count, error } = await createClient()
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    if (!error) setProfessionalUnreadCount(count ?? 0);
+  }, [role, user?.id]);
+
+  useEffect(() => {
+    if ((role !== 'professional' && role !== 'admin') || !user?.id) return;
+    const supabase = createClient();
+    void refreshProfessionalUnreadCount();
+    const channel = supabase
+      .channel(`sidebar-professional-notifications-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
+        void refreshProfessionalUnreadCount();
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [role, user?.id, refreshProfessionalUnreadCount]);
   const router = useRouter();
   const { dir } = useLanguage();
   const navItems = navByRole[role];
@@ -408,6 +437,9 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
               )}
               {items.map((item) => {
                 const isActive = activeRoute === item.href || (item.href !== '/patient-home' && activeRoute.startsWith(item.href));
+                const badgeCount = (role === 'professional' || role === 'admin') && item.href === '/notifications-center'
+                  ? professionalUnreadCount
+                  : item.badge ?? 0;
                 return (
                   <Link
                     key={item.key}
@@ -418,12 +450,12 @@ export default function Sidebar({ role = 'patient', activeRoute = '' }: { role?:
                   >
                     <Icon name={item.icon as any} size={18} />
                     {!collapsed && <span className="flex-1">{item.label}</span>}
-                    {!collapsed && item.badge && item.badge > 0 && (
+                    {!collapsed && badgeCount > 0 && (
                       <span className="px-1.5 py-0.5 text-xs font-bold rounded-full text-white" style={{ backgroundColor: 'var(--shifa-blue)', minWidth: '20px', textAlign: 'center' }}>
-                        {item.badge}
+                        {badgeCount}
                       </span>
                     )}
-                    {collapsed && item.badge && item.badge > 0 && (
+                    {collapsed && badgeCount > 0 && (
                       <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--shifa-blue)' }} />
                     )}
                   </Link>

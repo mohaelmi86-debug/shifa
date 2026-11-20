@@ -50,7 +50,7 @@ export default function ShifaAIInstitutionContent() {
 
   const sendMessage = async (text?: string) => {
     const msg = text || input.trim();
-    if (!msg) return;
+    if (!msg || loading) return;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
     setLoading(true);
@@ -59,15 +59,18 @@ export default function ShifaAIInstitutionContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          module: 'institution',
           messages: [
-            { role: 'system', content: 'Tu es SHIFA AI Institution, un assistant d\'analyse agrégée pour les ministères de la santé et les assureurs. Tu analyses des données épidémiologiques, des indicateurs de santé publique, des flux de remboursement et détectes des anomalies. Réponds en français de manière précise et professionnelle.' },
             ...messages.map(m => ({ role: m.role, content: m.content })),
             { role: 'user', content: msg }
           ]
         }),
       });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.content || data.message || 'Analyse en cours...' }]);
+      if (!res.ok || typeof data.output !== 'string') {
+        throw new Error(typeof data.error === 'string' ? data.error : 'AI_SERVICE_ERROR');
+      }
+      setMessages(prev => [...prev, { role: 'assistant', content: data.output }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Erreur de connexion. Veuillez réessayer.' }]);
     } finally {

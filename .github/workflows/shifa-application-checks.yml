@@ -1,0 +1,67 @@
+name: SHIFA application checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - security/shifa-ai-api-hardening
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shifa-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate deterministic npm lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Publish generated lockfile for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: shifa-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Dependency vulnerability audit
+        run: npm audit --audit-level=high
+
+      - name: TypeScript check
+        run: npm run type-check
+
+      - name: API route integration tests
+        run: npm test -- --reporter=verbose
+
+      - name: ESLint changed files
+        shell: bash
+        run: |
+          git fetch origin main --depth=1
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.mjs')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No changed JavaScript or TypeScript files to lint."
+            exit 0
+          fi
+          npx eslint "${files[@]}" --rule 'prettier/prettier: off'
+
+      - name: Production build
+        run: npm run build

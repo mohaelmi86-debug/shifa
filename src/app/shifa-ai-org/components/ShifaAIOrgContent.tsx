@@ -73,15 +73,16 @@ export default function ShifaAIOrgContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          module: 'organization',
           messages: [
-            { role: 'system', content: 'Tu es SHIFA AI Organisation, un assistant IA spécialisé dans l\'analyse opérationnelle des établissements de santé. Tu fournis des insights sur la performance, les ressources humaines, les finances et la qualité. Tu ne donnes jamais accès à des données médicales individuelles. Réponds en français, de manière concise et actionnable.' },
             ...messages.map(m => ({ role: m.role, content: m.content })),
             { role: 'user', content: msg }
           ]
         })
       });
       const data = await res.json();
-      const reply = data?.choices?.[0]?.message?.content || data?.content || 'Je n\'ai pas pu générer une réponse.';
+      if (!res.ok) throw new Error(data?.error || 'AI request failed');
+      const reply = data?.output || 'Je n\'ai pas pu générer une réponse.';
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Une erreur est survenue. Veuillez réessayer.' }]);
@@ -178,7 +179,7 @@ export default function ShifaAIOrgContent() {
           </div>
           <div className="p-4 rounded-xl border text-sm" style={{ backgroundColor: 'rgba(0,102,255,0.04)', borderColor: 'rgba(0,102,255,0.15)', color: 'var(--muted-foreground)' }}>
             <Icon name="InformationCircleIcon" size={14} className="inline mr-1.5" style={{ color: 'var(--shifa-blue)' }} />
-            Ces scores sont calculés par SHIFA AI à partir de données agrégées et anonymisées. Aucune donnée médicale individuelle n'est utilisée.
+            Ces scores sont calculés par SHIFA AI à partir de données agrégées et anonymisées. Aucune donnée médicale individuelle n&apos;est utilisée.
           </div>
         </div>
       )}

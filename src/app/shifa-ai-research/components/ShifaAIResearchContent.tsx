@@ -63,10 +63,7 @@ const RESEARCH_TOOLS: ResearchTool[] = [
   },
 ];
 
-const SYSTEM_PROMPT = `Tu es SHIFA AI Research, un assistant IA spécialisé pour les organisations de recherche en santé. 
-Tu aides les chercheurs avec : la revue de littérature scientifique, la conception de protocoles de recherche, l'analyse statistique, la gestion de cohortes, les questions d'éthique et réglementation, et la rédaction scientifique.
-Réponds en français, de manière précise et scientifiquement rigoureuse. Cite des méthodes reconnues et des références pertinentes quand c'est approprié.
-Rappelle toujours que tes réponses sont des suggestions et ne remplacent pas l'expertise d'un biostatisticien ou d'un comité d'éthique.`;
+
 
 export default function ShifaAIResearchContent() {
   const [activeTool, setActiveTool] = useState<Tool>('literature');
@@ -92,18 +89,21 @@ export default function ShifaAIResearchContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          module: 'research',
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
             ...messages.map(m => ({ role: m.role, content: m.content })),
             { role: 'user', content: text },
           ],
         }),
       });
       const data = await res.json();
+      if (!res.ok || typeof data.output !== 'string') {
+        throw new Error(typeof data.error === 'string' ? data.error : 'AI_SERVICE_ERROR');
+      }
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.content || 'Je suis désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.',
+        content: data.output,
       };
       setMessages(prev => [...prev, aiMsg]);
     } catch {
@@ -156,7 +156,7 @@ export default function ShifaAIResearchContent() {
           <div className="p-3 rounded-xl" style={{ background: '#fef9c3' }}>
             <p className="text-xs font-semibold" style={{ color: '#a16207' }}>⚠ Avertissement</p>
             <p className="text-xs mt-1" style={{ color: '#92400e' }}>
-              Cet assistant ne remplace pas l'expertise d'un biostatisticien ou d'un comité d'éthique.
+              Cet assistant ne remplace pas l&apos;expertise d&apos;un biostatisticien ou d&apos;un comité d&apos;éthique.
             </p>
           </div>
         </div>

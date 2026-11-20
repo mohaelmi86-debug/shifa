@@ -51,7 +51,7 @@ export default function TeleconsultationWaitingContent() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--shifa-dark)' }}>Salle d'attente virtuelle</h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--shifa-dark)' }}>Salle d&apos;attente virtuelle</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
             <span className="inline-flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
@@ -87,13 +87,13 @@ export default function TeleconsultationWaitingContent() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Queue list */}
         <div className="xl:col-span-1 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--muted-foreground)' }}>File d'attente</p>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--muted-foreground)' }}>File d&apos;attente</p>
           {queue.map((patient, idx) => (
             <button
               key={patient.id}
               onClick={() => setSelectedId(patient.id)}
               className={`w-full text-left card-base p-4 transition-all hover:shadow-md ${selectedId === patient.id ? 'ring-2' : ''}`}
-              style={selectedId === patient.id ? { ringColor: 'var(--shifa-blue)', borderColor: 'var(--shifa-blue)' } : {}}
+              style={selectedId === patient.id ? { boxShadow: '0 0 0 2px var(--shifa-blue)', borderColor: 'var(--shifa-blue)' } : {}}
             >
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -150,7 +150,7 @@ export default function TeleconsultationWaitingContent() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Temps d'attente</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Temps d&apos;attente</p>
                   <p className="text-2xl font-bold font-mono" style={{ color: selected.waitMinutes > 10 ? 'var(--shifa-red)' : 'var(--shifa-amber)' }}>
                     {formatWait(selected.waitMinutes)}
                   </p>

@@ -61,21 +61,19 @@ export default function ShifaAIProContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          module: 'professional',
           messages: [
-            {
-              role: 'system',
-              content: `Tu es SHIFA AI Clinical, un assistant clinique pour les professionnels de santé. Tu réponds en français, de manière précise et professionnelle. Tu aides avec : la rédaction de notes cliniques, les synthèses de dossier, les diagnostics différentiels, les vérifications d'interactions médicamenteuses, le codage CIM-10, et la rédaction de courriers médicaux. Tu rappelles toujours que tes suggestions sont des aides à la décision et que le jugement clinique final appartient au médecin. Tu ne génères jamais de données patient réelles. Mode actuel : ${tools.find(t => t.key === activeTool)?.label}.`,
-            },
             ...messages.map(m => ({ role: m.role, content: m.content })),
-            { role: 'user', content: text },
+            { role: 'user', content: `Mode demandé : ${activeTool_.label}.\nQuestion : ${text}` },
           ],
         }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'AI request failed');
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.content || 'Je suis désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.',
+        content: data.output || 'Je suis désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.',
         timestamp: 'Maintenant',
       };
       setMessages(prev => [...prev, aiMsg]);
@@ -107,7 +105,7 @@ export default function ShifaAIProContent() {
 
       {/* Disclaimer */}
       <div className="rounded-lg px-4 py-2.5 mb-4 text-xs" style={{ background: 'rgba(139,92,246,0.06)', color: '#5b21b6', border: '1px solid rgba(139,92,246,0.2)' }}>
-        ⚠️ SHIFA AI Clinical est un outil d'aide à la décision. Ses suggestions ne remplacent pas le jugement clinique du professionnel de santé. Aucune donnée patient réelle n'est utilisée.
+        ⚠️ SHIFA AI Clinical est un outil d&apos;aide à la décision. Ses suggestions ne remplacent pas le jugement clinique du professionnel de santé. Aucune donnée patient réelle n&apos;est utilisée.
       </div>
 
       <div className="flex gap-4 flex-1 min-h-0">

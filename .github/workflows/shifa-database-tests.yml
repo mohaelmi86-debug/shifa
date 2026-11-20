@@ -1,0 +1,261 @@
+name: SHIFA isolated database migration tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
+      - ".github/workflows/shifa-database-tests.yml"
+  push:
+    branches:
+      - security/shifa-ai-api-hardening
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
+      - ".github/workflows/shifa-database-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shifa-database-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-migrations:
+    name: Apply migrations and verify SQL security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: shifa_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d shifa_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PostgreSQL extensions and Supabase-compatible roles
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d shifa_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN BYPASSRLS;
+          CREATE SCHEMA auth;
+          CREATE SCHEMA storage;
+          CREATE SCHEMA realtime;
+          CREATE SCHEMA extensions;
+          CREATE SCHEMA IF NOT EXISTS private;
+          GRANT USAGE ON SCHEMA private TO authenticated;
+          -- Legacy transfer objects exist in the linked Supabase project but
+          -- their original migrations are absent from this repository snapshot.
+          -- These fixtures model only the referenced columns; access helper is
+          -- deliberately fail-closed in isolated tests.
+          CREATE TABLE public.patient_transfers (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            patient_id uuid,
+            organization_id uuid,
+            from_organization_id uuid,
+            to_organization_id uuid
+          );
+          CREATE TABLE public.transfer_notifications (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            transfer_id uuid NOT NULL,
+            recipient_user_id uuid NOT NULL,
+            notification_type text NOT NULL,
+            message text NOT NULL,
+            read boolean DEFAULT false,
+            created_at timestamptz DEFAULT now()
+          );
+          CREATE FUNCTION private.can_access_transfer(p_transfer_id uuid)
+          RETURNS boolean LANGUAGE sql STABLE AS $$
+            SELECT false
+          $$;
+          CREATE TABLE public.kiosk_checkins (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            patient_id uuid,
+            appointment_id uuid,
+            organization_id uuid,
+            kiosk_id text NOT NULL DEFAULT 'KIOSK-01',
+            queue_number text,
+            department text,
+            status text NOT NULL DEFAULT 'checked_in',
+            checked_in_at timestamptz DEFAULT now(),
+            called_at timestamptz,
+            completed_at timestamptz,
+            patient_user_id uuid
+          );
+          CREATE TABLE public.shifa_ids (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            patient_id uuid,
+            user_id uuid,
+            shifa_id text NOT NULL,
+            status text NOT NULL DEFAULT 'active',
+            verification_level text NOT NULL DEFAULT 'basic',
+            qr_code_data text,
+            last_verified_at timestamptz,
+            created_at timestamptz DEFAULT now(),
+            updated_at timestamptz DEFAULT now(),
+            organization_id uuid
+          );
+          -- The historical foundation includes these clinical tables; the
+          -- repository snapshot omits their original migrations. Minimal
+          -- fixtures let the verification migration exercise every guard.
+          CREATE TABLE public.blood_requests (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.consultations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.hospitalizations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.imaging_studies (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.lab_results (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.lab_samples (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.operating_room_schedules (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.pharmacy_pos_transactions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE IF NOT EXISTS public.prescriptions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), prescriber_id uuid, professional_id uuid, organization_id uuid);
+          CREATE TABLE public.shifa_cards (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          CREATE TABLE public.vital_signs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), professional_id uuid, organization_id uuid);
+          -- Legacy authorization helpers are deliberately fail-closed in CI.
+          CREATE FUNCTION private.owns_patient_record(p_patient_id uuid)
+          RETURNS boolean LANGUAGE sql STABLE AS $$
+            SELECT false
+          $$;
+          CREATE FUNCTION private.is_org_admin_for(p_org_id uuid)
+          RETURNS boolean LANGUAGE sql STABLE AS $$
+            SELECT false
+          $$;
+          CREATE FUNCTION private.org_admin_can_access_patient(p_patient_id uuid)
+          RETURNS boolean LANGUAGE sql STABLE AS $$
+            SELECT false
+          $$;
+          CREATE TABLE auth.users (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            email text UNIQUE,
+            phone text,
+            raw_user_meta_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+            raw_app_meta_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
+          CREATE FUNCTION auth.uid() RETURNS uuid
+          LANGUAGE sql STABLE AS $$
+            SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
+          $$;
+          CREATE FUNCTION auth.role() RETURNS text
+          LANGUAGE sql STABLE AS $$
+            SELECT COALESCE(NULLIF(current_setting('request.jwt.claim.role', true), ''), current_user)
+          $$;
+          CREATE TABLE storage.buckets (
+            id text PRIMARY KEY,
+            name text NOT NULL,
+            public boolean NOT NULL DEFAULT false,
+            file_size_limit bigint,
+            allowed_mime_types text[]
+          );
+          CREATE TABLE storage.objects (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            bucket_id text REFERENCES storage.buckets(id),
+            name text NOT NULL,
+            owner_id uuid,
+            created_at timestamptz DEFAULT now()
+          );
+          CREATE FUNCTION storage.foldername(object_name text)
+          RETURNS text[]
+          LANGUAGE sql
+          IMMUTABLE
+          STRICT
+          AS $$
+            SELECT CASE
+              WHEN array_length(string_to_array(object_name, '/'), 1) > 1
+              THEN (string_to_array(object_name, '/'))[1:array_length(string_to_array(object_name, '/'), 1) - 1]
+              ELSE ARRAY[]::text[]
+            END
+          $$;
+          CREATE TABLE realtime.messages (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+          CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
+          GRANT USAGE ON SCHEMA public, auth, storage, realtime, extensions TO anon, authenticated, service_role;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, service_role;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
+          SQL
+
+      - name: Apply repository migrations in chronological order
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for migration in $(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort); do
+            echo "::group::Applying ${migration}"
+            psql -h localhost -U postgres -d shifa_test -v ON_ERROR_STOP=1 -f "${migration}"
+            echo "::endgroup::"
+          done
+
+      - name: Run database security assertions
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d shifa_test -v ON_ERROR_STOP=1 -f supabase/tests/registration_applications_security.sql
+
+      - name: Run synthetic clinical access behavior tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d shifa_test -v ON_ERROR_STOP=1 -f supabase/tests/clinical_access_behavior.sql
+
+      - name: Run SHIFA AI quota behavior tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d shifa_test -v ON_ERROR_STOP=1 -f supabase/tests/shifa_ai_rate_limits.sql
+
+      - name: Run notification tenant-isolation tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d shifa_test -v ON_ERROR_STOP=1 -f supabase/tests/notifications_security.sql
+
+      - name: Verify migrations and critical RLS inventory
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d shifa_test -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            missing text;
+          BEGIN
+            SELECT string_agg(required.name, ', ')
+              INTO missing
+            FROM (VALUES
+              ('registration_applications'),
+              ('organization_professional_invitations'),
+              ('professional_credentials'),
+              ('notifications')
+            ) AS required(name)
+            WHERE to_regclass('public.' || required.name) IS NULL;
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'Missing expected SHIFA tables: %', missing;
+            END IF;
+
+            IF EXISTS (
+              SELECT 1 FROM pg_class c
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+              WHERE n.nspname = 'public'
+                AND c.relkind = 'r'
+                AND c.relname IN ('registration_applications','organization_professional_invitations','professional_credentials')
+                AND NOT c.relrowsecurity
+            ) THEN
+              RAISE EXCEPTION 'RLS is not enabled on a critical SHIFA table';
+            END IF;
+          END $$;
+          SQL

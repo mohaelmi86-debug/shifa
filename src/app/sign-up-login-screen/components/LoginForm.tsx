@@ -32,6 +32,10 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     setLoginError('');
     try {
       await signIn(data.email, data.password);
+      const requestedRedirect = new URLSearchParams(window.location.search).get('redirectTo');
+      const safeRedirect = requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\\\')
+        ? requestedRedirect
+        : null;
       // Fetch user profile to determine role-based redirection
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -42,15 +46,21 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           .eq('id', user.id)
           .single();
         const role = profile?.role || 'patient';
-        if (role === 'admin') {
-          router.push('/administration-tablissement');
-        } else if (role === 'professional') {
-          router.push('/workspace-professionnel');
-        } else {
-          router.push('/patient-home');
-        }
+        const roleRoutes: Record<string, string> = {
+          platform_admin: '/platform-admin',
+          org_admin: '/administration-tablissement',
+          professional: '/workspace-professionnel',
+          ministry: '/espace-ministere',
+          insurance: '/assurance-workspace',
+          ngo: '/espace-ong',
+          university: '/espace-universite',
+          public_health: '/espace-sante-publique',
+          patient: '/patient-home',
+          guest: '/patient-home',
+        };
+        router.replace(safeRedirect || roleRoutes[role] || '/patient-home');
       } else {
-        router.push('/patient-home');
+        router.replace(safeRedirect || '/patient-home');
       }
     } catch (err: any) {
       const msg = err?.message || '';

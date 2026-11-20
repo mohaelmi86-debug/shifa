@@ -34,9 +34,25 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
     setRegisterError('');
     try {
       await signUp(data.email, data.password, {
-        fullName: `${data.firstName} ${data.lastName}`,
+        fullName: `${data.firstName.trim()} ${data.lastName.trim()}`,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        country: data.country,
+        phone: data.phone.trim(),
+        registrationType: 'professional',
+        registrationData: {
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+          profession: data.profession,
+          specialty: data.specialty?.trim() || '',
+          licenseNumber: data.licenseNumber.trim(),
+          country: data.country,
+          phone: data.phone.trim(),
+          email: data.email.trim().toLowerCase(),
+          professionalType: data.professionalType || 'liberal',
+        },
       });
-      router.push('/workspace-professionnel');
+      router.push('/registration-pending');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
@@ -125,7 +141,7 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>N° d'ordre / Licence professionnelle *</label>
+          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>N° d&apos;ordre / Licence professionnelle *</label>
           <p className="text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>Sera vérifié auprès de votre ordre professionnel national.</p>
           <input type="text" className="input-field font-mono" placeholder="ADELI / RPPS / N° d'ordre" {...register('licenseNumber', { required: 'Le numéro professionnel est requis' })} />
           {errors.licenseNumber && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.licenseNumber.message}</p>}
@@ -139,7 +155,7 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
               <option value="FR">France</option>
               <option value="SN">Sénégal</option>
               <option value="MA">Maroc</option>
-              <option value="CI">Côte d'Ivoire</option>
+              <option value="CI">Côte d&apos;Ivoire</option>
             </select>
           </div>
           <div>
@@ -180,7 +196,7 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
         <div className="flex items-start gap-2.5">
           <input type="checkbox" id="proTerms" className="w-4 h-4 mt-0.5 rounded accent-primary cursor-pointer" {...register('acceptTerms', { required: 'Requis' })} />
           <label htmlFor="proTerms" className="text-xs cursor-pointer" style={{ color: 'var(--muted-foreground)' }}>
-            J'accepte les <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions</a> et la <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Politique de confidentialité</a>.
+            J&apos;accepte les <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions</a> et la <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Politique de confidentialité</a>.
           </label>
         </div>
 

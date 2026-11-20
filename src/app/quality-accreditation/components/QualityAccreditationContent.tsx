@@ -202,7 +202,7 @@ export default function QualityAccreditationContent() {
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Non-conformités récentes</h3>
                 <button onClick={() => setActiveTab('nonconformities')} className="text-xs font-medium" style={{ color: 'var(--shifa-blue)' }}>Voir toutes →</button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+              <div className="divide-y" >
                 {nonconformities.slice(0, 4).map(nc => {
                   const g = graviteConfig[nc.gravite];
                   const s = statusConfig[nc.statut];
@@ -278,7 +278,7 @@ export default function QualityAccreditationContent() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+                <tbody className="divide-y" >
                   {procedures.map(proc => {
                     const s = statusConfig[proc.statut];
                     return (
@@ -366,7 +366,7 @@ export default function QualityAccreditationContent() {
         {activeTab === 'audits' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Programme d'audits</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Programme d&apos;audits</h3>
               <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: 'var(--shifa-blue)' }}>
                 <Icon name="PlusIcon" size={14} />
                 Planifier un audit

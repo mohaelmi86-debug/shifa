@@ -33,9 +33,27 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
     setRegisterError('');
     try {
       await signUp(data.adminEmail, data.password, {
-        fullName: `${data.adminFirstName} ${data.adminLastName}`,
+        fullName: `${data.adminFirstName.trim()} ${data.adminLastName.trim()}`,
+        firstName: data.adminFirstName.trim(),
+        lastName: data.adminLastName.trim(),
+        country: data.country,
+        phone: data.phone.trim(),
+        registrationType: 'organization',
+        registrationData: {
+          organizationName: data.orgName.trim(),
+          organizationType: data.orgType,
+          country: data.country,
+          city: data.city.trim(),
+          address: data.address.trim(),
+          phone: data.phone.trim(),
+          contactEmail: (data.email || '').trim().toLowerCase(),
+          registrationNumber: (data.registrationNumber || '').trim(),
+          adminFirstName: data.adminFirstName.trim(),
+          adminLastName: data.adminLastName.trim(),
+          adminEmail: data.adminEmail.trim().toLowerCase(),
+        },
       });
-      router.push('/administration-tablissement');
+      router.push('/registration-pending');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
@@ -73,7 +91,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div>
-          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Type d'établissement *</label>
+          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Type d&apos;établissement *</label>
           <select className="input-field" {...register('orgType', { required: 'Requis' })}>
             <option value="">Sélectionner</option>
             <option value="hopital">Hôpital</option>
@@ -82,7 +100,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
             <option value="cabinet">Cabinet médical</option>
             <option value="laboratoire">Laboratoire</option>
             <option value="pharmacie">Pharmacie</option>
-            <option value="imagerie">Centre d'imagerie</option>
+            <option value="imagerie">Centre d&apos;imagerie</option>
             <option value="universite">Université / École de santé</option>
             <option value="ministere">Ministère de la santé</option>
             <option value="assurance">Assurance / Mutuelle</option>
@@ -92,7 +110,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Nom de l'établissement *</label>
+          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Nom de l&apos;établissement *</label>
           <input type="text" className="input-field" placeholder="CHU Saint-Louis" {...register('orgName', { required: 'Requis' })} />
           {errors.orgName && <p className="mt-1 text-xs" style={{ color: 'var(--shifa-red)' }}>{errors.orgName.message}</p>}
         </div>
@@ -105,7 +123,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
               <option value="FR">France</option>
               <option value="SN">Sénégal</option>
               <option value="MA">Maroc</option>
-              <option value="CI">Côte d'Ivoire</option>
+              <option value="CI">Côte d&apos;Ivoire</option>
             </select>
           </div>
           <div>
@@ -120,7 +138,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>N° d'enregistrement officiel</label>
+          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>N° d&apos;enregistrement officiel</label>
           <p className="text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>Numéro SIRET, FINESS, ou équivalent selon votre pays.</p>
           <input type="text" className="input-field font-mono" placeholder="FINESS / SIRET / Enregistrement national" {...register('registrationNumber')} />
         </div>
@@ -152,7 +170,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
         <div className="flex items-start gap-2.5">
           <input type="checkbox" id="instTerms" className="w-4 h-4 mt-0.5 accent-primary cursor-pointer" {...register('acceptTerms', { required: 'Requis' })} />
           <label htmlFor="instTerms" className="text-xs cursor-pointer" style={{ color: 'var(--muted-foreground)' }}>
-            J'accepte les <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions d'utilisation</a> et la <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Politique de confidentialité</a>.
+            J&apos;accepte les <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Conditions d&apos;utilisation</a> et la <a href="#" className="font-semibold" style={{ color: 'var(--shifa-blue)' }}>Politique de confidentialité</a>.
           </label>
         </div>
 
@@ -160,7 +178,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
           {isLoading ? <Icon name="ArrowPathIcon" size={18} className="animate-spin" /> : (
             <>
               <Icon name="BuildingOffice2Icon" size={16} />
-              Enregistrer l'établissement
+              Enregistrer l&apos;établissement
             </>
           )}
         </button>
