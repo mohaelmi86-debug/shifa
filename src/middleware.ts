@@ -38,6 +38,7 @@ const ROUTE_ACCESS = [
   { prefix: '/admin-utilisateurs', roles: ['org_admin'] },
   { prefix: '/admin-activite', roles: ['org_admin'] },
   { prefix: '/admin-parametres', roles: ['org_admin'] },
+  { prefix: '/admin-inscriptions', roles: ['platform_admin'] },
   { prefix: '/org-onboarding', roles: ['org_admin'], verifiedOrganization: true },
   { prefix: '/espace-ministere', roles: ['ministry'] },
   { prefix: '/espace-assurance', roles: ['insurance'] },
