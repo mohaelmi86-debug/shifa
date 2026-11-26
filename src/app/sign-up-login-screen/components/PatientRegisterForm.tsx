@@ -33,10 +33,16 @@ export default function PatientRegisterForm({ onSwitchToLogin }: { onSwitchToLog
     setIsLoading(true);
     setRegisterError('');
     try {
-      await signUp(data.email, data.password, {
+      const result = await signUp(data.email, data.password, {
         fullName: `${data.firstName} ${data.lastName}`,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        country: data.country,
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender,
       });
-      router.push('/patient-home');
+      router.push(result.session ? '/patient-home' : '/registration-pending?type=email');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
