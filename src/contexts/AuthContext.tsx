@@ -3,6 +3,19 @@
 import { createContext, useContext, useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '../lib/supabase/client';
 
+type SignupMetadata = {
+  fullName?: string;
+  avatarUrl?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  country?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  registrationType?: 'professional' | 'institution';
+  registrationPayload?: Record<string, string | number | boolean | null>;
+};
+
 const AuthContext = createContext<any>({});
 
 export const useAuth = () => {
@@ -48,14 +61,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [supabase]);
 
   // Email/Password Sign Up
-  const signUp = async (email: string, password: string, metadata = {}) => {
+  const signUp = async (email: string, password: string, metadata: SignupMetadata = {}) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: (metadata as any)?.fullName || '',
-          avatar_url: (metadata as any)?.avatarUrl || ''
+          full_name: metadata.fullName || '',
+          avatar_url: metadata.avatarUrl || '',
+          first_name: metadata.firstName || '',
+          last_name: metadata.lastName || '',
+          phone: metadata.phone || '',
+          country: metadata.country || '',
+          date_of_birth: metadata.dateOfBirth || '',
+          gender: metadata.gender || '',
+          ...(metadata.registrationType ? { registration_type: metadata.registrationType } : {}),
+          ...(metadata.registrationPayload ? { registration_payload: metadata.registrationPayload } : {}),
         },
         emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`
       }

@@ -200,6 +200,7 @@ const platformAdminNav: NavItem[] = [
   { key: 'nav-pa-dashboard', label: 'Tableau de bord global', icon: 'Squares2X2Icon', href: '/platform-admin', group: 'principal' },
   { key: 'nav-pa-orgs', label: 'Organisations', icon: 'BuildingOffice2Icon', href: '/platform-admin', group: 'gestion' },
   { key: 'nav-pa-users', label: 'Utilisateurs', icon: 'UsersIcon', href: '/platform-admin', group: 'gestion' },
+  { key: 'nav-pa-registration-requests', label: 'Demandes d’inscription', icon: 'ClipboardDocumentCheckIcon', href: '/admin-inscriptions', group: 'gestion' },
   { key: 'nav-pa-modules', label: 'Catalogue modules', icon: 'PuzzlePieceIcon', href: '/module-catalog', group: 'gestion' },
   { key: 'nav-pa-country-modules', label: 'Modules par pays', icon: 'GlobeAltIcon', href: '/settings/country-module-config', group: 'gestion' },
   { key: 'nav-pa-subscriptions', label: 'Abonnements', icon: 'CreditCardIcon', href: '/platform-admin', group: 'gestion' },

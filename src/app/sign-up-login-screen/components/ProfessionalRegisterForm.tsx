@@ -35,8 +35,23 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
     try {
       await signUp(data.email, data.password, {
         fullName: `${data.firstName} ${data.lastName}`,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        country: data.country,
+        registrationType: 'professional',
+        registrationPayload: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          profession: data.profession,
+          specialty: data.specialty,
+          licenseNumber: data.licenseNumber,
+          country: data.country,
+          phone: data.phone,
+          professionalType: data.professionalType,
+        },
       });
-      router.push('/workspace-professionnel');
+      router.push('/registration-pending?type=professional');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
@@ -66,7 +81,7 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
         {/* Professional type selector */}
         <div className="grid grid-cols-2 gap-2 mt-4">
           {[
-            { key: 'type-liberal', value: 'liberal', label: 'Libéral', sub: 'Inscription directe', color: 'var(--shifa-green)' },
+            { key: 'type-liberal', value: 'liberal', label: 'Libéral', sub: 'Demande de vérification', color: 'var(--shifa-green)' },
             { key: 'type-salarie', value: 'salarie', label: 'Salarié / Rattaché', sub: 'Sur invitation', color: 'var(--shifa-purple)' },
           ].map((type) => (
             <label key={type.key} className="cursor-pointer">
@@ -80,6 +95,9 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
             </label>
           ))}
         </div>
+        <p className="text-xs mt-3" style={{ color: 'var(--muted-foreground)' }}>
+          Votre compte reste limité à l'espace patient jusqu'à la vérification de votre identité professionnelle et de votre numéro d'ordre.
+        </p>
       </div>
 
       {registerError && (
@@ -136,6 +154,7 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
             <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Pays *</label>
             <select className="input-field" {...register('country', { required: 'Requis' })}>
               <option value="">Pays</option>
+              <option value="KM">Comores</option>
               <option value="FR">France</option>
               <option value="SN">Sénégal</option>
               <option value="MA">Maroc</option>
@@ -188,7 +207,7 @@ export default function ProfessionalRegisterForm({ onSwitchToLogin }: { onSwitch
           {isLoading ? <Icon name="ArrowPathIcon" size={18} className="animate-spin" /> : (
             <>
               <Icon name="CheckCircleIcon" size={16} />
-              Créer mon espace professionnel
+              Envoyer ma demande de vérification
             </>
           )}
         </button>

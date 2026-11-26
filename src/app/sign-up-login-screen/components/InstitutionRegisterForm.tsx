@@ -34,8 +34,25 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
     try {
       await signUp(data.adminEmail, data.password, {
         fullName: `${data.adminFirstName} ${data.adminLastName}`,
+        firstName: data.adminFirstName,
+        lastName: data.adminLastName,
+        phone: data.phone,
+        country: data.country,
+        registrationType: 'institution',
+        registrationPayload: {
+          orgName: data.orgName,
+          orgType: data.orgType,
+          country: data.country,
+          city: data.city,
+          address: data.address,
+          phone: data.phone,
+          email: data.email,
+          registrationNumber: data.registrationNumber,
+          adminFirstName: data.adminFirstName,
+          adminLastName: data.adminLastName,
+        },
       });
-      router.push('/administration-tablissement');
+      router.push('/registration-pending?type=institution');
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('already registered') || msg.includes('User already registered')) {
@@ -62,6 +79,9 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
           <h1 className="text-xl font-bold" style={{ color: 'var(--shifa-dark)' }}>Enregistrer un Établissement</h1>
         </div>
         <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Hôpital, clinique, laboratoire, pharmacie, université, assurance, ONG…</p>
+        <p className="text-xs mt-2" style={{ color: 'var(--muted-foreground)' }}>
+          L'établissement et son administrateur seront activés après contrôle des documents et validation par SHIFA.
+        </p>
       </div>
 
       {registerError && (
@@ -102,6 +122,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
             <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>Pays *</label>
             <select className="input-field" {...register('country', { required: 'Requis' })}>
               <option value="">Pays</option>
+              <option value="KM">Comores</option>
               <option value="FR">France</option>
               <option value="SN">Sénégal</option>
               <option value="MA">Maroc</option>
@@ -160,7 +181,7 @@ export default function InstitutionRegisterForm({ onSwitchToLogin }: { onSwitchT
           {isLoading ? <Icon name="ArrowPathIcon" size={18} className="animate-spin" /> : (
             <>
               <Icon name="BuildingOffice2Icon" size={16} />
-              Enregistrer l'établissement
+              Envoyer la demande d'enregistrement
             </>
           )}
         </button>
