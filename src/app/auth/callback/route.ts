@@ -24,12 +24,25 @@ export async function GET(request: NextRequest) {
           .maybeSingle();
 
         const role = profile?.role;
-        let redirectPath = next;
+        const requestedRegistration = user.user_metadata?.registration_type;
+        const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/patient-home';
+        let redirectPath = safeNext;
 
-        if (role === 'org_admin' || role === 'platform_admin') {
+        // Signup metadata can request a review, but never grants the requested role.
+        if (requestedRegistration === 'professional' || requestedRegistration === 'institution') {
+          redirectPath = '/registration-pending';
+        } else if (role === 'org_admin' || role === 'platform_admin') {
           redirectPath = '/administration-tablissement';
         } else if (role === 'professional') {
           redirectPath = '/workspace-professionnel';
+        } else if (role === 'ministry') {
+          redirectPath = '/espace-ministere';
+        } else if (role === 'insurance') {
+          redirectPath = '/espace-assurance';
+        } else if (role === 'university') {
+          redirectPath = '/espace-universite';
+        } else if (role === 'ngo') {
+          redirectPath = '/espace-ong';
         } else if (role === 'patient') {
           redirectPath = '/patient-home';
         }
